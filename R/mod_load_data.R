@@ -3,66 +3,43 @@
 mod_load_data_ui <- function(id) {
   ns <- NS(id)
   tabItem(tabName = "load",
-          shinyjs::useShinyjs(),
           fluidRow(class = "equal-row",
                    div(class = "col-left",
-                       box(title = "1. Upload Data", status = "primary", solidHeader = TRUE, width = 12,
-                           fileInput(ns("data_files"),"Upload CSV or Excel (wide format)", multiple = TRUE,
+                       box(title = "Load Data", status = "primary", solidHeader = TRUE, width = 12,
+                           fileInput(ns("data_files"),"Upload CSV or Excel (wide; first column = Time)", multiple = TRUE,
                                      accept = c(".csv",".xlsx",".xls"))
                        ),
-                       
-                       shinyjs::hidden(
-                         div(id = ns("preview_wrapper"),
-                           uiOutput(ns("preview_ui"))
-                         )
-                       ),
-                       
-                       shinyjs::hidden(
-                         div(id = ns("processing_wrapper"),
-                           box(title = "3. Set Processing Options & Run", status = "warning", solidHeader = TRUE, width = 12, class = "proc-compact",
-                               switchInput(ns("pp_enable"),"Enable processing", onLabel="Yes", offLabel="No", value=TRUE, size = "mini"),
-                               checkboxInput(ns("pp_compute_dff"),"Compute ΔF/F₀ per cell", TRUE),
-                               selectInput(ns("pp_baseline_method"),"Baseline (F₀) method",
-                                           choices = c("First N frames"="first_n","Rolling minimum"="rolling_min","Percentile"="percentile"),
-                                           selected="first_n"),
-                               conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'first_n'"),
-                                                numericInput(ns("pp_baseline_frames"),"N frames for baseline (F₀)", value=20, min=1, step=1)
-                               ),
-                               conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'rolling_min'"),
-                                                numericInput(ns("pp_window_size"),"Rolling window (frames)", value=50, min=5, step=1)
-                               ),
-                               conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'percentile'"),
-                                                numericInput(ns("pp_percentile"),"Baseline percentile", value=10, min=1, max=50, step=1)
-                               ),
-                               tags$details(
-                                 tags$summary("Advanced"),
-                                 checkboxInput(ns("pp_apply_bg"),"Background subtraction (single column)", FALSE),
-                                 textInput(ns("pp_bg_col"),"Background column name (exact)", value=""),
-                                 numericInput(ns("pp_sampling_rate"),"Sampling rate (Hz) if Time missing/invalid", value=1, min=0.0001, step=0.1)
-                               ),
-                               div(class="small-help","ΔF/F₀ = (F - F₀)/F₀. Operations apply per uploaded file."),
-                               shinyjs::disabled(
-                                 div(style = "margin-top:8px;", actionButton(ns("load_btn"),"Process Data", class = "btn-primary"))
-                               )
-                           )
-                         )
+                       box(title = "Processing Options", status = "warning", solidHeader = TRUE, width = 12, class = "proc-compact",
+                           switchInput(ns("pp_enable"),"Enable processing", onLabel="Yes", offLabel="No", value=TRUE, size = "mini"),
+                           checkboxInput(ns("pp_compute_dff"),"Compute ΔF/F₀ per cell", TRUE),
+                           selectInput(ns("pp_baseline_method"),"Baseline (F₀) method",
+                                       choices = c("First N frames"="first_n","Rolling minimum"="rolling_min","Percentile"="percentile"),
+                                       selected="first_n"),
+                           conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'first_n'"),
+                                            numericInput(ns("pp_baseline_frames"),"N frames for baseline (F₀)", value=20, min=1, step=1)
+                           ),
+                           conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'rolling_min'"),
+                                            numericInput(ns("pp_window_size"),"Rolling window (frames)", value=50, min=5, step=1)
+                           ),
+                           conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'percentile'"),
+                                            numericInput(ns("pp_percentile"),"Baseline percentile", value=10, min=1, max=50, step=1)
+                           ),
+                           tags$details(
+                             tags$summary("Advanced"),
+                             checkboxInput(ns("pp_apply_bg"),"Background subtraction (single column)", FALSE),
+                             textInput(ns("pp_bg_col"),"Background column name (exact)", value=""),
+                             numericInput(ns("pp_sampling_rate"),"Sampling rate (Hz) if Time missing/invalid", value=1, min=0.0001, step=0.1)
+                           ),
+                           div(style = "margin-top:8px;", actionButton(ns("load_btn"),"Process Data", class = "btn-primary")),
+                           div(class="small-help","ΔF/F₀ = (F - F₀)/F₀. Operations apply per uploaded file.")
                        )
                    ),
                    div(class = "col-right",
                        box(title = "At a glance", status = "info", solidHeader = TRUE, width = 12,
-                           div(style = "padding: 5px;",
-                               div(class = "stat-card", style = "background: linear-gradient(135deg, #5bc0de 0%, #46b8da 100%);",
-                                   h3(textOutput(ns("n_files_text"), inline = TRUE)),
-                                   p("Files loaded")
-                               ),
-                               div(class = "stat-card", style = "background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);",
-                                   h3(textOutput(ns("n_cells_text"), inline = TRUE)),
-                                   p("Total cells")
-                               ),
-                               div(class = "stat-card", style = "background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);",
-                                   h3(textOutput(ns("n_timepoints_text"), inline = TRUE)),
-                                   p("Total timepoints")
-                               )
+                           fluidRow(
+                             valueBoxOutput(ns("n_files_text"), width = 12),
+                             valueBoxOutput(ns("n_cells_text"), width = 12),
+                             valueBoxOutput(ns("n_timepoints_text"), width = 12)
                            )
                        ),
                        box(title = "Processing Status", status = "info", solidHeader = TRUE, width = 12,
@@ -83,82 +60,19 @@ mod_load_data_ui <- function(id) {
 mod_load_data_server <- function(id, rv) {
   moduleServer(id, function(input, output, session) {
     
-    raw_data <- reactiveVal(list())
-    
-    observeEvent(input$data_files, {
-      if (!is.null(input$data_files) && nrow(input$data_files) > 0) {
-        shinyjs::show("preview_wrapper")
-        shinyjs::show("processing_wrapper")
-        
-        new_data <- list()
-        for (i in 1:nrow(input$data_files)) {
-          new_data[[input$data_files$name[i]]] <- safe_read(input$data_files$datapath[i])
-        }
-        raw_data(new_data)
-      } else {
-        shinyjs::hide("preview_wrapper")
-        shinyjs::hide("processing_wrapper")
-        raw_data(list())
-      }
-    }, ignoreNULL = FALSE)
-    
-    observe({
-      if (length(raw_data()) > 0) {
-        shinyjs::enable("load_btn")
-      } else {
-        shinyjs::disable("load_btn")
-      }
-    })
-    
-    output$preview_ui <- renderUI({
-      file_list <- raw_data()
-      if (length(file_list) == 0) return(NULL)
-      
-      ns <- session$ns
-      
-      first_file_name <- names(file_list)[1]
-      
-      tagList(
-        box(title = "2. Preview and Confirm Time Column", status = "info", solidHeader = TRUE, width = 12,
-            selectInput(ns("preview_file"), "Select file to preview:", choices = names(file_list)),
-            selectInput(ns("time_col"), "Select the time column:", choices = names(file_list[[first_file_name]])),
-            DT::DTOutput(ns("data_preview"))
-        )
-      )
-    })
-    
-    observe({
-      req(input$preview_file)
-      updateSelectInput(session, "time_col", choices = names(raw_data()[[input$preview_file]]))
-    })
-    
-    output$data_preview <- DT::renderDT({
-      req(input$preview_file)
-      datatable(raw_data()[[input$preview_file]], options = list(scrollX = TRUE, pageLength = 5), rownames = FALSE)
-    })
-    
     observeEvent(input$load_btn, {
-      req(raw_data(), input$time_col)
+      req(input$data_files)
       withProgress(message="Processing data...", value=0, {
-        
-        files <- input$data_files
-        rv$files <- files
-        
+        files <- input$data_files; rv$files <- files
         labels <- tools::file_path_sans_ext(basename(files$name))
-        rv$groups <- labels
-        rv$colors <- default_group_colors(labels)
-        
-        dts <- list()
-        n_files <- nrow(files)
+        rv$groups <- labels; rv$colors <- default_group_colors(labels)
+        dts <- list(); n_files <- nrow(files)
         
         for (i in seq_len(n_files)) {
-          incProgress(1/n_files, detail = paste("Processing:", basename(files$name[i])))
-          
-          dt <- raw_data()[[files$name[i]]]
-          
+          incProgress(1/n_files, detail = paste("Loading:", basename(files$name[i])))
+          dt <- safe_read(files$datapath[i])
           if (ncol(dt) < 2) next
-          
-          dt <- ensure_time_first(dt, time_col = input$time_col) |> coerce_numeric_dt()
+          dt <- ensure_time_first(dt) |> coerce_numeric_dt()
           
           if (!all(is.finite(dt[[1]])) || any(diff(dt[[1]]) <= 0, na.rm=TRUE)) {
             sr <- as.numeric(input$pp_sampling_rate %||% 1)
@@ -215,9 +129,9 @@ mod_load_data_server <- function(id, rv) {
       })
     })
     
-    output$n_files_text <- renderText({ as.character(length(rv$dts)) })
-    output$n_cells_text <- renderText({ as.character(if (is.null(rv$metrics)) 0 else nrow(rv$metrics)) })
-    output$n_timepoints_text <- renderText({ as.character(sum(purrr::map_int(rv$dts, nrow))) })
+    output$n_files_text <- renderValueBox({ valueBox(length(rv$dts), "Files loaded", icon=icon("layer-group"), color="teal") })
+    output$n_cells_text <- renderValueBox({ valueBox(if (is.null(rv$metrics)) 0 else nrow(rv$metrics), "Total cells", icon=icon("circle"), color="purple") })
+    output$n_timepoints_text <- renderValueBox({ valueBox(sum(purrr::map_int(rv$dts, nrow)), "Total timepoints", icon=icon("clock"), color="olive") })
     
     output$status_files_loaded_box <- renderInfoBox({
       infoBox(
