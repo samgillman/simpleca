@@ -1,0 +1,24 @@
+# R specific
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.Renviron
+.Rprofile
+
+# Shiny specific
+rsconnect/
+.shiny_app_sw_version
+
+# macOS specific
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbs.db files
+Thumbs.db
+ehthumbs.db
+
+# My specific files
+Untitled.R
+calcium app 8-12-25.R
