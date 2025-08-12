@@ -58,29 +58,13 @@ mod_load_data_ui <- function(id) {
                            )
                        ),
                        box(title = "Processing Status", status = "info", solidHeader = TRUE, width = 12,
-                           div(style = "padding: 10px;",
-                               fluidRow(
-                                 column(3, align = "center",
-                                        icon("file-import", class = "fa-2x", style = "color: #5bc0de; margin-bottom: 8px;"),
-                                        h5("Files Loaded", style = "margin: 5px 0; font-weight: 600;"),
-                                        textOutput(ns("status_files_loaded"), container = function(...) div(..., style = "font-size: 13px; color: #666;"))
-                                 ),
-                                 column(3, align = "center",
-                                        icon("check-circle", class = "fa-2x", style = "color: #5cb85c; margin-bottom: 8px;"),
-                                        h5("Processing", style = "margin: 5px 0; font-weight: 600;"),
-                                        textOutput(ns("status_processing"), container = function(...) div(..., style = "font-size: 13px; color: #666;"))
-                                 ),
-                                 column(3, align = "center",
-                                        icon("calculator", class = "fa-2x", style = "color: #f0ad4e; margin-bottom: 8px;"),
-                                        h5("Metrics", style = "margin: 5px 0; font-weight: 600;"),
-                                        textOutput(ns("status_metrics"), container = function(...) div(..., style = "font-size: 13px; color: #666;"))
-                                 ),
-                                 column(3, align = "center",
-                                        icon("chart-line", class = "fa-2x", style = "color: #9b59b6; margin-bottom: 8px;"),
-                                        h5("Ready", style = "margin: 5px 0; font-weight: 600;"),
-                                        textOutput(ns("status_ready"), container = function(...) div(..., style = "font-size: 13px; color: #666;"))
-                                 )
-                               )
+                           fluidRow(
+                             infoBoxOutput(ns("status_files_loaded_box"), width = 6),
+                             infoBoxOutput(ns("status_processing_box"), width = 6)
+                           ),
+                           fluidRow(
+                             infoBoxOutput(ns("status_metrics_box"), width = 6),
+                             infoBoxOutput(ns("status_ready_box"), width = 6)
                            )
                        )
                    )
@@ -219,10 +203,42 @@ mod_load_data_server <- function(id, rv) {
     output$n_files_text <- renderText({ as.character(length(rv$dts)) })
     output$n_cells_text <- renderText({ as.character(if (is.null(rv$metrics)) 0 else nrow(rv$metrics)) })
     output$n_timepoints_text <- renderText({ as.character(sum(purrr::map_int(rv$dts, nrow))) })
-    output$status_files_loaded <- renderText({ if (is.null(rv$files)) "No files" else paste(nrow(rv$files), "file(s)") })
-    output$status_processing <- renderText({ if (is.null(rv$dts) || length(rv$dts) == 0) "Not started" else "Complete" })
-    output$status_metrics <- renderText({ if (is.null(rv$metrics)) "Not calculated" else paste(nrow(rv$metrics), "cells analyzed") })
-    output$status_ready <- renderText({ if (!is.null(rv$metrics) && nrow(rv$metrics) > 0) "✓ Ready for analysis" else "Awaiting data" })
+    
+    output$status_files_loaded_box <- renderInfoBox({
+      infoBox(
+        "Files Loaded",
+        if (is.null(rv$files)) "No files" else paste(nrow(rv$files), "file(s)"),
+        icon = icon("file-import"),
+        color = "aqua"
+      )
+    })
+    
+    output$status_processing_box <- renderInfoBox({
+      infoBox(
+        "Processing",
+        if (is.null(rv$dts) || length(rv$dts) == 0) "Not started" else "Complete",
+        icon = icon("check-circle"),
+        color = "green"
+      )
+    })
+    
+    output$status_metrics_box <- renderInfoBox({
+      infoBox(
+        "Metrics",
+        if (is.null(rv$metrics)) "Not calculated" else paste(nrow(rv$metrics), "cells analyzed"),
+        icon = icon("calculator"),
+        color = "yellow"
+      )
+    })
+    
+    output$status_ready_box <- renderInfoBox({
+      infoBox(
+        "Ready",
+        if (!is.null(rv$metrics) && nrow(rv$metrics) > 0) "Ready for analysis" else "Awaiting data",
+        icon = icon("chart-line"),
+        color = "purple"
+      )
+    })
     
     return(rv)
   })
