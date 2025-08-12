@@ -100,14 +100,17 @@ mod_load_data_server <- function(id, rv) {
     })
     
     output$preview_ui <- renderUI({
-      req(raw_data())
+      file_list <- raw_data()
+      if (length(file_list) == 0) return(NULL)
       
       ns <- session$ns
       
+      first_file_name <- names(file_list)[1]
+      
       tagList(
         box(title = "Step 2: Preview and Confirm", status = "info", solidHeader = TRUE, width = 12,
-            selectInput(ns("preview_file"), "Select file to preview:", choices = names(raw_data())),
-            selectInput(ns("time_col"), "Select the time column:", choices = names(raw_data()[[input$preview_file]])),
+            selectInput(ns("preview_file"), "Select file to preview:", choices = names(file_list)),
+            selectInput(ns("time_col"), "Select the time column:", choices = names(file_list[[first_file_name]])),
             DT::DTOutput(ns("data_preview")),
             div(style = "margin-top:15px;", actionButton(ns("load_btn"), "Process Data", class = "btn-primary", icon = icon("cogs")))
         )
