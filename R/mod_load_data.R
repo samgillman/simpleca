@@ -3,16 +3,17 @@
 mod_load_data_ui <- function(id) {
   ns <- NS(id)
   tabItem(tabName = "load",
+          shinyjs::useShinyjs(),
           fluidRow(class = "equal-row",
                    div(class = "col-left",
-                       box(title = "Step 1: Upload Data", status = "primary", solidHeader = TRUE, width = 12,
+                       box(title = "1. Upload Data", status = "primary", solidHeader = TRUE, width = 12,
                            fileInput(ns("data_files"),"Upload CSV or Excel (wide format)", multiple = TRUE,
                                      accept = c(".csv",".xlsx",".xls"))
                        ),
                        
                        uiOutput(ns("preview_ui")),
                        
-                       box(title = "Step 3: Processing Options", status = "warning", solidHeader = TRUE, width = 12, class = "proc-compact",
+                       box(title = "3. Set Processing Options & Run", status = "warning", solidHeader = TRUE, width = 12, class = "proc-compact",
                            switchInput(ns("pp_enable"),"Enable processing", onLabel="Yes", offLabel="No", value=TRUE, size = "mini"),
                            checkboxInput(ns("pp_compute_dff"),"Compute ΔF/F₀ per cell", TRUE),
                            selectInput(ns("pp_baseline_method"),"Baseline (F₀) method",
@@ -34,7 +35,9 @@ mod_load_data_ui <- function(id) {
                              numericInput(ns("pp_sampling_rate"),"Sampling rate (Hz) if Time missing/invalid", value=1, min=0.0001, step=0.1)
                            ),
                            div(class="small-help","ΔF/F₀ = (F - F₀)/F₀. Operations apply per uploaded file."),
-                           div(style = "margin-top:8px;", actionButton(ns("load_btn"),"Process Data", class = "btn-primary"))
+                           shinyjs::disabled(
+                             div(style = "margin-top:8px;", actionButton(ns("load_btn"),"Process Data", class = "btn-primary"))
+                           )
                        )
                    ),
                    div(class = "col-right",
@@ -100,6 +103,14 @@ mod_load_data_server <- function(id, rv) {
       raw_data(new_data)
     })
     
+    observe({
+      if (length(raw_data()) > 0) {
+        shinyjs::enable("load_btn")
+      } else {
+        shinyjs::disable("load_btn")
+      }
+    })
+    
     output$preview_ui <- renderUI({
       file_list <- raw_data()
       if (length(file_list) == 0) return(NULL)
@@ -109,7 +120,7 @@ mod_load_data_server <- function(id, rv) {
       first_file_name <- names(file_list)[1]
       
       tagList(
-        box(title = "Step 2: Preview and Confirm", status = "info", solidHeader = TRUE, width = 12,
+        box(title = "2. Preview and Confirm Time Column", status = "info", solidHeader = TRUE, width = 12,
             selectInput(ns("preview_file"), "Select file to preview:", choices = names(file_list)),
             selectInput(ns("time_col"), "Select the time column:", choices = names(file_list[[first_file_name]])),
             DT::DTOutput(ns("data_preview"))
