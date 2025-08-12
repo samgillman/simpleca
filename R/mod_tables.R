@@ -39,14 +39,14 @@ mod_tables_ui <- function(id) {
                   downloadButton(ns("download_timecourse"), "Download Time Course (CSV)", class = "btn-primary")
                 ),
                 tabPanel(
-                  "Raw Data",
+                  "Processed Data",
                   icon = icon("database"),
                   br(),
                   h4("Processed Data (Wide Format)"),
-                  selectInput(ns("raw_data_group"), "Select Dataset", choices = NULL),
+                  selectInput(ns("processed_data_group"), "Select Dataset", choices = NULL),
                   DT::DTOutput(ns("raw_data_table")),
                   br(),
-                  downloadButton(ns("download_raw"), "Download Raw Data (CSV)", class = "btn-primary")
+                  downloadButton(ns("download_raw"), "Download Processed Data (CSV)", class = "btn-primary")
                 )
               )
             )
@@ -59,7 +59,7 @@ mod_tables_server <- function(id, rv) {
     
     observe({
       req(rv$dts)
-      updateSelectInput(session, "raw_data_group", choices = names(rv$dts), selected = names(rv$dts)[1])
+      updateSelectInput(session, "processed_data_group", choices = names(rv$dts), selected = names(rv$dts)[1])
     })
     
     output$cell_metrics_table <- DT::renderDT({
@@ -144,9 +144,9 @@ mod_tables_server <- function(id, rv) {
     
     output$raw_data_table <- DT::renderDT({
       req(rv$dts)
-      if (is.null(input$raw_data_group) || !nzchar(input$raw_data_group)) return(NULL)
-      if (!(input$raw_data_group %in% names(rv$dts))) return(NULL)
-      df <- rv$dts[[input$raw_data_group]]
+      if (is.null(input$processed_data_group) || !nzchar(input$processed_data_group)) return(NULL)
+      if (!(input$processed_data_group %in% names(rv$dts))) return(NULL)
+      df <- rv$dts[[input$processed_data_group]]
       numeric_cols <- vapply(df, is.numeric, logical(1))
       DT::datatable(
         df,
@@ -198,8 +198,8 @@ mod_tables_server <- function(id, rv) {
     )
     
     output$download_raw <- downloadHandler(
-      filename = function() { paste0("raw_data_", input$raw_data_group %||% "dataset", "_", Sys.Date(), ".csv") },
-      content = function(file) { req(rv$dts, input$raw_data_group); write.csv(rv$dts[[input$raw_data_group]], file, row.names = FALSE) }
+      filename = function() { paste0("processed_data_", input$processed_data_group %||% "dataset", "_", Sys.Date(), ".csv") },
+      content = function(file) { req(rv$dts, input$processed_data_group); write.csv(rv$dts[[input$processed_data_group]], file, row.names = FALSE) }
     )
     
   })
