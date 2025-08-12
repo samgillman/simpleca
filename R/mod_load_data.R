@@ -5,12 +5,14 @@ mod_load_data_ui <- function(id) {
   tabItem(tabName = "load",
           fluidRow(class = "equal-row",
                    div(class = "col-left",
-                       box(title = "Load Data", status = "primary", solidHeader = TRUE, width = 12,
-                           fileInput(ns("data_files"),"Upload CSV or Excel (wide; first column = Time)", multiple = TRUE,
-                                     accept = c(".csv",".xlsx",".xls")),
-                           div(class="small-help","Upload raw/pre-processed traces; compute ΔF/F₀ in Data Processing if needed.")
+                       box(title = "Step 1: Upload Data", status = "primary", solidHeader = TRUE, width = 12,
+                           fileInput(ns("data_files"),"Upload CSV or Excel (wide format)", multiple = TRUE,
+                                     accept = c(".csv",".xlsx",".xls"))
                        ),
-                       box(title = "Processing Options", status = "warning", solidHeader = TRUE, width = 12, class = "proc-compact",
+                       
+                       uiOutput(ns("preview_ui")),
+                       
+                       box(title = "Step 3: Processing Options", status = "warning", solidHeader = TRUE, width = 12, class = "proc-compact",
                            switchInput(ns("pp_enable"),"Enable processing", onLabel="Yes", offLabel="No", value=TRUE, size = "mini"),
                            checkboxInput(ns("pp_compute_dff"),"Compute ΔF/F₀ per cell", TRUE),
                            selectInput(ns("pp_baseline_method"),"Baseline (F₀) method",
@@ -31,7 +33,6 @@ mod_load_data_ui <- function(id) {
                              textInput(ns("pp_bg_col"),"Background column name (exact)", value=""),
                              numericInput(ns("pp_sampling_rate"),"Sampling rate (Hz) if Time missing/invalid", value=1, min=0.0001, step=0.1)
                            ),
-                           div(style = "margin-top:8px;", actionButton(ns("load_btn"),"Process Data", class = "btn-primary")),
                            div(class="small-help","ΔF/F₀ = (F - F₀)/F₀. Operations apply per uploaded file.")
                        )
                    ),
@@ -86,19 +87,65 @@ mod_load_data_ui <- function(id) {
 mod_load_data_server <- function(id, rv) {
   moduleServer(id, function(input, output, session) {
     
-    observeEvent(input$load_btn, {
+    raw_data <- reactiveVal(list())
+    
+    observeEvent(input$data_files, {
       req(input$data_files)
+      
+      new_data <- list()
+      for (i in 1:nrow(input$data_files)) {
+        new_data[[input$data_files$name[i]]] <- safe_read(input$data_files$datapath[i])
+      }
+      raw_data(new_data)
+    })
+    
+    output$preview_ui <- renderUI({
+      req(raw_data())
+      
+      ns <- session$ns
+      
+      tagList(
+        box(title = "Step 2: Preview and Confirm", status = "info", solidHeader = TRUE, width = 12,
+            selectInput(ns("preview_file"), "Select file to preview:", choices = names(raw_data())),
+            selectInput(ns("time_col"), "Select the time column:", choices = names(raw_data()[[input$preview_file]])),
+            DT::DTOutput(ns("data_preview")),
+            div(style = "margin-top:15px;", actionButton(ns("load_btn"), "Process Data", class = "btn-primary", icon = icon("cogs")))
+        )
+      )
+    })
+    
+    observe({
+      req(input$preview_file)
+      updateSelectInput(session, "time_col", choices = names(raw_data()[[input$preview_file]]))
+    })
+    
+    output$data_preview <- DT::renderDT({
+      req(input$preview_file)
+      datatable(raw_data()[[input$preview_file]], options = list(scrollX = TRUE, pageLength = 5), rownames = FALSE)
+    })
+    
+    observeEvent(input$load_btn, {
+      req(raw_data(), input$time_col)
       withProgress(message="Processing data...", value=0, {
-        files <- input$data_files; rv$files <- files
+        
+        files <- input$data_files
+        rv$files <- files
+        
         labels <- tools::file_path_sans_ext(basename(files$name))
-        rv$groups <- labels; rv$colors <- default_group_colors(labels)
-        dts <- list(); n_files <- nrow(files)
+        rv$groups <- labels
+        rv$colors <- default_group_colors(labels)
+        
+        dts <- list()
+        n_files <- nrow(files)
         
         for (i in seq_len(n_files)) {
-          incProgress(1/n_files, detail = paste("Loading:", basename(files$name[i])))
-          dt <- safe_read(files$datapath[i])
+          incProgress(1/n_files, detail = paste("Processing:", basename(files$name[i])))
+          
+          dt <- raw_data()[[files$name[i]]]
+          
           if (ncol(dt) < 2) next
-          dt <- ensure_time_first(dt) |> coerce_numeric_dt()
+          
+          dt <- ensure_time_first(dt, time_col = input$time_col) |> coerce_numeric_dt()
           
           if (!all(is.finite(dt[[1]])) || any(diff(dt[[1]]) <= 0, na.rm=TRUE)) {
             sr <- as.numeric(input$pp_sampling_rate %||% 1)
