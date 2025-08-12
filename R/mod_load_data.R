@@ -33,7 +33,8 @@ mod_load_data_ui <- function(id) {
                              textInput(ns("pp_bg_col"),"Background column name (exact)", value=""),
                              numericInput(ns("pp_sampling_rate"),"Sampling rate (Hz) if Time missing/invalid", value=1, min=0.0001, step=0.1)
                            ),
-                           div(class="small-help","ΔF/F₀ = (F - F₀)/F₀. Operations apply per uploaded file.")
+                           div(class="small-help","ΔF/F₀ = (F - F₀)/F₀. Operations apply per uploaded file."),
+                           div(style = "margin-top:8px;", actionButton(ns("load_btn"),"Process Data", class = "btn-primary"))
                        )
                    ),
                    div(class = "col-right",
@@ -111,8 +112,7 @@ mod_load_data_server <- function(id, rv) {
         box(title = "Step 2: Preview and Confirm", status = "info", solidHeader = TRUE, width = 12,
             selectInput(ns("preview_file"), "Select file to preview:", choices = names(file_list)),
             selectInput(ns("time_col"), "Select the time column:", choices = names(file_list[[first_file_name]])),
-            DT::DTOutput(ns("data_preview")),
-            div(style = "margin-top:15px;", actionButton(ns("load_btn"), "Process Data", class = "btn-primary", icon = icon("cogs")))
+            DT::DTOutput(ns("data_preview"))
         )
       )
     })
