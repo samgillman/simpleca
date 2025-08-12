@@ -62,7 +62,14 @@ mod_export_server <- function(id, rv, metrics_plot_reactive = reactive(NULL), he
     )
     
     output$dl_timecourse_plot <- downloadHandler(
-      filename = function() sprintf("timecourse_%s.%s", Sys.Date(), input$exp_fmt),
+      filename = function() {
+        base_name <- if (!is.null(rv$groups) && length(rv$groups) > 0) {
+          paste(rv$groups, collapse = "_")
+        } else {
+          "timecourse"
+        }
+        sprintf("%s Time Course Plot.%s", base_name, input$exp_fmt)
+      },
       content = function(file) {
         req(rv$summary)
         p <- ggplot(rv$summary, aes(Time, mean_dFF0, color = Group, fill = Group)) +
