@@ -11,33 +11,41 @@ mod_load_data_ui <- function(id) {
                                      accept = c(".csv",".xlsx",".xls"))
                        ),
                        
-                       uiOutput(ns("preview_ui")),
+                       shinyjs::hidden(
+                         div(id = ns("preview_wrapper"),
+                           uiOutput(ns("preview_ui"))
+                         )
+                       ),
                        
-                       box(title = "3. Set Processing Options & Run", status = "warning", solidHeader = TRUE, width = 12, class = "proc-compact",
-                           switchInput(ns("pp_enable"),"Enable processing", onLabel="Yes", offLabel="No", value=TRUE, size = "mini"),
-                           checkboxInput(ns("pp_compute_dff"),"Compute ΔF/F₀ per cell", TRUE),
-                           selectInput(ns("pp_baseline_method"),"Baseline (F₀) method",
-                                       choices = c("First N frames"="first_n","Rolling minimum"="rolling_min","Percentile"="percentile"),
-                                       selected="first_n"),
-                           conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'first_n'"),
-                                            numericInput(ns("pp_baseline_frames"),"N frames for baseline (F₀)", value=20, min=1, step=1)
-                           ),
-                           conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'rolling_min'"),
-                                            numericInput(ns("pp_window_size"),"Rolling window (frames)", value=50, min=5, step=1)
-                           ),
-                           conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'percentile'"),
-                                            numericInput(ns("pp_percentile"),"Baseline percentile", value=10, min=1, max=50, step=1)
-                           ),
-                           tags$details(
-                             tags$summary("Advanced"),
-                             checkboxInput(ns("pp_apply_bg"),"Background subtraction (single column)", FALSE),
-                             textInput(ns("pp_bg_col"),"Background column name (exact)", value=""),
-                             numericInput(ns("pp_sampling_rate"),"Sampling rate (Hz) if Time missing/invalid", value=1, min=0.0001, step=0.1)
-                           ),
-                           div(class="small-help","ΔF/F₀ = (F - F₀)/F₀. Operations apply per uploaded file."),
-                           shinyjs::disabled(
-                             div(style = "margin-top:8px;", actionButton(ns("load_btn"),"Process Data", class = "btn-primary"))
+                       shinyjs::hidden(
+                         div(id = ns("processing_wrapper"),
+                           box(title = "3. Set Processing Options & Run", status = "warning", solidHeader = TRUE, width = 12, class = "proc-compact",
+                               switchInput(ns("pp_enable"),"Enable processing", onLabel="Yes", offLabel="No", value=TRUE, size = "mini"),
+                               checkboxInput(ns("pp_compute_dff"),"Compute ΔF/F₀ per cell", TRUE),
+                               selectInput(ns("pp_baseline_method"),"Baseline (F₀) method",
+                                           choices = c("First N frames"="first_n","Rolling minimum"="rolling_min","Percentile"="percentile"),
+                                           selected="first_n"),
+                               conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'first_n'"),
+                                                numericInput(ns("pp_baseline_frames"),"N frames for baseline (F₀)", value=20, min=1, step=1)
+                               ),
+                               conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'rolling_min'"),
+                                                numericInput(ns("pp_window_size"),"Rolling window (frames)", value=50, min=5, step=1)
+                               ),
+                               conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'percentile'"),
+                                                numericInput(ns("pp_percentile"),"Baseline percentile", value=10, min=1, max=50, step=1)
+                               ),
+                               tags$details(
+                                 tags$summary("Advanced"),
+                                 checkboxInput(ns("pp_apply_bg"),"Background subtraction (single column)", FALSE),
+                                 textInput(ns("pp_bg_col"),"Background column name (exact)", value=""),
+                                 numericInput(ns("pp_sampling_rate"),"Sampling rate (Hz) if Time missing/invalid", value=1, min=0.0001, step=0.1)
+                               ),
+                               div(class="small-help","ΔF/F₀ = (F - F₀)/F₀. Operations apply per uploaded file."),
+                               shinyjs::disabled(
+                                 div(style = "margin-top:8px;", actionButton(ns("load_btn"),"Process Data", class = "btn-primary"))
+                               )
                            )
+                         )
                        )
                    ),
                    div(class = "col-right",
@@ -78,14 +86,21 @@ mod_load_data_server <- function(id, rv) {
     raw_data <- reactiveVal(list())
     
     observeEvent(input$data_files, {
-      req(input$data_files)
-      
-      new_data <- list()
-      for (i in 1:nrow(input$data_files)) {
-        new_data[[input$data_files$name[i]]] <- safe_read(input$data_files$datapath[i])
+      if (!is.null(input$data_files) && nrow(input$data_files) > 0) {
+        shinyjs::show("preview_wrapper")
+        shinyjs::show("processing_wrapper")
+        
+        new_data <- list()
+        for (i in 1:nrow(input$data_files)) {
+          new_data[[input$data_files$name[i]]] <- safe_read(input$data_files$datapath[i])
+        }
+        raw_data(new_data)
+      } else {
+        shinyjs::hide("preview_wrapper")
+        shinyjs::hide("processing_wrapper")
+        raw_data(list())
       }
-      raw_data(new_data)
-    })
+    }, ignoreNULL = FALSE)
     
     observe({
       if (length(raw_data()) > 0) {
