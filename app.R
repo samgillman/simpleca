@@ -40,31 +40,33 @@ utils::globalVariables(c(
 `%||%` <- function(a, b) if (!is.null(a)) a else b
 
 # ============================== UI =================================
-ui <- navbarPage(
-  title = "Calcium Imaging Analysis",
-  theme = bslib::bs_theme(version = 5, bootswatch = "cerulean"),
-  
-  # --- Main Tab 1: Individual Analysis ---
-  tabPanel("Individual Analysis",
-           dashboardPage(
-             skin = "blue",
-             header = dashboardHeader(title = "Individual Recording"),
-             sidebar = dashboardSidebar(
-  sidebarMenu(id = "sidebar_tabs",
-              menuItem("Load Data", tabName = "load", icon = icon("database")),
-              menuItem("Processed Data", tabName = "preproc", icon = icon("sliders")),
-              menuItem("Time Course", tabName = "time", icon = icon("chart-line")),
-              menuItem("Metrics", tabName = "metrics", icon = icon("chart-bar")),
-                           menuItem("Metric Explanations", tabName = "metrics_explained", icon = icon("lightbulb")),
-              menuItem("Heatmap", tabName = "heatmap", icon = icon("th")),
-              menuItem("Tables", tabName = "tables", icon = icon("table")),
-              menuItem("Export", tabName = "export", icon = icon("download")),
-              menuItem("Help", tabName = "help", icon = icon("circle-question"))
-  )
-             ),
-             body = dashboardBody(
-  useShinyjs(),
-  tags$head(tags$style(HTML("
+ui <- dashboardPage(
+  skin = "blue",
+  header = dashboardHeader(title = "Calcium Imaging Analysis"),
+  sidebar = dashboardSidebar(
+    sidebarMenu(id = "sidebar_tabs",
+      # --- Menu Item 1: Individual Analysis (Collapsible) ---
+      menuItem("Individual Analysis", tabName = "individual", icon = icon("user"), startExpanded = TRUE,
+        menuSubItem("Load Data", tabName = "load", icon = icon("database")),
+        menuSubItem("Processed Data", tabName = "preproc", icon = icon("sliders")),
+        menuSubItem("Time Course", tabName = "time", icon = icon("chart-line")),
+        menuSubItem("Metrics", tabName = "metrics", icon = icon("chart-bar")),
+        menuSubItem("Metric Explanations", tabName = "metrics_explained", icon = icon("lightbulb")),
+        menuSubItem("Heatmap", tabName = "heatmap", icon = icon("th")),
+        menuSubItem("Tables", tabName = "tables", icon = icon("table")),
+        menuSubItem("Export", tabName = "export", icon = icon("download"))
+      ),
+      
+      # --- Menu Item 2: Group Analysis ---
+      menuItem("Group Analysis", tabName = "group", icon = icon("users")),
+      
+      # --- Menu Item 3: Help ---
+      menuItem("Help", tabName = "help", icon = icon("circle-question"))
+    )
+  ),
+  body = dashboardBody(
+    useShinyjs(),
+    tags$head(tags$style(HTML("
     /* Custom CSS */
     .small-help {color:#6c757d;font-size:12px;margin-top:4px}
     .box-title {font-weight:600}
@@ -75,30 +77,36 @@ ui <- navbarPage(
     .box { height: 100%; display: flex; flex-direction: column; }
     .box-body { flex: 1; }
   "))),
-  tabItems(
-                 mod_load_data_ui("load_data"),
-                 mod_preproc_ui("preproc"),
-                 mod_time_course_ui("time_course"),
-                 mod_metrics_ui("metrics"),
-                 mod_metrics_explained_ui("metrics_explained"),
-                 mod_heatmap_ui("heatmap"),
-                 mod_tables_ui("tables"),
-                 mod_export_ui("export"),
-                 mod_help_ui("help")
-                     )
-              )
-            )
-    ),
-    
-  # --- Main Tab 2: Group Analysis ---
-  tabPanel("Group Analysis",
-           mod_group_combiner_ui("group_combiner")
+    tabItems(
+      # --- Individual Analysis Panels ---
+      mod_load_data_ui("load_data"),
+      mod_preproc_ui("preproc"),
+      mod_time_course_ui("time_course"),
+      mod_metrics_ui("metrics"),
+      mod_metrics_explained_ui("metrics_explained"),
+      mod_heatmap_ui("heatmap"),
+      mod_tables_ui("tables"),
+      mod_export_ui("export"),
+      
+      # --- Group Analysis Panel ---
+      tabItem(tabName = "group",
+              h2("Group Analysis: Combine and Annotate Datasets"),
+              mod_group_combiner_ui("group_combiner")
+      ),
+      
+      # --- Help Panel ---
+      mod_help_ui("help")
+    )
   )
 )
 
+
 # ============================= Server =============================
 server <- function(input, output, session) {
-  # --- Individual Analysis Server Logic ---
+  
+  # ================== Reactive Values & Modules ===================
+  
+  # --- Individual Analysis ---
   iv <- InputValidator$new()
   iv$add_rule("metric_name", sv_required())
   iv$enable()
@@ -125,15 +133,12 @@ server <- function(input, output, session) {
                     metrics_plot_reactive = metrics_plot_obj, 
                     heatmap_plot_reactive = heatmap_plot_obj)
   
-  
-  # --- Group Analysis Server Logic ---
+  # --- Group Analysis ---
   rv_group <- reactiveValues(
-    combined_data = NULL,
-    metadata = NULL
+    combined_data = NULL # This will store the master combined dataset for group analysis
   )
-  
   mod_group_combiner_server("group_combiner", rv_group)
-  
+
 }
 
 shinyApp(ui, server)

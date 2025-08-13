@@ -4,7 +4,6 @@
 mod_group_combiner_ui <- function(id) {
   ns <- NS(id)
   fluidPage(
-    titlePanel("Combine and Annotate Time Course Datasets"),
     
     sidebarLayout(
       sidebarPanel(
