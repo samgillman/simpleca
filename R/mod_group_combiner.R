@@ -125,7 +125,8 @@ mod_group_combiner_server <- function(id, rv_group) {
           ordering = FALSE,
           columnDefs = list(
             list(className = 'dt-center', targets = '_all'),
-            list(visible = FALSE, targets = which(names(display_data) == "FilePath"))
+            # Correctly hide the 'FilePath' column (which() is 1-based, DT is 0-based)
+            list(visible = FALSE, targets = which(names(display_data) == "FilePath") - 1)
           )
         )
       )
