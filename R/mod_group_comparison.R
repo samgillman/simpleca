@@ -109,7 +109,7 @@ mod_group_comparison_server <- function(id, rv_group) {
       # Calculate metrics for each cell sequentially
       metrics_list <- purrr::map(nested_data$data, ~{
         calculate_cell_metrics(.x$dFF0, .x$Time, data_is_dFF0 = TRUE)
-      }, .progress = "Calculating metrics...")
+      })
       
       # Combine results
       bind_cols(nested_data %>% select(Cell_ID, GroupName), bind_rows(metrics_list))
