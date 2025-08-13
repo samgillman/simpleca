@@ -105,8 +105,8 @@ mod_group_combiner_server <- function(id, rv_group) {
           ordering = FALSE,
           columnDefs = list(
             list(className = 'dt-center', targets = '_all'),
-            # Hide the full file path column as it's not needed by the user
-            list(visible = FALSE, targets = which(names(rv$file_info) == "FilePath"))
+            # Hide the full file path column (0-indexed)
+            list(visible = FALSE, targets = which(names(rv$file_info) == "FilePath") - 1)
           )
         )
       )
@@ -146,7 +146,7 @@ mod_group_combiner_server <- function(id, rv_group) {
       rv$file_info[selected_row_index, "GroupName"] <- input$modal_group_name
       
       removeModal()
-      showNotification("Annotation saved successfully.", type = "success", duration = 3)
+      showNotification("Annotation saved successfully.", type = "message", duration = 3)
     })
 
     # Observer for the 'Combine' button
@@ -197,7 +197,7 @@ mod_group_combiner_server <- function(id, rv_group) {
         showNotification(
           paste("Successfully combined", nrow(rv$file_info), "files. The final dataset has",
                 format(nrow(combined_df), big.mark = ","), "total observations."),
-          type = "success",
+          type = "message",
           duration = 5
         )
         
