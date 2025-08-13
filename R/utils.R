@@ -38,6 +38,15 @@ calculate_cell_metrics <- function(cell_data, time_vec, baseline_frames = 20) {
   baseline_raw <- mean(baseline_vals, na.rm = TRUE)
   baseline_sd_raw <- stats::sd(baseline_vals, na.rm = TRUE)
   
+  # --- Start of Safety Check ---
+  # If baseline is non-finite or zero, calculation is impossible.
+  if (!is.finite(baseline_raw) || baseline_raw == 0) {
+    return(data.frame(Peak_dFF0=NA, Time_to_Peak=NA, Time_to_25_Peak=NA, Time_to_50_Peak=NA,
+                      Time_to_75_Peak=NA, Rise_Time=NA, Calcium_Entry_Rate=NA, AUC=NA,
+                      Response_Amplitude=NA, FWHM=NA, Half_Width=NA, Baseline_SD=baseline_sd_raw, SNR=NA))
+  }
+  # --- End of Safety Check ---
+  
   if (abs(baseline_raw) < 0.1) {
     working_signal <- x; baseline <- 0; baseline_sd <- baseline_sd_raw
   } else if (baseline_raw != 0) {
@@ -46,6 +55,15 @@ calculate_cell_metrics <- function(cell_data, time_vec, baseline_frames = 20) {
   } else {
     working_signal <- x; baseline <- baseline_raw; baseline_sd <- baseline_sd_raw
   }
+  
+  # --- Second Safety Check ---
+  # If working_signal became non-finite after dF/F0, abort for this cell.
+  if (!any(is.finite(working_signal))) {
+    return(data.frame(Peak_dFF0=NA, Time_to_Peak=NA, Time_to_25_Peak=NA, Time_to_50_Peak=NA,
+                      Time_to_75_Peak=NA, Rise_Time=NA, Calcium_Entry_Rate=NA, AUC=NA,
+                      Response_Amplitude=NA, FWHM=NA, Half_Width=NA, Baseline_SD=baseline_sd_raw, SNR=NA))
+  }
+  # --- End of Second Safety Check ---
   
   peak_value <- max(working_signal, na.rm = TRUE)
   peak_idx <- which.max(working_signal)
