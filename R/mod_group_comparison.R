@@ -65,29 +65,31 @@ mod_group_comparison_ui <- function(id) {
           
           # --- Tab 3: Summary Tables ---
           tabPanel("Summary Tables",
+                   p("These tables provide the underlying data for the plots. You can download the data from any table using the 'CSV' button."),
+                   br(),
+                   
+                   # Table for Animal-Level Data
                    box(
-                       title = "Group Summary Statistics",
-                       status = "info", solidHeader = TRUE, width = 12, collapsible = TRUE,
-                       p("This table shows the mean, standard deviation (SD), standard error (SEM), and count (N) for each metric, summarized by group."),
-                       DT::DTOutput(ns("summary_stats_table"))
+                     title = "Animal-Level Summary",
+                     status = "success", solidHeader = TRUE, width = 12, collapsible = TRUE,
+                     p("This table shows the average metric value for each animal, corresponding to the 'Group Comparison by Animal' plot. Each row is one animal."),
+                     DT::DTOutput(ns("animal_summary_table"))
                    ),
+                   
+                   # Table for Ganglion-Level Data
                    box(
-                       title = "Metrics by Animal",
-                       status = "success", solidHeader = TRUE, width = 12, collapsible = TRUE, collapsed = TRUE,
-                       p("This table summarizes each metric for every animal, grouped by the main experimental condition."),
-                       DT::DTOutput(ns("animal_summary_table"))
+                     title = "Ganglion-Level Summary",
+                     status = "warning", solidHeader = TRUE, width = 12, collapsible = TRUE,
+                     p("This table shows the average metric value for each ganglion, corresponding to the 'Group Comparison by Ganglion' plot. Each row is one ganglion."),
+                     DT::DTOutput(ns("ganglion_summary_table"))
                    ),
+                   
+                   # Table for Raw Cell-Level Data
                    box(
-                       title = "Metrics by Ganglion",
-                       status = "warning", solidHeader = TRUE, width = 12, collapsible = TRUE, collapsed = TRUE,
-                       p("This table breaks down each metric by individual ganglion."),
-                       DT::DTOutput(ns("ganglion_summary_table"))
-                   ),
-                   box(
-                       title = "Individual Cell Metrics (All Groups)",
-                       status = "primary", solidHeader = TRUE, width = 12, collapsible = TRUE, collapsed = TRUE,
-                       p("This table contains all the calculated metrics for every individual cell in the combined dataset."),
-                       DT::DTOutput(ns("all_metrics_table"))
+                     title = "Individual Cell Metrics (Raw Data)",
+                     status = "primary", solidHeader = TRUE, width = 12, collapsible = TRUE, collapsed = TRUE,
+                     p("This table contains all the calculated metrics for every individual cell, corresponding to the 'Group Comparison by Cell' plot. Each row is one cell."),
+                     DT::DTOutput(ns("all_metrics_table"))
                    )
           )
         ),
@@ -152,143 +154,61 @@ mod_group_comparison_server <- function(id, rv_group) {
         theme(legend.position = "bottom")
     })
     
-    # Reactive to calculate metrics for all cells in the combined dataset
+    # Reactive for all metrics from the combined data
     all_metrics <- reactive({
-      req(rv_group$combined_data)
-      
-      # Nest data by cell
-      nested_data <- rv_group$combined_data %>%
-        group_by(Cell_ID, GroupName, AnimalID, GanglionID) %>%
-        summarise(data = list(pick(everything())), .groups = "drop")
-      
-      # Calculate metrics for each cell sequentially
-      metrics_list <- purrr::map(nested_data$data, ~{
-        calculate_cell_metrics(.x$dFF0, .x$Time, data_is_dFF0 = TRUE)
-      })
-      
-      # Combine results
-      bind_cols(nested_data %>% select(-data), bind_rows(metrics_list))
+      req(rv_group$combined_data, rv_group$combined_data$metrics)
+      rv_group$combined_data$metrics
     })
     
-    # Reactive to calculate summary stats by group
-    summary_stats <- reactive({
-      req(all_metrics())
-      
-      all_metrics() %>%
-        select(where(is.numeric), GroupName) %>% # Select only numeric metrics and the grouping variable
-        pivot_longer(-GroupName, names_to = "Metric", values_to = "Value") %>%
-        group_by(GroupName, Metric) %>%
-        summarise(
-          Mean = mean(Value, na.rm = TRUE),
-          SD = sd(Value, na.rm = TRUE),
-          N = sum(is.finite(Value)),
-          SEM = SD / pmax(1, sqrt(N)),
-          .groups = 'drop'
-        )
-    })
-    
-    # Render the summary statistics table (long format)
-    output$summary_stats_table <- DT::renderDT({
-        req(summary_stats())
-        DT::datatable(
-            summary_stats(),
-            rownames = FALSE,
-            filter = "top",
-            extensions = c("Buttons"),
-            options = list(
-                pageLength = 15,
-                dom = 'Bfrtip',
-                buttons = c('copy', 'csv', 'excel')
-            )
-        ) %>%
-        DT::formatRound(columns = c("Mean", "SD", "SEM"), digits = 4)
-    })
-    
-    # Render the table for all individual cell metrics
-    output$all_metrics_table <- DT::renderDT({
-        req(all_metrics())
-        DT::datatable(
-            all_metrics(),
-            rownames = FALSE,
-            filter = "top",
-            extensions = c("Buttons", "FixedColumns"),
-            options = list(
-                scrollX = TRUE,
-                fixedColumns = list(leftColumns = 2),
-                pageLength = 10,
-                dom = 'Bfrtip',
-                buttons = c('copy', 'csv', 'excel')
-            )
-        ) %>%
-        DT::formatRound(columns = which(sapply(all_metrics(), is.numeric)), digits = 4)
-    })
-    
-    # --- Summaries by Animal and Ganglion ---
-    
-    # Reactive for animal-level summaries
+    # Reactive for animal-level average metrics
     animal_summary <- reactive({
-        req(all_metrics())
-        
-        df <- all_metrics()
-        req("AnimalID" %in% names(df))
-        
-        metric_cols <- names(df)[vapply(df, is.numeric, logical(1))]
-        
-        tidy <- df %>%
-            tidyr::pivot_longer(cols = dplyr::all_of(metric_cols), names_to = "Metric", values_to = "Value")
-        
-        tidy %>%
-            dplyr::group_by(AnimalID, GroupName, Metric) %>%
-            dplyr::summarise(
-                Mean = mean(Value, na.rm = TRUE),
-                SD = sd(Value, na.rm = TRUE),
-                N = sum(is.finite(Value)),
-                SEM = SD / pmax(1, sqrt(N)),
-                .groups = 'drop'
-            )
+      req(all_metrics())
+      all_metrics() %>%
+        group_by(AnimalID, GroupName) %>%
+        summarise(across(where(is.numeric), ~mean(.x, na.rm = TRUE)), .groups = 'drop')
     })
     
-    # Reactive for ganglion-level summaries
+    # Reactive for ganglion-level average metrics
     ganglion_summary <- reactive({
-        req(all_metrics())
-        
-        df <- all_metrics()
-        req("GanglionID" %in% names(df))
-        
-        metric_cols <- names(df)[vapply(df, is.numeric, logical(1))]
-        
-        tidy <- df %>%
-            tidyr::pivot_longer(cols = dplyr::all_of(metric_cols), names_to = "Metric", values_to = "Value")
-        
-        tidy %>%
-            dplyr::group_by(GanglionID, AnimalID, GroupName, Metric) %>%
-            dplyr::summarise(
-                Mean = mean(Value, na.rm = TRUE),
-                SD = sd(Value, na.rm = TRUE),
-                N = sum(is.finite(Value)),
-                SEM = SD / pmax(1, sqrt(N)),
-                .groups = 'drop'
-            )
+      req(all_metrics())
+      all_metrics() %>%
+        group_by(GanglionID, GroupName) %>%
+        summarise(across(where(is.numeric), ~mean(.x, na.rm = TRUE)), .groups = 'drop')
     })
     
-    # Render table for animal summaries
+    # --- Table Logic ---
+    
+    # Render table for all individual cell metrics
+    output$all_metrics_table <- DT::renderDT({
+      req(all_metrics())
+      DT::datatable(all_metrics(),
+                options = list(pageLength = 10, scrollX = TRUE),
+                extensions = 'Buttons',
+                filter = 'top',
+                rownames = FALSE) %>%
+        DT::formatRound(columns = which(sapply(all_metrics(), is.numeric)), digits = 3)
+    })
+    
+    # Render table for animal-level summary
     output$animal_summary_table <- DT::renderDT({
-        req(animal_summary())
-        DT::datatable(
-            animal_summary(),
-            rownames = FALSE, filter = "top", extensions = "Buttons",
-            options = list(pageLength = 15, dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel'))
-        ) %>% DT::formatRound(columns = c("Mean", "SD", "SEM"), digits = 4)
+      req(animal_summary())
+      DT::datatable(animal_summary(),
+                options = list(pageLength = 10, scrollX = TRUE),
+                extensions = 'Buttons',
+                filter = 'top',
+                rownames = FALSE) %>%
+        DT::formatRound(columns = which(sapply(animal_summary(), is.numeric)), digits = 3)
     })
     
-    # Render table for ganglion summaries
+    # Render table for ganglion-level summary
     output$ganglion_summary_table <- DT::renderDT({
-        req(ganglion_summary())
-        DT::datatable(
-            ganglion_summary(),
-            rownames = FALSE, filter = "top", extensions = "Buttons",
-            options = list(pageLength = 15, dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel'))
-        ) %>% DT::formatRound(columns = c("Mean", "SD", "SEM"), digits = 4)
+      req(ganglion_summary())
+      DT::datatable(ganglion_summary(),
+                options = list(pageLength = 10, scrollX = TRUE),
+                extensions = 'Buttons',
+                filter = 'top',
+                rownames = FALSE) %>%
+        DT::formatRound(columns = which(sapply(ganglion_summary(), is.numeric)), digits = 3)
     })
     
     # --- Metric Comparison Plots ---
