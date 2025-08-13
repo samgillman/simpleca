@@ -30,7 +30,10 @@ mod_group_combiner_server <- function(id, rv_group) {
     ns <- session$ns
     
     # Reactive value to store all group information
-    rv <- reactiveValues(groups = list())
+    rv <- reactiveValues(
+      groups = list(),
+      editing_target = NULL # To store which file is being edited
+    )
     
     # Observer to add a new group
     observeEvent(input$add_group_btn, {
@@ -97,14 +100,72 @@ mod_group_combiner_server <- function(id, rv_group) {
           
           # Display uploaded files for this group
           if (nrow(group_data$files) > 0) {
-            DT::renderDataTable({
-              datatable(group_data$files[, c("FileName", "GanglionID", "AnimalID")],
-                        options = list(dom = 't', paging = FALSE, scrollX = TRUE),
-                        rownames = FALSE)
-            })
+            DTOutput(ns(paste0("table_", group_name)))
           }
         )
       })
+    })
+
+    # Dynamically create table outputs for each group
+    observe({
+      lapply(names(rv$groups), function(group_name) {
+        output[[paste0("table_", group_name)]] <- renderDT({
+          
+          display_data <- rv$groups[[group_name]]$files
+          display_data$Actions <- vapply(seq_len(nrow(display_data)), function(i) {
+            as.character(
+              actionButton(
+                inputId = ns(paste0("edit_", group_name, "_", i)),
+                label = "Edit",
+                class = "btn-xs",
+                onclick = sprintf("Shiny.setInputValue('%s', { group: '%s', row: %d }, {priority: 'event'})", 
+                                  ns("edit_button_clicked"), group_name, i)
+              )
+            )
+          }, FUN.VALUE = character(1))
+          
+          datatable(
+            display_data[, c("FileName", "GanglionID", "AnimalID", "Actions")],
+            escape = FALSE,
+            selection = 'none',
+            rownames = FALSE,
+            options = list(dom = 't', paging = FALSE, scrollX = TRUE)
+          )
+        })
+      })
+    })
+
+    # Observer for when an 'Edit' button is clicked
+    observeEvent(input$edit_button_clicked, {
+      target <- input$edit_button_clicked
+      rv$editing_target <- target # Store which file we're editing
+      
+      file_to_edit <- rv$groups[[target$group]]$files[target$row, ]
+      
+      showModal(modalDialog(
+        title = paste("Edit Metadata for:", file_to_edit$FileName),
+        textInput(ns("modal_ganglion_id"), "Ganglion ID", value = file_to_edit$GanglionID),
+        textInput(ns("modal_animal_id"), "Animal ID", value = file_to_edit$AnimalID),
+        footer = tagList(
+          modalButton("Cancel"),
+          actionButton(ns("save_edit_btn"), "Save Changes")
+        ),
+        easyClose = TRUE
+      ))
+    })
+
+    # Observer to save the changes from the edit modal
+    observeEvent(input$save_edit_btn, {
+      req(rv$editing_target)
+      target <- rv$editing_target
+      
+      # Update the reactive dataframe
+      rv$groups[[target$group]]$files[target$row, "GanglionID"] <- input$modal_ganglion_id
+      rv$groups[[target$group]]$files[target$row, "AnimalID"] <- input$modal_animal_id
+      
+      removeModal()
+      rv$editing_target <- NULL # Clear the editing target
+      showNotification("Metadata updated successfully.", type = "message", duration = 3)
     })
 
     # Dynamically create observers for each group's fileInput
