@@ -13,10 +13,19 @@ mod_group_combiner_ui <- function(id) {
     
     # Action buttons at the bottom
     fluidRow(
-      column(6, actionButton(ns("add_group_btn"), "Add New Group", 
+      column(4, actionButton(ns("add_group_btn"), "Add New Group", 
                              icon = icon("plus-circle"), class = "btn-primary")),
-      column(6, actionButton(ns("combine_btn"), "Combine & Analyze All Groups", 
-                             icon = icon("object-group"), class = "btn-success"))
+      column(4, actionButton(ns("combine_btn"), "Combine & Analyze All Groups", 
+                             icon = icon("object-group"), class = "btn-success")),
+      column(4, downloadButton(ns("download_combined_data"), "Download Combined Data (.xlsx)"))
+    ),
+    
+    hr(),
+    
+    wellPanel(
+        fileInput(ns("upload_combined_data"), "Or, Upload Previously Combined Data (.xlsx)",
+                  accept = c(".xlsx"),
+                  placeholder = "Select a combined Excel file")
     )
   )
 }
@@ -25,7 +34,8 @@ mod_group_combiner_ui <- function(id) {
 #'
 #' @param id A character string specifying the module's ID.
 #' @param rv_group A reactive values object to store the final combined data.
-mod_group_combiner_server <- function(id, rv_group) {
+#' @param parent_session The session object from the parent module (app.R).
+mod_group_combiner_server <- function(id, rv_group, parent_session) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -260,17 +270,83 @@ mod_group_combiner_server <- function(id, rv_group) {
         }
         
         combined_df <- rbindlist(all_group_data, use.names = TRUE, fill = TRUE)
-        rv_group$combined_data <- combined_df
+        
+        # Calculate metrics for the combined data
+        metrics_id <- showNotification("Calculating metrics for all cells...", duration = NULL, closeButton = FALSE)
+        on.exit(removeNotification(metrics_id), add = TRUE)
+        
+        nested_data <- combined_df %>%
+          group_by(Cell_ID, GroupName, AnimalID, GanglionID) %>%
+          summarise(data = list(pick(Time, dFF0)), .groups = "drop")
+        
+        metrics_list <- purrr::map(nested_data$data, ~{
+          calculate_cell_metrics(.x$dFF0, .x$Time, data_is_dFF0 = TRUE)
+        })
+        
+        metrics_df <- bind_cols(nested_data %>% select(-data), bind_rows(metrics_list))
+        
+        # Store both time course and metrics in the reactive value
+        rv_group$combined_data <- list(
+          time_course = combined_df,
+          metrics = metrics_df
+        )
         
         showNotification(
-          paste("Successfully combined", length(all_group_data), "groups.",
-                "Total observations:", format(nrow(combined_df), big.mark = ",")),
+          paste("Successfully combined and processed data for", length(all_group_data), "groups."),
           type = "message",
           duration = 5
         )
         
       }, error = function(e) {
-        showNotification(paste("An error occurred:", e$message), type = "error", duration = 10)
+        showNotification(paste("An error occurred during combination:", e$message), type = "error", duration = 10)
+      })
+    })
+    
+    # --- Download and Upload Combined Data Logic ---
+    
+    # Download handler for the combined dataset
+    output$download_combined_data <- downloadHandler(
+      filename = function() {
+        paste0("combined_dataset_", Sys.Date(), ".xlsx")
+      },
+      content = function(file) {
+        req(rv_group$combined_data)
+        
+        data_to_save <- list(
+          TimeCourse = rv_group$combined_data$time_course,
+          Metrics = rv_group$combined_data$metrics
+        )
+        
+        writexl::write_xlsx(data_to_save, path = file)
+      }
+    )
+    
+    # Observer for uploading a previously combined dataset
+    observeEvent(input$upload_combined_data, {
+      req(input$upload_combined_data)
+      
+      tryCatch({
+        id <- showNotification("Loading combined data from file...", duration = NULL, closeButton = FALSE)
+        on.exit(removeNotification(id))
+        
+        uploaded_time_course <- readxl::read_excel(input$upload_combined_data$datapath, sheet = "TimeCourse")
+        uploaded_metrics <- readxl::read_excel(input$upload_combined_data$datapath, sheet = "Metrics")
+        
+        rv_group$combined_data <- list(
+          time_course = as.data.table(uploaded_time_course),
+          metrics = as.data.table(uploaded_metrics)
+        )
+        
+        # Optionally, clear out the individual file view to avoid confusion
+        rv$groups <- list()
+        
+        showNotification("Successfully loaded combined dataset.", type = "message")
+        
+        # Switch to the Group Comparison tab to show the results
+        updateTabsetPanel(session = parent_session, inputId = "app_tabs", selected = "group_comparison")
+        
+      }, error = function(e) {
+        showNotification(paste("Error reading the uploaded file. Please ensure it's a valid .xlsx file with 'TimeCourse' and 'Metrics' sheets. Details:", e$message), type = "error", duration = 10)
       })
     })
     

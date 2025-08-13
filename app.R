@@ -141,7 +141,7 @@ server <- function(input, output, session) {
   rv_group <- reactiveValues(
     combined_data = NULL # This will store the master combined dataset for group analysis
   )
-  mod_group_combiner_server("group_combiner", rv_group)
+  mod_group_combiner_server("group_combiner", rv_group, parent_session = session)
   mod_group_comparison_server("group_comparison", rv_group)
 
   # --- Observers to manage UI state ---
