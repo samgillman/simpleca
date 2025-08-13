@@ -122,13 +122,18 @@ compute_metrics_for_dt <- function(dt, group_label, baseline_frames = 20) {
   
   out <- lapply(valid_cols, function(col_name) {
     m <- calculate_cell_metrics(dt[[col_name]], tv, baseline_frames)
-    cell_num <- gsub("[^0-9]", "", col_name)
-    m$Cell_ID <- if (nzchar(cell_num)) paste0(group_label, "_Cell", cell_num) else paste0(group_label, "_", col_name)
-    m$Group <- group_label; m$Original_Column <- col_name; m
+    m$Group <- group_label
+    m$Cell <- col_name
+    m$Cell_ID <- paste(group_label, col_name, sep = "_")
+    m
   })
   result <- dplyr::bind_rows(out)
-  metric_cols <- c("Peak_dFF0","Time_to_Peak","Time_to_25_Peak","Time_to_50_Peak","Time_to_75_Peak",
-                   "Rise_Time","Calcium_Entry_Rate","AUC","Response_Amplitude","Half_Width","Baseline_SD","SNR")
+  
+  # Reorder columns to have identifiers first
+  id_cols <- c("Group", "Cell", "Cell_ID")
+  metric_cols <- setdiff(names(result), id_cols)
+  result <- result[, c(id_cols, metric_cols)]
+  
   has_data <- apply(result[metric_cols], 1, function(row) any(!is.na(row)))
   result[has_data, ]
 }
@@ -136,11 +141,18 @@ compute_metrics_for_dt <- function(dt, group_label, baseline_frames = 20) {
 to_long <- function(dt, group_label) {
   time_vec <- dt$Time
   mat <- as.matrix(dt[, -1])
+  
+  cell_names <- colnames(mat)
+  cell_ids <- paste(group_label, cell_names, sep = "_")
+  
   as.data.frame(mat) |>
     dplyr::mutate(Time = time_vec) |>
     tidyr::pivot_longer(cols = -Time, names_to = "Cell", values_to = "dFF0") |>
-    dplyr::mutate(dFF0 = suppressWarnings(as.numeric(dFF0))) |>
-    dplyr::mutate(Group = group_label)
+    dplyr::mutate(
+      dFF0 = suppressWarnings(as.numeric(dFF0)),
+      Group = group_label,
+      Cell_ID = paste(group_label, Cell, sep = "_")
+    )
 }
 
 metric_label <- function(metric) {

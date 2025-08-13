@@ -48,6 +48,7 @@ sidebar <- dashboardSidebar(
               menuItem("Processed Data", tabName = "preproc", icon = icon("sliders")),
               menuItem("Time Course", tabName = "time", icon = icon("chart-line")),
               menuItem("Metrics", tabName = "metrics", icon = icon("chart-bar")),
+              menuItem("Metric Explanations", tabName = "metrics_explained", icon = icon("lightbulb")),
               menuItem("Heatmap", tabName = "heatmap", icon = icon("th")),
               menuItem("Tables", tabName = "tables", icon = icon("table")),
               menuItem("Export", tabName = "export", icon = icon("download")),
@@ -204,6 +205,7 @@ body <- dashboardBody(
     mod_preproc_ui("preproc"),
     mod_time_course_ui("time_course"),
     mod_metrics_ui("metrics"),
+    mod_metrics_explained_ui("metrics_explained"),
     mod_heatmap_ui("heatmap"),
     mod_tables_ui("tables"),
     mod_export_ui("export"),
@@ -226,6 +228,7 @@ server <- function(input, output, session) {
   mod_preproc_server("preproc", rv)
   mod_time_course_server("time_course", rv)
   mod_metrics_server("metrics", rv)
+  mod_metrics_explained_server("metrics_explained", rv)
   mod_heatmap_server("heatmap", rv)
   mod_tables_server("tables", rv)
   mod_export_server("export", rv, metrics_plot_reactive = mod_metrics_server("metrics", rv), heatmap_plot_reactive = mod_heatmap_server("heatmap", rv))
