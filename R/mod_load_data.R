@@ -18,7 +18,7 @@ mod_load_data_ui <- function(id) {
                         choices = c("Frame Range"="frame_range","Rolling minimum"="rolling_min","Percentile"="percentile"),
                         selected="frame_range"),
             conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'frame_range'"),
-                             sliderInput(ns("pp_baseline_frames"),"Baseline Frame Range:", min = 1, max = 100, value = c(2, 20), step = 1)
+                             sliderInput(ns("pp_baseline_frames"),"Baseline Frame Range:", min = 1, max = 100, value = c(1, 20), step = 1)
             ),
             conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'rolling_min'"),
                              numericInput(ns("pp_window_size"),"Rolling window (frames)", value=50, min=5, step=1)
