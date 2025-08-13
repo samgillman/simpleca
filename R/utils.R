@@ -89,20 +89,39 @@ calculate_cell_metrics <- function(cell_data, time_vec, baseline_frames = 20) {
   if (response_amplitude > 1e-3) {
     threshold_half <- baseline + 0.5 * response_amplitude
     idx_left <- find_threshold_crossing(working_signal, threshold_half)
+    
+    # More robust way to find the right-side crossing
     idx_right <- NA_integer_
     if (!is.na(idx_left) && peak_idx < length(working_signal)) {
-      for (i in peak_idx:length(working_signal)) {
-        if (!is.na(working_signal[i]) && i < length(working_signal)) {
-          if (working_signal[i] >= threshold_half && !is.na(working_signal[i+1]) && working_signal[i+1] < threshold_half) {
-            idx_right <- i; break
-          }
-        }
+      # Find all points after the peak that are below the half-max threshold
+      potential_indices <- which(working_signal[(peak_idx + 1):length(working_signal)] < threshold_half)
+      
+      # The first of these points is our right-side crossing
+      if (length(potential_indices) > 0) {
+        # We add peak_idx because our search was relative to the slice *after* the peak
+        idx_right <- potential_indices[1] + peak_idx 
       }
-      if (is.na(idx_right) && !is.na(working_signal[length(working_signal)]) &&
-          working_signal[length(working_signal)] >= threshold_half) idx_right <- length(working_signal)
     }
+    
     if (!is.na(idx_left) && !is.na(idx_right) && idx_right > idx_left) {
-      fwhm <- t[idx_right] - t[idx_left]; half_width <- fwhm / 2
+      # We now have two indices. We can interpolate to get a more precise time.
+      
+      # Left side interpolation
+      y1_l <- working_signal[idx_left - 1]; y2_l <- working_signal[idx_left]
+      t1_l <- t[idx_left - 1]; t2_l <- t[idx_left]
+      time_left <- if (y2_l != y1_l) {
+        t1_l + (t2_l - t1_l) * (threshold_half - y1_l) / (y2_l - y1_l)
+      } else { t1_l }
+      
+      # Right side interpolation
+      y1_r <- working_signal[idx_right - 1]; y2_r <- working_signal[idx_right]
+      t1_r <- t[idx_right - 1]; t2_r <- t[idx_right]
+      time_right <- if (y2_r != y1_r) {
+        t1_r + (t2_r - t1_r) * (threshold_half - y1_r) / (y2_r - y1_r)
+      } else { t1_r }
+      
+      fwhm <- time_right - time_left
+      half_width <- fwhm / 2
     }
   }
   
