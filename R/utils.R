@@ -103,24 +103,26 @@ calculate_cell_metrics <- function(cell_data, time_vec, baseline_frames = 20) {
     idx_right <- if (length(right_crossings) > 0) min(right_crossings) + 1 else NA
     
     if (!is.na(idx_left) && !is.na(idx_right)) {
-      # We have two indices. We can interpolate to get a more precise time.
-      
-      # Left side interpolation
+      # Left side interpolation (ascending)
       y1_l <- working_signal[idx_left - 1]; y2_l <- working_signal[idx_left]
       t1_l <- t[idx_left - 1]; t2_l <- t[idx_left]
       time_left <- if (y2_l != y1_l) {
         t1_l + (t2_l - t1_l) * (threshold_half - y1_l) / (y2_l - y1_l)
       } else { t1_l }
       
-      # Right side interpolation
+      # Right side interpolation (descending)
       y1_r <- working_signal[idx_right - 1]; y2_r <- working_signal[idx_right]
       t1_r <- t[idx_right - 1]; t2_r <- t[idx_right]
-      time_right <- if (y2_r != y1_r) {
-        t1_r + (t2_r - t1_r) * (threshold_half - y1_r) / (y2_r - y1_r)
-      } else { t1_r }
       
-      fwhm <- time_right - time_left
-      half_width <- fwhm / 2
+      # Correctly handle descending crossing
+      time_right <- if (y1_r != y2_r) {
+        t1_r + (t2_r - t1_r) * (y1_r - threshold_half) / (y1_r - y2_r)
+      } else { t2_r }
+      
+      if (time_right > time_left) {
+        fwhm <- time_right - time_left
+        half_width <- fwhm / 2
+      }
     }
   }
   
