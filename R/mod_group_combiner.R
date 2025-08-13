@@ -17,8 +17,14 @@ mod_group_combiner_ui <- function(id) {
         
         hr(),
         
-        h4("Step 2: Combine Data"),
-        p("Once all files are uploaded and annotated in the table, click here to combine them into a single dataset for analysis."),
+        h4("Step 2: Review and Annotate"),
+        p("Click the 'Review & Annotate' button for each file to confirm its metadata. The app will attempt to auto-fill IDs from the filename."),
+        DTOutput(ns("metadata_table")),
+        
+        br(),
+        
+        h4("Step 3: Combine Datasets"),
+        p("Once all files have been annotated, click here to combine them into a single dataset for analysis."),
         actionButton(ns("combine_btn"), "Combine Datasets", 
                      icon = icon("object-group"), class = "btn-success"),
         
@@ -39,15 +45,17 @@ mod_group_combiner_ui <- function(id) {
 #' Server for the Group Data Combiner module
 mod_group_combiner_server <- function(id, rv_group) {
   moduleServer(id, function(input, output, session) {
+    ns <- session$ns
     
-    # Reactive value to store metadata about uploaded files
+    # Reactive value for this module's state
     rv <- reactiveValues(
       file_info = data.frame(
         FileName = character(),
+        FilePath = character(),
         GanglionID = character(),
         AnimalID = character(),
         GroupName = character(),
-        FilePath = character(),
+        Actions = character(),
         stringsAsFactors = FALSE
       )
     )
@@ -61,62 +69,81 @@ mod_group_combiner_server <- function(id, rv_group) {
       # Create a dataframe for the new files
       new_info <- data.frame(
         FileName = new_files$name,
-        GanglionID = "",
-        AnimalID = "",
-        GroupName = "",
         FilePath = new_files$datapath,
+        GanglionID = sapply(new_files$name, function(name) {
+          str_extract(name, "(?<=_)(NG[0-9]+)")
+        }),
+        AnimalID = sapply(new_files$name, function(name) {
+          str_extract(name, "[0-9]{2}_[0-9]{2}_[0-9]{2}")
+        }),
+        GroupName = "Default",
+        Actions = shinyInput(
+          FUN = actionButton,
+          id = ns("edit_"),
+          label = "Review & Annotate",
+          onclick = 'Shiny.setInputValue(\"button_id\", this.id, {priority: \"event\"})'
+        ),
         stringsAsFactors = FALSE
       )
       
-      # Append new files, avoiding duplicates
-      current_files <- rv$file_info$FileName
-      new_info_to_add <- new_info[!new_info$FileName %in% current_files, ]
-      
-      if(nrow(new_info_to_add) > 0) {
-        rv$file_info <- rbind(rv$file_info, new_info_to_add)
-      }
+      # Append new files to the existing list
+      rv$file_info <- rbind(rv$file_info, new_info)
     })
     
-    # Render the interactive metadata table
+    # Render the metadata table
     output$metadata_table <- renderDT({
-      req(nrow(rv$file_info) > 0)
-      
-      # We only show and allow editing of the metadata columns
-      display_data <- rv$file_info[, c("FileName", "GanglionID", "AnimalID", "GroupName")]
-      
       datatable(
-        display_data,
-        editable = list(target = "cell", disable = list(columns = 0)), # Can edit all but the first column
+        rv$file_info,
+        escape = FALSE,
+        selection = 'none',
         rownames = FALSE,
+        editable = FALSE, # Disable direct table editing
         options = list(
-          pageLength = 10,
-          dom = 't' # Show table only, no search or other fluff
-        ),
-        class = "display compact"
+          dom = 't',
+          paging = FALSE,
+          ordering = FALSE,
+          columnDefs = list(list(className = 'dt-center', targets = '_all'))
+        )
       )
     })
     
-    # Observer for cell edits in the metadata table
-    observeEvent(input$metadata_table_cell_edit, {
-      info <- input$metadata_table_cell_edit
+    # Observer for the "Review & Annotate" button clicks
+    observeEvent(input$button_id, {
+      req(input$button_id)
       
-      # Ensure the edit info is valid
-      req(info)
+      selected_row_index <- as.integer(str_extract(input$button_id, "\\d+"))
       
-      # Isolate the row, column, and value from the edit event
-      row_idx <- info$row
-      col_idx <- info$col + 1 # DT columns are 0-indexed, R columns are 1-indexed
-      new_value <- info$value
+      file_to_edit <- rv$file_info[selected_row_index, ]
       
-      # Update the reactive dataframe
-      # The column names match the display table: FileName, GanglionID, AnimalID, GroupName
-      col_name <- names(rv$file_info)[col_idx]
-      
-      if (col_name %in% c("GanglionID", "AnimalID", "GroupName")) {
-        rv$file_info[row_idx, col_idx] <- new_value
-      }
+      showModal(
+        modalDialog(
+          title = paste("Annotate File:", file_to_edit$FileName),
+          
+          textInput(ns("modal_ganglion_id"), "Ganglion ID", value = file_to_edit$GanglionID),
+          textInput(ns("modal_animal_id"), "Animal ID", value = file_to_edit$AnimalID),
+          textInput(ns("modal_group_name"), "Group Name", value = file_to_edit$GroupName),
+          
+          footer = tagList(
+            modalButton("Cancel"),
+            actionButton(ns("save_modal"), "Save Changes")
+          )
+        )
+      )
     })
     
+    # Observer to save changes from the modal
+    observeEvent(input$save_modal, {
+      selected_row_index <- as.integer(str_extract(input$button_id, "\\d+"))
+      
+      # Update the reactive dataframe
+      rv$file_info[selected_row_index, "GanglionID"] <- input$modal_ganglion_id
+      rv$file_info[selected_row_index, "AnimalID"] <- input$modal_animal_id
+      rv$file_info[selected_row_index, "GroupName"] <- input$modal_group_name
+      
+      removeModal()
+      showNotification("Annotation saved successfully.", type = "success", duration = 3)
+    })
+
     # Observer for the 'Combine' button
     observeEvent(input$combine_btn, {
       req(nrow(rv$file_info) > 0)
