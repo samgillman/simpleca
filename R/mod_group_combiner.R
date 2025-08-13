@@ -77,12 +77,6 @@ mod_group_combiner_server <- function(id, rv_group) {
           str_extract(name, "[0-9]{2}_[0-9]{2}_[0-9]{2}")
         }),
         GroupName = "Default",
-        Actions = shinyInput(
-          FUN = actionButton,
-          id = ns("edit_"),
-          label = "Review & Annotate",
-          onclick = 'Shiny.setInputValue(\"button_id\", this.id, {priority: \"event\"})'
-        ),
         stringsAsFactors = FALSE
       )
       
@@ -92,63 +86,85 @@ mod_group_combiner_server <- function(id, rv_group) {
     
     # Render the metadata table
     output$metadata_table <- renderDT({
+      
+      # Add a column for the action buttons
+      display_data <- rv$file_info
+      display_data$Actions <- vapply(seq_len(nrow(rv$file_info)), function(i) {
+        as.character(actionButton(ns(paste0("edit_", i)), "Review & Annotate", 
+                                  `data-row` = i,
+                                  class = "btn-primary btn-sm"))
+      }, FUN.VALUE = character(1))
+      
       datatable(
-        rv$file_info,
+        display_data,
         escape = FALSE,
         selection = 'none',
         rownames = FALSE,
         editable = FALSE, 
         options = list(
-          scrollX = TRUE, # Enable horizontal scrolling
+          scrollX = TRUE, 
           dom = 't',
           paging = FALSE,
           ordering = FALSE,
           columnDefs = list(
             list(className = 'dt-center', targets = '_all'),
-            # Hide the full file path column (0-indexed)
-            list(visible = FALSE, targets = which(names(rv$file_info) == "FilePath") - 1)
+            list(visible = FALSE, targets = which(names(display_data) == "FilePath"))
           )
         )
       )
     })
     
-    # Observer for the "Review & Annotate" button clicks
-    observeEvent(input$button_id, {
-      req(input$button_id)
+    # Observer for ANY action button click in the group combiner
+    observeEvent(input, {
+      # This is a more robust way to listen for dynamically generated buttons
+      clicked_buttons <- names(input)[grepl("^edit_\\d+$", names(input))]
       
-      selected_row_index <- as.integer(str_extract(input$button_id, "\\d+"))
-      
-      file_to_edit <- rv$file_info[selected_row_index, ]
-      
-      showModal(
-        modalDialog(
-          title = paste("Annotate File:", file_to_edit$FileName),
+      if (length(clicked_buttons) > 0) {
+        # Get the row index from the button ID
+        selected_row_index <- as.integer(str_extract(clicked_buttons[1], "\\d+"))
+        
+        # Invalidate the button so this doesn't fire again
+        shinyjs::runjs(sprintf("Shiny.setInputValue('%s', null)", ns(clicked_buttons[1])))
+        
+        if (!is.na(selected_row_index)) {
+          file_to_edit <- rv$file_info[selected_row_index, ]
           
-          textInput(ns("modal_ganglion_id"), "Ganglion ID", value = file_to_edit$GanglionID),
-          textInput(ns("modal_animal_id"), "Animal ID", value = file_to_edit$AnimalID),
-          textInput(ns("modal_group_name"), "Group Name", value = file_to_edit$GroupName),
-          
-          footer = tagList(
-            modalButton("Cancel"),
-            actionButton(ns("save_modal"), "Save Changes")
+          showModal(
+            modalDialog(
+              title = paste("Annotate File:", file_to_edit$FileName),
+              
+              textInput(ns("modal_ganglion_id"), "Ganglion ID", value = file_to_edit$GanglionID),
+              textInput(ns("modal_animal_id"), "Animal ID", value = file_to_edit$AnimalID),
+              textInput(ns("modal_group_name"), "Group Name", value = file_to_edit$GroupName),
+              
+              footer = tagList(
+                modalButton("Cancel"),
+                actionButton(ns(paste0("save_", selected_row_index)), "Save Changes")
+              ),
+              easyClose = TRUE
+            )
           )
-        )
-      )
+        }
+      }
+      
+      # Handle save button clicks
+      save_buttons <- names(input)[grepl("^save_\\d+$", names(input))]
+      if (length(save_buttons) > 0) {
+        selected_row_index <- as.integer(str_extract(save_buttons[1], "\\d+"))
+        
+        # Invalidate the button
+        shinyjs::runjs(sprintf("Shiny.setInputValue('%s', null)", ns(save_buttons[1])))
+        
+        # Update the reactive dataframe
+        rv$file_info[selected_row_index, "GanglionID"] <- input$modal_ganglion_id
+        rv$file_info[selected_row_index, "AnimalID"] <- input$modal_animal_id
+        rv$file_info[selected_row_index, "GroupName"] <- input$modal_group_name
+        
+        removeModal()
+        showNotification("Annotation saved successfully.", type = "message", duration = 3)
+      }
     })
     
-    # Observer to save changes from the modal
-    observeEvent(input$save_modal, {
-      selected_row_index <- as.integer(str_extract(input$button_id, "\\d+"))
-      
-      # Update the reactive dataframe
-      rv$file_info[selected_row_index, "GanglionID"] <- input$modal_ganglion_id
-      rv$file_info[selected_row_index, "AnimalID"] <- input$modal_animal_id
-      rv$file_info[selected_row_index, "GroupName"] <- input$modal_group_name
-      
-      removeModal()
-      showNotification("Annotation saved successfully.", type = "message", duration = 3)
-    })
-
     # Observer for the 'Combine' button
     observeEvent(input$combine_btn, {
       req(nrow(rv$file_info) > 0)
