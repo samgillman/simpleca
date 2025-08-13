@@ -102,16 +102,33 @@ calculate_cell_metrics <- function(cell_data, time_vec, baseline_frames = c(1, 2
   time_to_peak <- t[peak_idx]
   response_amplitude <- peak_value - baseline
   
-  rise_time <- NA_real_
+  # Find time to percent of peak (25, 50, 75)
+  tt25 <- tt50 <- tt75 <- rise_time <- ca_entry <- NA_real_
   if (response_amplitude > 1e-3) {
+    # Helper to find first time threshold is crossed after baseline period
+    find_threshold_crossing <- function(signal, threshold, start_after = end_frame) {
+      for (i in (start_after + 1):length(signal)) if (!is.na(signal[i]) && signal[i] >= threshold) return(i)
+      NA_integer_
+    }
+    
+    p25 <- baseline + 0.25 * response_amplitude
+    p50 <- baseline + 0.50 * response_amplitude
+    p75 <- baseline + 0.75 * response_amplitude
+    i25 <- find_threshold_crossing(working_signal, p25)
+    i50 <- find_threshold_crossing(working_signal, p50)
+    i75 <- find_threshold_crossing(working_signal, p75)
+    tt25 <- if (!is.na(i25)) t[i25] else NA_real_
+    tt50 <- if (!is.na(i50)) t[i50] else NA_real_
+    tt75 <- if (!is.na(i75)) t[i75] else NA_real_
+    
+    # Rise Time (10-90%)
     r10 <- baseline + 0.1 * response_amplitude
     r90 <- baseline + 0.9 * response_amplitude
-    
-    i10 <- which(working_signal >= r10 & seq_along(working_signal) > end_frame)[1]
-    i90 <- which(working_signal >= r90 & seq_along(working_signal) > end_frame)[1]
-    
+    i10 <- find_threshold_crossing(working_signal, r10)
+    i90 <- find_threshold_crossing(working_signal, r90)
     if (!is.na(i10) && !is.na(i90) && i90 > i10) {
       rise_time <- t[i90] - t[i10]
+      if (rise_time > 0) ca_entry <- (0.8 * response_amplitude) / rise_time
     }
   }
   
@@ -151,8 +168,10 @@ calculate_cell_metrics <- function(cell_data, time_vec, baseline_frames = c(1, 2
   }
   
   data.frame(
-    Peak_dFF0 = peak_value, Time_to_Peak = time_to_peak, Rise_Time = rise_time,
-    AUC = auc, Response_Amplitude = response_amplitude, FWHM = fwhm, 
+    Peak_dFF0 = peak_value, Time_to_Peak = time_to_peak, 
+    Time_to_25_Peak = tt25, Time_to_50_Peak = tt50, Time_to_75_Peak = tt75,
+    Rise_Time = rise_time, Calcium_Entry_Rate = ca_entry, AUC = auc, 
+    Response_Amplitude = response_amplitude, FWHM = fwhm, 
     Half_Width = half_width, Baseline_SD = baseline_sd, SNR = snr
   )
 }
