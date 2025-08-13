@@ -4,15 +4,15 @@
 mod_group_combiner_ui <- function(id) {
   ns <- NS(id)
   fluidPage(
-    titlePanel("Combine and Annotate Datasets"),
+    titlePanel("Combine and Annotate Time Course Datasets"),
     
     sidebarLayout(
       sidebarPanel(
         h4("Step 1: Upload Files"),
-        p("Upload the 'cell_metrics' CSV files generated from the Individual Analysis tab."),
+        p("Upload the 'processed_data' CSV files generated from the Individual Analysis tab. Each file should have 'Time' as the first column and cell traces in subsequent columns."),
         
-        fileInput(ns("upload_metrics_csv"), 
-                  "Upload Cell Metrics CSV(s)",
+        fileInput(ns("upload_processed_csv"), 
+                  "Upload Processed Time Course CSV(s)",
                   multiple = TRUE,
                   accept = c("text/csv", ".csv")),
         
@@ -54,10 +54,10 @@ mod_group_combiner_server <- function(id, rv_group) {
     )
     
     # Observer for file uploads
-    observeEvent(input$upload_metrics_csv, {
-      req(input$upload_metrics_csv)
+    observeEvent(input$upload_processed_csv, {
+      req(input$upload_processed_csv)
       
-      new_files <- input$upload_metrics_csv
+      new_files <- input$upload_processed_csv
       
       # Create a dataframe for the new files
       new_info <- data.frame(
@@ -122,52 +122,56 @@ mod_group_combiner_server <- function(id, rv_group) {
     observeEvent(input$combine_btn, {
       req(nrow(rv$file_info) > 0)
       
-      # Check if any of the crucial ID fields are empty
       if (any(rv$file_info$GanglionID == "" | rv$file_info$AnimalID == "" | rv$file_info$GroupName == "")) {
         showNotification("Please fill in all GanglionID, AnimalID, and GroupName fields before combining.", type = "error", duration = 5)
         return()
       }
       
-      # Show a progress notification
       id <- showNotification("Combining datasets...", duration = NULL, closeButton = FALSE, type = "message")
       on.exit(removeNotification(id))
       
       tryCatch({
-        # Read and combine all files
+        # Read, pivot, and combine all time course files
         all_data <- lapply(1:nrow(rv$file_info), function(i) {
           info <- rv$file_info[i, ]
           
-          # Read the cell metrics CSV
-          cell_data <- fread(info$FilePath)
+          # Read the processed time course CSV
+          time_course_data <- fread(info$FilePath)
+          
+          # Ensure the first column is 'Time'
+          setnames(time_course_data, 1, "Time")
+          
+          # Pivot from wide to long format
+          long_data <- melt(time_course_data, id.vars = "Time", 
+                              variable.name = "OriginalCell", value.name = "dFF0")
+          
+          # Create a globally unique Cell_ID
+          long_data[, Cell_ID := paste(gsub("\\.csv$", "", info$FileName), OriginalCell, sep = "_")]
           
           # Add the metadata from the table
-          cell_data[, GanglionID := info$GanglionID]
-          cell_data[, AnimalID := info$AnimalID]
-          cell_data[, GroupName := info$GroupName]
+          long_data[, GanglionID := info$GanglionID]
+          long_data[, AnimalID := info$AnimalID]
+          long_data[, GroupName := info$GroupName]
+          long_data[, OriginalFile := info$FileName]
           
-          # Add a unique identifier for each row within its original file context
-          cell_data[, OriginalFile := info$FileName]
-          
-          return(cell_data)
+          return(long_data)
         })
         
         # Combine into a single data.table
         combined_df <- rbindlist(all_data, use.names = TRUE, fill = TRUE)
         
-        # Store in the shared reactive value for other modules to use
+        # Store in the shared reactive value
         rv_group$combined_data <- combined_df
         
-        # Success notification
         showNotification(
-          paste("Successfully combined", nrow(rv$file_info), "files into a single dataset with",
-                nrow(combined_df), "total cell records."),
+          paste("Successfully combined", nrow(rv$file_info), "files. The final dataset has",
+                format(nrow(combined_df), big.mark = ","), "total observations."),
           type = "success",
           duration = 5
         )
         
       }, error = function(e) {
-        # Error handling
-        showNotification(paste("An error occurred while combining files:", e$message), type = "error", duration = 10)
+        showNotification(paste("An error occurred:", e$message), type = "error", duration = 10)
       })
     })
     
