@@ -115,21 +115,21 @@ mod_metrics_explained_server <- function(id, rv) {
       if (identical(rv$baseline_method, "first_n") && !is.null(rv$baseline_frames)) {
         baseline_end_time <- trace$Time[min(rv$baseline_frames, nrow(trace))]
         max_plot_y <- max(trace$dFF0, na.rm = TRUE)
+        baseline_mid_time <- (min(trace$Time) + baseline_end_time) / 2
+        
+        # Coordinates for a clean callout annotation
+        label_y <- max_plot_y * 0.3
         
         p <- p +
-          # Subtle shaded region for the baseline
-          geom_rect(
-            aes(xmin = min(trace$Time), xmax = baseline_end_time, ymin = -Inf, ymax = Inf),
-            fill = "grey90", alpha = 0.5
-          ) +
-          # Dashed line representing the F0 level (dFF0 = 0)
-          geom_segment(
-            aes(x = min(trace$Time), xend = baseline_end_time, y = 0, yend = 0),
-            color = "#0072B2", linetype = "dashed", linewidth = 1
-          ) +
-          # Text label for the baseline
-          annotate("text", x = baseline_end_time / 2, y = 0.05 * max_plot_y,
-                   label = "F₀ (Baseline)", color = "#0072B2", fontface = "bold", size = 4)
+          # Add the annotation text
+          annotate("text", x = baseline_mid_time, y = label_y,
+                   label = "F₀ (Baseline)", color = "gray20", fontface = "bold", size = 4) +
+          # Add an arrow pointing from the text to the baseline period
+          annotate("segment",
+                   x = baseline_mid_time, xend = baseline_mid_time,
+                   y = label_y * 0.9, yend = 0.05,
+                   arrow = arrow(length = unit(0.3, "cm"), type = "closed"),
+                   color = "gray20", linewidth = 0.8)
       }
       
       p <- p +
