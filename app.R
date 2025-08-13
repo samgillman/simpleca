@@ -64,145 +64,41 @@ ui <- navbarPage(
              body = dashboardBody(
                useShinyjs(),
                tags$head(tags$style(HTML("
-                 .small-help {color:#6c757d;font-size:12px;margin-top:4px}
-                 .box-title {font-weight:600}
-                 details > summary {cursor:pointer;font-weight:600;margin-top:8px}
-                 .compact-row { gap:10px; }
-                 .compact-row .box { margin-bottom:10px; }
-                 .proc-compact .form-group { margin-bottom: 6px; }
-                 .proc-compact .control-label { margin-bottom: 2px; }
-                 
-                 /* Simple flexbox layout for Load tab alignment */
-                 .equal-row { 
-                   display: flex !important;
-                   gap: 20px;
-                   align-items: stretch;
-                   width: 100%;
-                 }
-                 
-                 /* Column containers */
-                 .equal-row .col-left { 
-                   flex: 1.4;
-                   display: flex;
-                   flex-direction: column;
-                   gap: 20px;
-                 }
-                 
-                 .equal-row .col-right { 
-                   flex: 1;
-                   display: flex;
-                   flex-direction: column;
-                   gap: 20px;
-                 }
-                 
-                 /* Normal box spacing */
-                 .equal-row .box {
-                   margin-bottom: 0 !important;
-                 }
-                 
-                 /* Push the second box in each column to align bottoms */
-                 .equal-row .col-left > .box:last-child,
-                 .equal-row .col-right > .box:last-child {
-                   margin-top: auto;
-                 }
-                 
-                 /* Responsive behavior */
-                 @media (max-width: 992px) {
-                   .equal-row {
-                     flex-direction: column; /* Stack on tablet and below */
-                     gap: 15px;
-                   }
-                   .equal-row .col-left,
-                   .equal-row .col-right {
-                     flex: none; /* Reset flex on mobile */
-                     gap: 15px;
-                   }
-                   .equal-row .col-left > .box:last-child,
-                   .equal-row .col-right > .box:last-child {
-                     margin-top: 0; /* Reset alignment on mobile */
-                   }
-                 }
-                 
-                 /* Better box alignment */
-                 .box {
-                   height: 100%;
-                   display: flex;
-                   flex-direction: column;
-                 }
-                 
-                 .box-body {
-                   flex: 1;
-                 }
-                 
-                 /* Remove floating elements */
-                 .tc-fab, .tc-settings-panel, .tc-container { display: none !important; }
-                 .accordion, .bslib-accordion { display: none !important; }
-                 
-                 /* Better styling for settings panel */
-                 .well {
-                   border: 1px solid #ddd;
-                   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                 }
-                 
-                 /* Improve slider appearance */
-                 .irs-bar {
-                   background: #3c8dbc;
-                   border-top: 1px solid #3c8dbc;
-                   border-bottom: 1px solid #3c8dbc;
-                 }
-                 
-                 .irs-bar-edge {
-                   background: #3c8dbc;
-                   border: 1px solid #3c8dbc;
-                 }
-                 
-                 .irs-single, .irs-from, .irs-to {
-                   background: #3c8dbc;
-                 }
-                 
-                 /* Compact form groups in settings */
-                 .well .form-group {
-                   margin-bottom: 10px;
-                 }
-                 
-                 .well h5 {
-                   margin-top: 0;
-                   margin-bottom: 12px;
-                   padding-bottom: 8px;
-                   border-bottom: 1px solid #e0e0e0;
-                 }
-                 
-                 /* Better spacing for switches */
-                 .bootstrap-switch {
-                   margin-bottom: 5px;
-                 }
-                 
-                 /* Ensure plot takes full width */
-                 .shiny-plot-output {
-                   width: 100% !important;
-                 }
-                 
-                 /* Custom stat cards */
-                 .stat-card {
-                   padding: 15px;
-                   margin-bottom: 10px;
-                   border-radius: 4px;
-                   color: white;
-                 }
-                 
-                 .stat-card h3 {
-                   margin: 0;
-                   font-size: 24px;
-                   font-weight: 600;
-                 }
-                 
-                 .stat-card p {
-                   margin: 0;
-                   font-size: 13px;
-                   opacity: 0.9;
-                   margin-top: 4px;
-                 }
-               "))),
+    .small-help {color:#6c757d;font-size:12px;margin-top:4px}
+    .box-title {font-weight:600}
+    details > summary {cursor:pointer;font-weight:600;margin-top:8px}
+    .compact-row { gap:10px; }
+    .compact-row .box { margin-bottom:10px; }
+    .proc-compact .form-group { margin-bottom: 6px; }
+    .proc-compact .control-label { margin-bottom: 2px; }
+    .equal-row { display: flex !important; gap: 20px; align-items: stretch; width: 100%; }
+    .equal-row .col-left { flex: 1.4; display: flex; flex-direction: column; gap: 20px; }
+    .equal-row .col-right { flex: 1; display: flex; flex-direction: column; gap: 20px; }
+    .equal-row .box { margin-bottom: 0 !important; }
+    .equal-row .col-left > .box:last-child,
+    .equal-row .col-right > .box:last-child { margin-top: auto; }
+    @media (max-width: 992px) {
+      .equal-row { flex-direction: column; gap: 15px; }
+      .equal-row .col-left, .equal-row .col-right { flex: none; gap: 15px; }
+      .equal-row .col-left > .box:last-child,
+      .equal-row .col-right > .box:last-child { margin-top: 0; }
+    }
+    .box { height: 100%; display: flex; flex-direction: column; }
+    .box-body { flex: 1; }
+    .tc-fab, .tc-settings-panel, .tc-container { display: none !important; }
+    .accordion, .bslib-accordion { display: none !important; }
+    .well { border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .irs-bar { background: #3c8dbc; border-top: 1px solid #3c8dbc; border-bottom: 1px solid #3c8dbc; }
+    .irs-bar-edge { background: #3c8dbc; border: 1px solid #3c8dbc; }
+    .irs-single, .irs-from, .irs-to { background: #3c8dbc; }
+    .well .form-group { margin-bottom: 10px; }
+    .well h5 { margin-top: 0; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e0e0e0; }
+    .bootstrap-switch { margin-bottom: 5px; }
+    .shiny-plot-output { width: 100% !important; }
+    .stat-card { padding: 15px; margin-bottom: 10px; border-radius: 4px; color: white; }
+    .stat-card h3 { margin: 0; font-size: 24px; font-weight: 600; }
+    .stat-card p { margin: 0; font-size: 13px; opacity: 0.9; margin-top: 4px; }
+  "))),
                tabItems(
                  mod_load_data_ui("load_data"),
                  mod_preproc_ui("preproc"),
@@ -219,7 +115,7 @@ ui <- navbarPage(
            )
   ),
   
-  # Tab 2: Group Analysis (placeholder for new features)
+  # Tab 2: Group Analysis
   tabPanel("Group Analysis",
            mod_group_combiner_ui("group_combiner")
   )
@@ -255,7 +151,7 @@ server <- function(input, output, session) {
                     heatmap_plot_reactive = heatmap_plot_obj)
   
   
-  # --- Group Analysis Server Logic (to be added) ---
+  # --- Group Analysis Server Logic ---
   rv_group <- reactiveValues(
     combined_data = NULL,
     metadata = NULL
