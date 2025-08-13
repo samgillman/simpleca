@@ -7,16 +7,18 @@ mod_time_course_ui <- function(id) {
             column(width = 12,
                    box(title = "Time Course", status = "primary", solidHeader = TRUE, width = 12,
                        fluidRow(
-                         column(9,
+                         column(8,
                                 actionButton(ns("toggle_settings"), "⚙️ Graph Settings", 
                                              style = "margin-bottom: 15px; background-color: #3c8dbc; color: white;")
                          ),
-                         column(3, align = "right",
-                                div(style = "display: inline-block; vertical-align: middle; margin-top: 5px;",
-                                    tags$b("Static", style = "margin-right: 5px;"),
-                                    switchInput(ns("tc_interactive"), onLabel = "Interactive", offLabel = "", 
-                                                value = FALSE, size = "small", inline = TRUE),
-                                    tags$b("Plot", style = "margin-left: 5px;")
+                         column(4, align = "right",
+                                radioGroupButtons(
+                                  inputId = ns("plot_type_toggle"),
+                                  label = NULL,
+                                  choices = c("Static", "Interactive"),
+                                  selected = "Static",
+                                  status = "primary",
+                                  size = "sm"
                                 )
                          )
                        ),
@@ -92,10 +94,10 @@ mod_time_course_ui <- function(id) {
                          )
                        ),
                        
-                       conditionalPanel(paste0("!input['", ns("tc_interactive"), "']"),
+                       conditionalPanel(paste0("input['", ns("plot_type_toggle"), "'] == 'Static'"),
                                         withSpinner(plotOutput(ns("timecourse_plot"), height = "620px"), type = 4)
                        ),
-                       conditionalPanel(paste0("input['", ns("tc_interactive"), "'] == true"),
+                       conditionalPanel(paste0("input['", ns("plot_type_toggle"), "'] == 'Interactive'"),
                                         withSpinner(plotlyOutput(ns("timecourse_plotly"), height = "620px"), type = 4)
                        ),
                        
