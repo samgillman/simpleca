@@ -103,8 +103,8 @@ mod_group_comparison_server <- function(id, rv_group) {
       
       # Nest data by cell
       nested_data <- rv_group$combined_data %>%
-        group_by(Cell_ID, GroupName) %>%
-        nest()
+        group_by(Cell_ID, GroupName, AnimalID, GanglionID) %>%
+        summarise(data = list(cur_data()), .groups = "drop")
       
       # Calculate metrics for each cell sequentially
       metrics_list <- purrr::map(nested_data$data, ~{
@@ -112,7 +112,7 @@ mod_group_comparison_server <- function(id, rv_group) {
       })
       
       # Combine results
-      bind_cols(nested_data %>% select(Cell_ID, GroupName), bind_rows(metrics_list))
+      bind_cols(nested_data %>% select(-data), bind_rows(metrics_list))
     })
     
     # Reactive to calculate summary stats by group
@@ -139,7 +139,8 @@ mod_group_comparison_server <- function(id, rv_group) {
       summary_wide <- summary_stats() %>%
         pivot_wider(
           names_from = Metric,
-          values_from = c(Mean, SEM, N)
+          values_from = c(Mean, SEM, N),
+          names_glue = "{Metric}_{.value}"
         )
       
       datatable(
