@@ -97,179 +97,208 @@ mod_metrics_explained_server <- function(id, rv) {
                   selected = cell_choices[1])
     })
     
-    # Reactive to get data for the currently selected cell
-    selected_cell_data <- reactive({
-      # req() acts as a guard clause, preventing execution until values are available
-      req(rv$long_data, input$peak_cell_selector)
-      
-      rv$long_data[Cell_ID == input$peak_cell_selector]
-    })
+    # --- Peak dF/F0 Explanation ---
     
-    # Reactive to get the corresponding metric for the selected cell
-    selected_cell_metric <- reactive({
-      req(rv$metrics, input$peak_cell_selector)
+    # Reactive to get all data needed for the peak explanation plot
+    peak_plot_data <- reactive({
+      req(rv$long_data, rv$metrics, rv$raw_traces, rv$baselines, input$peak_cell_selector, rv$baseline_frames)
       
-      rv$metrics[Cell_ID == input$peak_cell_selector]
+      cell_id <- input$peak_cell_selector
+      metric <- rv$metrics[Cell_ID == cell_id]
+      req(nrow(metric) == 1)
+      
+      group_name <- metric$Group
+      cell_name <- metric$Cell
+      
+      # Ensure all required data structures exist
+      req(group_name %in% names(rv$raw_traces), 
+          cell_name %in% names(rv$raw_traces[[group_name]]),
+          group_name %in% names(rv$baselines),
+          cell_name %in% names(rv$baselines[[group_name]]))
+          
+      # Get the raw fluorescence value at the time of the peak
+      raw_trace <- rv$raw_traces[[group_name]]
+      peak_f_raw <- raw_trace[which.min(abs(Time - metric$Time_to_Peak)), get(cell_name)]
+      
+      list(
+        trace = rv$long_data[Cell_ID == cell_id],
+        metric = metric,
+        f0 = rv$baselines[[group_name]][[cell_name]],
+        peak_f = peak_f_raw,
+        baseline_frames = rv$baseline_frames
+      )
     })
     
     # UI for rendering the calculation with real numbers
     output$peak_calculation_ui <- renderUI({
-      req(selected_cell_data(), selected_cell_metric())
+      req(peak_plot_data())
+      data <- peak_plot_data()
       
-      baseline_val <- selected_cell_metric()$Baseline_dFF0
-      peak_val <- selected_cell_metric()$Peak_dFF0
+      f_val <- round(data$peak_f, 2)
+      f0_val <- round(data$f0, 2)
+      peak_dff0_val <- round(data$metric$Peak_dFF0, 2)
       
       withMathJax(
         helpText(
-          sprintf("$$ \\text{Peak } \\Delta F/F_0 = \\frac{%.2f - %.2f}{%.2f} = %.2f $$",
-                  peak_val, baseline_val, baseline_val, peak_val)
+          sprintf("$$ \\text{Peak } \\Delta F/F_0 = \\frac{F_{peak} - F_0}{F_0} = \\frac{%.2f - %.2f}{%.2f} = %.2f $$",
+                  f_val, f0_val, f0_val, peak_dff0_val)
         )
       )
     })
     
     # Render the plot for the selected cell
     output$peak_plot <- renderPlot({
-      req(selected_cell_data(), selected_cell_metric(), rv$baseline_frames)
+      req(peak_plot_data())
       
-      plot_data <- selected_cell_data()
-      metric_data <- selected_cell_metric()
+      data <- peak_plot_data()
+      trace <- data$trace
+      metric <- data$metric
       
-      req(nrow(plot_data) > 0, nrow(metric_data) == 1)
+      req(nrow(trace) > 0)
       
-      p <- ggplot(plot_data, aes(x = Time, y = dFF0))
-      
-      # Add baseline highlight if applicable
-      if (identical(rv$baseline_method, "frame_range") && !is.null(rv$baseline_frames)) {
-        start_frame <- rv$baseline_frames[1]
-        end_frame <- rv$baseline_frames[2]
+      p <- ggplot(trace, aes(x = Time, y = dFF0))
         
-        baseline_start_time <- plot_data$Time[min(start_frame, nrow(plot_data))]
-        baseline_end_time <- plot_data$Time[min(end_frame, nrow(plot_data))]
-        
-        # Add a subtle shaded region for the baseline
-        p <- p + geom_rect(
-          aes(xmin = baseline_start_time, xmax = baseline_end_time, ymin = -Inf, ymax = Inf),
-          fill = "grey95", alpha = 1
-        )
-        # Add a simple F0 label inside the region
-        p <- p + annotate("text", 
-                          x = mean(c(baseline_start_time, baseline_end_time)), 
-                          y = max(plot_data$dFF0, na.rm = TRUE) * 0.15,
-                          label = "F₀", color = "black", fontface = "bold", size = 5)
-      }
+      # Add baseline highlight
+      start_frame <- data$baseline_frames[1]
+      end_frame <- data$baseline_frames[2]
+      baseline_start_time <- trace$Time[min(start_frame, nrow(trace))]
+      baseline_end_time <- trace$Time[min(end_frame, nrow(trace))]
       
       p <- p +
-        # Dashed vertical line for the peak
-        geom_segment(
-          aes(x = peak_time, xend = peak_time, y = 0, yend = metric_data$Peak_dFF0),
-          color = "red", linetype = "dashed", alpha = 0.7
-        ) +
-        geom_line(color = "gray50", linewidth = 1) +
-        # Point marker for the peak
-        geom_point(data = data.frame(Time = peak_time, dFF0 = metric_data$Peak_dFF0),
-                   aes(x = Time, y = dFF0),
-                   color = "red", size = 4, shape = 18) +
-        # Text label for the peak value
-        geom_text(data = data.frame(Time = peak_time, dFF0 = metric_data$Peak_dFF0),
-                  aes(x = Time, y = dFF0, label = round(dFF0, 2)),
-                  vjust = -1.5, color = "red", size = 4) +
-        # Text label for the peak line itself
-        annotate("text", x = peak_time, y = metric_data$Peak_dFF0 / 2, 
-                 label = "Peak ΔF/F₀", color = "red", angle = 90, 
-                 vjust = -0.5, fontface = "bold", size = 4) +
+        annotate("rect", xmin = baseline_start_time, xmax = baseline_end_time, 
+                 ymin = -Inf, ymax = Inf, fill = "skyblue", alpha = 0.2) +
+        annotate("text", x = mean(c(baseline_start_time, baseline_end_time)), y = 0, 
+                 label = "F₀", color = "blue", fontface = "bold", size = 6, vjust = 1.5)
+      
+      # Add peak indicators
+      p <- p +
+        geom_segment(aes(x = metric$Time_to_Peak, xend = metric$Time_to_Peak, y = 0, yend = metric$Peak_dFF0),
+                     color = "red", linetype = "dashed") +
+        geom_point(aes(x = metric$Time_to_Peak, y = metric$Peak_dFF0), color = "red", size = 5, shape = 18) +
+        geom_text(aes(x = metric$Time_to_Peak, y = metric$Peak_dFF0, label = round(Peak_dFF0, 2)),
+                  vjust = -1.5, color = "red", size = 5, fontface = "bold", data = metric) +
+        annotate("text", x = metric$Time_to_Peak, y = metric$Peak_dFF0 / 2, 
+                 label = "Peak ΔF/F₀", color = "red", angle = 90, vjust = -0.5, fontface = "bold", size = 5)
+      
+      p <- p + geom_line(color = "black", linewidth = 1.2) +
         labs(
-          title = paste("Signal Trace for Cell", gsub("[^0-9]", "", metric_data$Cell)),
+          title = paste("Signal Trace for", metric$Cell_ID),
           x = "Time (s)",
           y = expression(Delta*F/F[0])
         ) +
-        theme_classic(base_size = 14) +
+        theme_minimal(base_size = 16) +
         theme(plot.title = element_text(face = "bold"))
       
       print(p)
-      
     }, res = 96)
+    
     
     # --- FWHM & Half-Width Explanation ---
     
-    selected_cell_data_fwhm <- reactive({
-      req(rv$long_data, input$fwhm_cell_selector)
-      rv$long_data[Cell_ID == input$fwhm_cell_selector]
-    })
-    
-    selected_cell_metric_fwhm <- reactive({
-      req(rv$metrics, input$fwhm_cell_selector)
-      rv$metrics[Cell_ID == input$fwhm_cell_selector]
+    fwhm_plot_data <- reactive({
+      req(rv$long_data, rv$metrics, input$fwhm_cell_selector)
+      
+      cell_id <- input$fwhm_cell_selector
+      metric <- rv$metrics[Cell_ID == cell_id]
+      trace <- rv$long_data[Cell_ID == cell_id]
+      req(nrow(metric) == 1, nrow(trace) > 0)
+      
+      # Calculations for FWHM lines
+      peak_val <- metric$Peak_dFF0
+      baseline <- 0 # dF/F0 data
+      half_max <- baseline + (peak_val - baseline) / 2
+      
+      above <- trace$dFF0 >= half_max
+      crossings <- which(diff(above) != 0)
+      peak_idx <- which.max(trace$dFF0)
+      
+      left_crossings <- crossings[crossings < peak_idx]
+      idx_left <- if (length(left_crossings) > 0) max(left_crossings) + 1 else NA
+      
+      right_crossings <- crossings[crossings >= peak_idx]
+      idx_right <- if (length(right_crossings) > 0) min(right_crossings) + 1 else NA
+      
+      req(!is.na(idx_left)) # Must have at least a left crossing
+      
+      # Interpolate left time
+      y1_l <- trace$dFF0[idx_left - 1]; y2_l <- trace$dFF0[idx_left]
+      t1_l <- trace$Time[idx_left - 1]; t2_l <- trace$Time[idx_left]
+      time_left <- if (y2_l != y1_l) { t1_l + (t2_l - t1_l) * (half_max - y1_l) / (y2_l - y1_l) } else { t1_l }
+      
+      is_sustained <- is.na(idx_right)
+      time_right <- if (is_sustained) {
+        max(trace$Time)
+      } else {
+        y1_r <- trace$dFF0[idx_right - 1]; y2_r <- trace$dFF0[idx_right]
+        t1_r <- trace$Time[idx_right - 1]; t2_r <- trace$Time[idx_right]
+        if (y1_r != y2_r) { t1_r + (t2_r - t1_r) * (y1_r - half_max) / (y1_r - y2_r) } else { t2_r }
+      }
+      
+      list(
+        trace = trace,
+        metric = metric,
+        t_left = time_left,
+        t_right = time_right,
+        half_max_y = half_max,
+        is_sustained = is_sustained
+      )
     })
     
     output$fwhm_plot <- renderPlot({
-      req(selected_cell_data_fwhm(), selected_cell_metric_fwhm())
+      req(fwhm_plot_data())
+      data <- fwhm_plot_data()
       
-      plot_data <- selected_cell_data_fwhm()
-      metric_data <- selected_cell_metric_fwhm()
-      
-      p <- ggplot(plot_data, aes(x = Time, y = dFF0)) +
-        geom_line(color = "gray50", linewidth = 1) +
-        
-        # Horizontal line at 50% max
-        geom_hline(yintercept = times$half_max_y, color = "dodgerblue", linetype = "dashed") +
-        annotate("text", x = min(plot_data$Time), y = times$half_max_y, label = "50% of Peak", 
+      p <- ggplot(data$trace, aes(x = Time, y = dFF0)) +
+        geom_line(color = "black", linewidth = 1.2) +
+        # 50% max line
+        geom_hline(yintercept = data$half_max_y, color = "dodgerblue", linetype = "dashed") +
+        annotate("text", x = min(data$trace$Time), y = data$half_max_y, label = "50% of Peak", 
                  color = "dodgerblue", vjust = -0.5, hjust = 0, fontface = "bold") +
-        
-        # Vertical lines for left and right crossings
-        geom_segment(aes(x = times$t_left, xend = times$t_left, y = 0, yend = times$half_max_y), 
-                     color = "dodgerblue", linetype = "dotted") +
-        
-        # Vertical line for right crossing (only if it exists)
-        {
-          if (!times$is_sustained) {
-            geom_segment(aes(x = times$t_right, xend = times$t_right, y = 0, yend = times$half_max_y), 
-                         color = "dodgerblue", linetype = "dotted")
-          }
-        } +
-        
-        # Arrow and label for FWHM
-        geom_segment(aes(x = times$t_left, xend = times$t_right, y = times$half_max_y, yend = times$half_max_y),
-                     arrow = arrow(length = unit(0.3, "cm"), ends = "both"), color = "firebrick", linewidth = 1) +
-        annotate("text", x = mean(c(times$t_left, times$t_right)), y = times$half_max_y, 
-                 label = paste("FWHM =", round(metric_data$FWHM, 2), "s"), 
-                 color = "firebrick", vjust = -1, fontface = "bold", size = 5) +
-        
-        # Arrow and label for HWHM
-        geom_segment(aes(x = times$t_left, xend = mean(c(times$t_left, times$t_right)), y = times$half_max_y * 0.8, yend = times$half_max_y * 0.8),
-                     arrow = arrow(length = unit(0.2, "cm"), ends = "both"), color = "darkorchid", linewidth = 0.8) +
-        annotate("text", x = mean(c(times$t_left, mean(c(times$t_left, times$t_right)))), y = times$half_max_y * 0.8, 
-                 label = paste("HWHM =", round(metric_data$Half_Width, 2), "s"), 
-                 color = "darkorchid", vjust = -1, fontface = "bold") +
-        
-        # Add note for sustained responses
-        {
-          if (times$is_sustained) {
-            annotate("text", x = max(plot_data$Time), y = 0, 
-                     label = "* Measured to end of trace (sustained response)",
-                     hjust = 1, vjust = -0.5, color = "gray40", style = "italic")
-          }
-        } +
-        
-        labs(
-          title = paste("FWHM Explained for Cell", gsub("[^0-9]", "", metric_data$Cell)),
+        # FWHM arrow and label
+        geom_segment(aes(x = data$t_left, xend = data$t_right, y = data$half_max_y, yend = data$half_max_y),
+                     arrow = arrow(length = unit(0.3, "cm"), ends = "both"), color = "firebrick", linewidth = 1.5) +
+        annotate("text", x = mean(c(data$t_left, data$t_right)), y = data$half_max_y, 
+                 label = paste("FWHM =", round(data$metric$FWHM, 2), "s"), 
+                 color = "firebrick", vjust = -1.5, fontface = "bold", size = 6) +
+        # HWHM arrow and label
+        geom_segment(aes(x = data$metric$Time_to_Peak, xend = data$t_right, y = data$half_max_y, yend = data$half_max_y),
+                     arrow = arrow(length = unit(0.25, "cm"), ends = "both"), color = "darkorchid", linewidth = 1) +
+        annotate("text", x = mean(c(data$metric$Time_to_Peak, data$t_right)), y = data$half_max_y, 
+                 label = paste("HWHM =", round(data$metric$Half_Width, 2), "s"), 
+                 color = "darkorchid", vjust = 2, fontface = "bold", size = 5)
+      
+      if (data$is_sustained) {
+        p <- p + annotate("text", x = max(data$trace$Time), y = 0, 
+                         label = "* Measured to end of trace (sustained response)",
+                         hjust = 1, vjust = -1, color = "gray40", size = 4)
+      }
+      
+      p <- p + labs(
+          title = paste("FWHM & HWHM Explained for", data$metric$Cell_ID),
           x = "Time (s)",
           y = expression(Delta*F/F[0])
         ) +
-        theme_classic(base_size = 14) +
+        theme_minimal(base_size = 16) +
         theme(plot.title = element_text(face = "bold"))
       
       print(p)
+      
     }, res = 96)
     
     output$fwhm_calculation_ui <- renderUI({
-      req(selected_cell_metric_fwhm())
-      
-      metric_data <- selected_cell_metric_fwhm()
+      req(fwhm_plot_data())
+      data <- fwhm_plot_data()
       
       withMathJax(
-        helpText(
-          sprintf("$$ \\text{FWHM} = %.2f - %.2f = %.2f \\text{ s} $$",
-                  times$t_right, times$t_left, metric_data$FWHM)
+        tagList(
+          helpText(
+            sprintf("$$ \\text{FWHM} = T_{right} - T_{left} = %.2f - %.2f = %.2f \\text{ s} $$",
+                    round(data$t_right, 2), round(data$t_left, 2), round(data$metric$FWHM, 2))
+          ),
+          helpText(
+            sprintf("$$ \\text{HWHM} = T_{right} - T_{peak} = %.2f - %.2f = %.2f \\text{ s} $$",
+                    round(data$t_right, 2), round(data$metric$Time_to_Peak, 2), round(data$metric$Half_Width, 2))
+          )
         )
       )
     })
