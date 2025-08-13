@@ -7,6 +7,45 @@ library(stringr) # For str_extract
 
 # ============================ Helper Functions =============================
 
+# Custom operator for handling NULL values
+`%||%` <- function(a, b) if (!is.null(a)) a else b
+
+# Safely read csv or excel files into a data.table
+safe_read <- function(path) {
+  ext <- tolower(tools::file_ext(path))
+  if (ext %in% c("xlsx", "xls")) {
+    as.data.table(readxl::read_excel(path, .name_repair = "minimal"))
+  } else {
+    data.table::fread(path)
+  }
+}
+
+# Ensure the 'Time' column is first and correctly named
+ensure_time_first <- function(dt, time_col = NULL) {
+  if (!is.null(time_col) && time_col %in% names(dt)) {
+    data.table::setcolorder(dt, c(time_col, setdiff(names(dt), time_col)))
+  }
+  data.table::setnames(dt, 1, "Time")
+  dt
+}
+
+# Coerce all relevant columns to numeric, handling potential errors
+coerce_numeric_dt <- function(dt) {
+  # Coerce time column first, suppress warnings for non-numeric values
+  suppressWarnings({ dt[[1]] <- as.numeric(dt[[1]]) })
+  
+  # Identify columns that are not lists (e.g. from bad excel reads)
+  keep <- c(TRUE, vapply(dt[, -1], function(col) !is.list(col), logical(1)))
+  dt <- dt[, ..keep]
+  
+  # Coerce remaining data columns to numeric
+  for (j in seq(2, ncol(dt))) {
+    suppressWarnings({ dt[[j]] <- as.numeric(dt[[j]]) })
+  }
+  dt
+}
+
+
 #' Function to calculate various metrics for a single cell's time course data
 #'
 #' This function takes a vector of fluorescence values and a time vector,
