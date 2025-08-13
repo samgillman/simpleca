@@ -13,10 +13,10 @@ mod_load_data_ui <- function(id) {
                            switchInput(ns("pp_enable"),"Enable processing", onLabel="Yes", offLabel="No", value=TRUE, size = "mini"),
                            checkboxInput(ns("pp_compute_dff"),"Compute ΔF/F₀ per cell", TRUE),
                            selectInput(ns("pp_baseline_method"),"Baseline (F₀) method",
-                                       choices = c("First N frames"="first_n","Rolling minimum"="rolling_min","Percentile"="percentile"),
-                                       selected="first_n"),
-                           conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'first_n'"),
-                                            numericInput(ns("pp_baseline_frames"),"N frames for baseline (F₀)", value=20, min=1, step=1)
+                                       choices = c("Frame Range"="frame_range","Rolling minimum"="rolling_min","Percentile"="percentile"),
+                                       selected="frame_range"),
+                           conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'frame_range'"),
+                                            sliderInput(ns("pp_baseline_frames"),"Baseline Frame Range:", min = 1, max = 100, value = c(2, 20), step = 1)
                            ),
                            conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'rolling_min'"),
                                             numericInput(ns("pp_window_size"),"Rolling window (frames)", value=50, min=5, step=1)
@@ -113,9 +113,10 @@ mod_load_data_server <- function(id, rv) {
                 bg <- dt[[input$pp_bg_col]]
                 for (j in 2:ncol(dt)) if (names(dt)[j] != input$pp_bg_col) dt[[j]] <- dt[[j]] - bg
               }
-              if (identical(input$pp_baseline_method,"first_n")) {
-                n_bl <- max(1, as.integer(input$pp_baseline_frames %||% 20))
-                F0 <- vapply(seq(2, ncol(dt)), function(j) mean(dt[[j]][seq_len(min(n_bl, nrow(dt)))], na.rm=TRUE), numeric(1))
+              if (identical(input$pp_baseline_method,"frame_range")) {
+                start_frame <- max(1, as.integer(input$pp_baseline_frames[1] %||% 2))
+                end_frame <- min(nrow(dt), as.integer(input$pp_baseline_frames[2] %||% 20))
+                F0 <- vapply(seq(2, ncol(dt)), function(j) mean(dt[[j]][start_frame:end_frame], na.rm=TRUE), numeric(1))
               } else if (identical(input$pp_baseline_method,"rolling_min")) {
                 win <- max(5, as.integer(input$pp_window_size %||% 50))
                 F0 <- vapply(seq(2, ncol(dt)), function(j) {
@@ -145,8 +146,8 @@ mod_load_data_server <- function(id, rv) {
         # Store baseline calculation parameters for explanation module
         if (isTRUE(input$pp_enable) && isTRUE(input$pp_compute_dff)) {
           rv$baseline_method <- input$pp_baseline_method
-          if (identical(rv$baseline_method, "first_n")) {
-            rv$baseline_frames <- input$pp_baseline_frames %||% 20
+          if (identical(rv$baseline_method, "frame_range")) {
+            rv$baseline_frames <- c(input$pp_baseline_frames[1] %||% 2, input$pp_baseline_frames[2] %||% 20)
           } else {
             rv$baseline_frames <- NULL # Not applicable for other methods
           }
@@ -165,13 +166,13 @@ mod_load_data_server <- function(id, rv) {
                              n_cells = dplyr::n(), .groups = "drop")
         } else NULL
         
-        baseline_frames <- if (isTRUE(input$pp_enable) && identical(input$pp_baseline_method, "first_n")) {
-          as.integer(input$pp_baseline_frames %||% 20)
+        baseline_frame_range <- if (isTRUE(input$pp_enable) && identical(input$pp_baseline_method, "frame_range")) {
+          c(as.integer(input$pp_baseline_frames[1] %||% 2), as.integer(input$pp_baseline_frames[2] %||% 20))
         } else {
-          20L
+          c(1, 20) # Default for other methods, though not directly used
         }
         
-        rv$metrics <- purrr::imap(dts, ~compute_metrics_for_dt(.x, .y, baseline_frames)) |> dplyr::bind_rows()
+        rv$metrics <- purrr::imap(dts, ~compute_metrics_for_dt(.x, .y, baseline_frame_range)) |> dplyr::bind_rows()
       })
     })
     

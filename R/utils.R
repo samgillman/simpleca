@@ -33,8 +33,12 @@ calculate_cell_metrics <- function(cell_data, time_vec, baseline_frames = 20) {
                       Time_to_75_Peak=NA, Rise_Time=NA, Calcium_Entry_Rate=NA, AUC=NA,
                       Response_Amplitude=NA, FWHM=NA, Half_Width=NA, Baseline_SD=NA, SNR=NA))
   }
-  baseline_len <- min(baseline_frames, length(x))
-  baseline_vals <- x[1:baseline_len]
+  
+  start_frame <- max(1, as.integer(baseline_frames[1]))
+  end_frame <- as.integer(baseline_frames[2])
+  
+  baseline_len <- min(end_frame, length(x))
+  baseline_vals <- x[start_frame:baseline_len]
   baseline_raw <- mean(baseline_vals, na.rm = TRUE)
   baseline_sd_raw <- stats::sd(baseline_vals, na.rm = TRUE)
   
@@ -51,7 +55,7 @@ calculate_cell_metrics <- function(cell_data, time_vec, baseline_frames = 20) {
     working_signal <- x; baseline <- 0; baseline_sd <- baseline_sd_raw
   } else if (baseline_raw != 0) {
     working_signal <- (x - baseline_raw) / baseline_raw; baseline <- 0
-    baseline_sd <- stats::sd(working_signal[1:baseline_len], na.rm = TRUE)
+    baseline_sd <- stats::sd(working_signal[start_frame:baseline_len], na.rm = TRUE)
   } else {
     working_signal <- x; baseline <- baseline_raw; baseline_sd <- baseline_sd_raw
   }
@@ -70,7 +74,7 @@ calculate_cell_metrics <- function(cell_data, time_vec, baseline_frames = 20) {
   time_to_peak <- t[peak_idx]
   response_amplitude <- peak_value - baseline
   
-  find_threshold_crossing <- function(signal, threshold, start_after = baseline_frames) {
+  find_threshold_crossing <- function(signal, threshold, start_after = end_frame) {
     for (i in (start_after + 1):length(signal)) if (!is.na(signal[i]) && signal[i] >= threshold) return(i)
     NA_integer_
   }

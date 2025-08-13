@@ -180,17 +180,21 @@ mod_metrics_explained_server <- function(id, rv) {
       p <- ggplot(trace, aes(x = Time, y = dFF0))
       
       # Add baseline highlight if applicable
-      if (identical(rv$baseline_method, "first_n") && !is.null(rv$baseline_frames)) {
-        baseline_end_time <- trace$Time[min(rv$baseline_frames, nrow(trace))]
+      if (identical(rv$baseline_method, "frame_range") && !is.null(rv$baseline_frames)) {
+        start_frame <- rv$baseline_frames[1]
+        end_frame <- rv$baseline_frames[2]
+        
+        baseline_start_time <- trace$Time[min(start_frame, nrow(trace))]
+        baseline_end_time <- trace$Time[min(end_frame, nrow(trace))]
         
         # Add a subtle shaded region for the baseline
         p <- p + geom_rect(
-          aes(xmin = min(trace$Time), xmax = baseline_end_time, ymin = -Inf, ymax = Inf),
+          aes(xmin = baseline_start_time, xmax = baseline_end_time, ymin = -Inf, ymax = Inf),
           fill = "grey95", alpha = 1
         )
         # Add a simple F0 label inside the region
         p <- p + annotate("text", 
-                          x = baseline_end_time / 2, 
+                          x = mean(c(baseline_start_time, baseline_end_time)), 
                           y = max(trace$dFF0, na.rm = TRUE) * 0.15,
                           label = "F₀", color = "black", fontface = "bold", size = 5)
       }
