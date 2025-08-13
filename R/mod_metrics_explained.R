@@ -22,7 +22,8 @@ mod_metrics_explained_ui <- function(id) {
                        h4("Calculation"),
                        withMathJax(),
                        p("It is calculated by finding the maximum value of the processed trace:"),
-                       helpText("$$ \\text{Peak } \\Delta F/F_0 = \\max(\\frac{F(t) - F_0}{F_0}) $$")
+                       helpText("$$ \\text{Peak } \\Delta F/F_0 = \\max(\\frac{F(t) - F_0}{F_0}) $$"),
+                       uiOutput(ns("peak_calculation_ui"))
                 ),
                 column(8,
                        h4("Time Course Plot"),
@@ -51,18 +52,50 @@ mod_metrics_explained_server <- function(id, rv) {
     })
     
     selected_cell_data <- reactive({
-      req(input$selected_cell, rv$long, rv$metrics)
+      req(input$selected_cell, rv$long, rv$metrics, rv$raw_traces, rv$baselines)
       
-      cell_trace <- dplyr::filter(rv$long, Cell_ID == input$selected_cell)
       cell_metric <- dplyr::filter(rv$metrics, Cell_ID == input$selected_cell)
+      req(nrow(cell_metric) == 1)
       
-      # Find the time point of the peak
-      peak_time <- cell_trace$Time[which.max(cell_trace$dFF0)]
+      group_name <- cell_metric$Group
+      cell_name <- cell_metric$Cell
+      
+      req(group_name %in% names(rv$raw_traces), cell_name %in% names(rv$raw_traces[[group_name]]))
+      
+      processed_trace <- dplyr::filter(rv$long, Cell_ID == input$selected_cell)
+      raw_trace <- rv$raw_traces[[group_name]][, c("Time", cell_name), with = FALSE]
+      names(raw_trace) <- c("Time", "Fluorescence")
+      
+      f0 <- rv$baselines[[group_name]][[cell_name]]
+      
+      # Find the time of the peak from the processed trace
+      peak_time_processed <- processed_trace$Time[which.max(processed_trace$dFF0)]
+      
+      # Find the raw fluorescence value (F) at that same time point
+      peak_f_raw <- raw_trace$Fluorescence[which.min(abs(raw_trace$Time - peak_time_processed))]
       
       list(
-        trace = cell_trace,
+        processed_trace = processed_trace,
         metric = cell_metric,
-        peak_time = peak_time
+        peak_time = peak_time_processed,
+        f0 = f0,
+        peak_f = peak_f_raw
+      )
+    })
+    
+    output$peak_calculation_ui <- renderUI({
+      req(selected_cell_data())
+      data <- selected_cell_data()
+      
+      f_val <- round(data$peak_f, 2)
+      f0_val <- round(data$f0, 2)
+      peak_dff0_val <- round(data$metric$Peak_dFF0, 2)
+      
+      withMathJax(
+        helpText(
+          sprintf("$$ \\text{Peak } \\Delta F/F_0 = \\frac{%.2f - %.2f}{%.2f} = %.2f $$",
+                  f_val, f0_val, f0_val, peak_dff0_val)
+        )
       )
     })
     
@@ -70,7 +103,7 @@ mod_metrics_explained_server <- function(id, rv) {
       req(selected_cell_data())
       
       data <- selected_cell_data()
-      trace <- data$trace
+      trace <- data$processed_trace
       metric <- data$metric
       peak_time <- data$peak_time
       

@@ -92,6 +92,7 @@ mod_load_data_server <- function(id, rv) {
         labels <- tools::file_path_sans_ext(basename(files$name))
         rv$groups <- labels; rv$colors <- default_group_colors(labels)
         dts <- list(); n_files <- nrow(files)
+        raw_traces <- list(); baselines <- list()
         
         for (i in seq_len(n_files)) {
           incProgress(1/n_files, detail = paste("Loading:", basename(files$name[i])))
@@ -103,6 +104,8 @@ mod_load_data_server <- function(id, rv) {
             sr <- as.numeric(input$pp_sampling_rate %||% 1)
             dt[[1]] <- seq(0, by=1/sr, length.out=nrow(dt))
           }
+          
+          raw_traces[[labels[i]]] <- data.table::copy(dt)
           
           if (isTRUE(input$pp_enable)) {
             if (isTRUE(input$pp_compute_dff)) {
@@ -123,6 +126,9 @@ mod_load_data_server <- function(id, rv) {
                 pct <- max(1, min(50, as.integer(input$pp_percentile %||% 10)))
                 F0 <- vapply(seq(2, ncol(dt)), function(j) stats::quantile(dt[[j]], probs=pct/100, na.rm=TRUE, names=FALSE), numeric(1))
               }
+              
+              baselines[[labels[i]]] <- setNames(F0, names(dt)[-1])
+              
               for (k in seq_along(F0)) {
                 j <- k+1; f0 <- F0[[k]]
                 dt[[j]] <- if (is.finite(f0) && f0 != 0) (dt[[j]] - f0) / f0 else NA_real_
@@ -133,6 +139,8 @@ mod_load_data_server <- function(id, rv) {
         }
         
         rv$dts <- dts
+        rv$raw_traces <- raw_traces
+        rv$baselines <- baselines
         
         rv$long <- purrr::imap(dts, ~to_long(.x, .y)) |> dplyr::bind_rows()
         rv$summary <- if (nrow(rv$long) > 0) {
