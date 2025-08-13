@@ -120,12 +120,55 @@ mod_group_combiner_server <- function(id, rv_group) {
     
     # Observer for the 'Combine' button
     observeEvent(input$combine_btn, {
-      # Placeholder for combination logic
-      # This is where we will read all the CSVs, add the metadata,
-      # and create the master dataframe.
+      req(nrow(rv$file_info) > 0)
       
-      # For now, just show a notification
-      showNotification("Combination logic to be implemented.", type = "message")
+      # Check if any of the crucial ID fields are empty
+      if (any(rv$file_info$GanglionID == "" | rv$file_info$AnimalID == "" | rv$file_info$GroupName == "")) {
+        showNotification("Please fill in all GanglionID, AnimalID, and GroupName fields before combining.", type = "error", duration = 5)
+        return()
+      }
+      
+      # Show a progress notification
+      id <- showNotification("Combining datasets...", duration = NULL, closeButton = FALSE, type = "message")
+      on.exit(removeNotification(id))
+      
+      tryCatch({
+        # Read and combine all files
+        all_data <- lapply(1:nrow(rv$file_info), function(i) {
+          info <- rv$file_info[i, ]
+          
+          # Read the cell metrics CSV
+          cell_data <- fread(info$FilePath)
+          
+          # Add the metadata from the table
+          cell_data[, GanglionID := info$GanglionID]
+          cell_data[, AnimalID := info$AnimalID]
+          cell_data[, GroupName := info$GroupName]
+          
+          # Add a unique identifier for each row within its original file context
+          cell_data[, OriginalFile := info$FileName]
+          
+          return(cell_data)
+        })
+        
+        # Combine into a single data.table
+        combined_df <- rbindlist(all_data, use.names = TRUE, fill = TRUE)
+        
+        # Store in the shared reactive value for other modules to use
+        rv_group$combined_data <- combined_df
+        
+        # Success notification
+        showNotification(
+          paste("Successfully combined", nrow(rv$file_info), "files into a single dataset with",
+                nrow(combined_df), "total cell records."),
+          type = "success",
+          duration = 5
+        )
+        
+      }, error = function(e) {
+        # Error handling
+        showNotification(paste("An error occurred while combining files:", e$message), type = "error", duration = 10)
+      })
     })
     
   })

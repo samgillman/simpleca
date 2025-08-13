@@ -41,7 +41,7 @@ utils::globalVariables(c(
 
 # ============================== UI =================================
 ui <- dashboardPage(
-  header = dashboardHeader(title = "Test Title - Reload Me"),
+  header = dashboardHeader(title = "Calcium Imaging Analysis"),
   sidebar = dashboardSidebar(
   sidebarMenu(id = "sidebar_tabs",
               menuItem("Load Data", tabName = "load", icon = icon("database")),

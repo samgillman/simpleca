@@ -31,7 +31,7 @@ calculate_cell_metrics <- function(cell_data, time_vec, baseline_frames = 20) {
   if (length(x) < 10) {
     return(data.frame(Peak_dFF0=NA, Time_to_Peak=NA, Time_to_25_Peak=NA, Time_to_50_Peak=NA,
                       Time_to_75_Peak=NA, Rise_Time=NA, Calcium_Entry_Rate=NA, AUC=NA,
-                      Response_Amplitude=NA, Duration_at_50_Peak=NA, Baseline_SD=NA, SNR=NA))
+                      Response_Amplitude=NA, Duration_at_50_Peak=NA, Half_Width=NA, Baseline_SD=NA, SNR=NA))
   }
   baseline_len <- min(baseline_frames, length(x))
   baseline_vals <- x[1:baseline_len]
@@ -86,6 +86,7 @@ calculate_cell_metrics <- function(cell_data, time_vec, baseline_frames = 20) {
   snr <- if (!is.na(baseline_sd) && baseline_sd > 0) response_amplitude / baseline_sd else NA_real_
   
   duration_at_50_peak <- NA_real_
+  half_width <- NA_real_
   if (response_amplitude > 1e-3) {
     threshold_half <- baseline + 0.5 * response_amplitude
     
@@ -119,6 +120,7 @@ calculate_cell_metrics <- function(cell_data, time_vec, baseline_frames = 20) {
       } else { t1_r }
       
       duration_at_50_peak <- time_right - time_left
+      half_width <- duration_at_50_peak / 2
     }
   }
   
@@ -126,7 +128,8 @@ calculate_cell_metrics <- function(cell_data, time_vec, baseline_frames = 20) {
     Peak_dFF0 = peak_value, Time_to_Peak = time_to_peak, Time_to_25_Peak = tt25,
     Time_to_50_Peak = tt50, Time_to_75_Peak = tt75, Rise_Time = rise_time,
     Calcium_Entry_Rate = ca_entry, AUC = auc, Response_Amplitude = response_amplitude,
-    Duration_at_50_Peak = duration_at_50_peak, Baseline_SD = baseline_sd, SNR = snr
+    Duration_at_50_Peak = duration_at_50_peak, Half_Width = half_width, 
+    Baseline_SD = baseline_sd, SNR = snr
   )
 }
 
@@ -182,6 +185,7 @@ metric_label <- function(metric) {
          Time_to_75_Peak = "Time (s)",
          Rise_Time = "Time (s)",
          Duration_at_50_Peak = "Time (s)",
+         Half_Width = "Time (s)",
          AUC = "AUC", SNR = "SNR", metric)
 }
 
@@ -196,6 +200,7 @@ metric_title <- function(metric) {
          Time_to_75_Peak = "Time to 75% Peak (s)",
          Rise_Time = "Rise Time (s)",
          Duration_at_50_Peak = "Duration at 50% Peak (s)",
+         Half_Width = "Half Width (HWHM, s)",
          AUC = "AUC", SNR = "SNR", metric)
 }
 

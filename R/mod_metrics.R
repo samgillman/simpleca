@@ -9,6 +9,7 @@ mod_metrics_ui <- function(id) {
                             choices = c("Peak ΔF/F₀"="Peak_dFF0","Time to Peak (s)"="Time_to_Peak",
                                         "Time to 25% Peak (s)"="Time_to_25_Peak","Time to 50% Peak (s)"="Time_to_50_Peak",
                                         "Time to 75% Peak (s)"="Time_to_75_Peak","Rise Time (s)"="Rise_Time",
+                                        "Duration at 50% Peak (s)"="Duration_at_50_Peak",
                                         "Half Width (HWHM)"="Half_Width",
                                         "Ca²⁺ Entry Rate"="Calcium_Entry_Rate","AUC"="AUC",
                                         "Response Amplitude"="Response_Amplitude","SNR"="SNR"),
