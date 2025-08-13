@@ -106,16 +106,10 @@ mod_group_comparison_server <- function(id, rv_group) {
         group_by(Cell_ID, GroupName) %>%
         nest()
       
-      # Calculate metrics for each cell
-      # Using future_map for potential parallel processing on large datasets
-      plan(multisession, workers = availableCores() - 1)
-      
-      metrics_list <- future_map(seq_len(nrow(nested_data)), ~{
-        cell_df <- nested_data$data[[.x]]
-        calculate_cell_metrics(cell_df$dFF0, cell_df$Time, data_is_dFF0 = TRUE)
-      }, .progress = TRUE)
-      
-      plan(sequential) # Reset plan
+      # Calculate metrics for each cell sequentially
+      metrics_list <- purrr::map(nested_data$data, ~{
+        calculate_cell_metrics(.x$dFF0, .x$Time, data_is_dFF0 = TRUE)
+      }, .progress = "Calculating metrics...")
       
       # Combine results
       bind_cols(nested_data %>% select(Cell_ID, GroupName), bind_rows(metrics_list))

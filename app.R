@@ -27,7 +27,6 @@ suppressPackageStartupMessages({
   library(webshot2)
   library(stringr)
   library(tidyr)
-  library(furrr)
 })
 
 # ============================ Source Modules and Helpers =============================
