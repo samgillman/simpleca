@@ -148,8 +148,7 @@ mod_metrics_explained_server <- function(id, rv) {
                  label = "Peak ΔF/F₀", color = "red", angle = 90, 
                  vjust = -0.5, fontface = "bold", size = 4) +
         labs(
-          title = paste("Signal Trace for Cell:", metric$Cell),
-          subtitle = paste("Group:", metric$Group),
+          title = paste("Signal Trace for Cell", gsub("[^0-9]", "", metric$Cell)),
           x = "Time (s)",
           y = expression(Delta*F/F[0])
         ) +
