@@ -35,6 +35,19 @@ mod_group_combiner_ui <- function(id) {
         h4("Step 2: Annotate Files"),
         p("Click the 'Review & Annotate' button for each file to confirm its metadata. The app will attempt to auto-fill IDs from the filename."),
         DTOutput(ns("metadata_table")),
+        
+        hr(),
+        
+        h4("Bulk Assign Group Name"),
+        p("To assign the same group to multiple files, select them from the list below, enter a group name, and click 'Apply'."),
+        
+        wellPanel(
+          selectInput(ns("bulk_select_files"), "Select Files to Group:", 
+                      choices = NULL, multiple = TRUE, width = "100%"),
+          textInput(ns("bulk_group_name"), "Enter Group Name:"),
+          actionButton(ns("bulk_assign_btn"), "Apply to Selected", icon = icon("tags"), class = "btn-info")
+        ),
+        
         width = 9
       )
     )
@@ -116,6 +129,37 @@ mod_group_combiner_server <- function(id, rv_group) {
           )
         )
       )
+    })
+    
+    # Observer to update the choices for the bulk assignment dropdown
+    observe({
+      req(rv$file_info)
+      file_choices <- rv$file_info$FileName
+      updateSelectInput(session, "bulk_select_files", choices = file_choices)
+    })
+    
+    # Observer for the bulk assignment button
+    observeEvent(input$bulk_assign_btn, {
+      req(input$bulk_select_files, input$bulk_group_name)
+      
+      group_name_to_assign <- trimws(input$bulk_group_name)
+      
+      if (nchar(group_name_to_assign) == 0) {
+        showNotification("Please enter a valid group name.", type = "warning")
+        return()
+      }
+      
+      rows_to_update <- which(rv$file_info$FileName %in% input$bulk_select_files)
+      
+      if (length(rows_to_update) > 0) {
+        rv$file_info[rows_to_update, "GroupName"] <- group_name_to_assign
+        
+        showNotification(
+          paste("Assigned group '", group_name_to_assign, "' to", length(rows_to_update), "files."),
+          type = "message",
+          duration = 4
+        )
+      }
     })
     
     # Observer for the "Review & Annotate" button clicks
