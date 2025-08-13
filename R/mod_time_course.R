@@ -6,8 +6,20 @@ mod_time_course_ui <- function(id) {
           fluidRow(
             column(width = 12,
                    box(title = "Time Course", status = "primary", solidHeader = TRUE, width = 12,
-                       actionButton(ns("toggle_settings"), "⚙️ Graph Settings", 
-                                    style = "margin-bottom: 15px; background-color: #3c8dbc; color: white;"),
+                       fluidRow(
+                         column(9,
+                                actionButton(ns("toggle_settings"), "⚙️ Graph Settings", 
+                                             style = "margin-bottom: 15px; background-color: #3c8dbc; color: white;")
+                         ),
+                         column(3, align = "right",
+                                div(style = "display: inline-block; vertical-align: middle; margin-top: 5px;",
+                                    tags$b("Static", style = "margin-right: 5px;"),
+                                    switchInput(ns("tc_interactive"), onLabel = "Interactive", offLabel = "", 
+                                                value = FALSE, size = "small", inline = TRUE),
+                                    tags$b("Plot", style = "margin-left: 5px;")
+                                )
+                         )
+                       ),
                        
                        conditionalPanel(
                          condition = paste0("input['", ns("toggle_settings"), "'] % 2 == 1"),
@@ -15,7 +27,6 @@ mod_time_course_ui <- function(id) {
                                    fluidRow(
                                      column(width = 3,
                                             h5("Display Options", style = "font-weight: bold; color: #333;"),
-                                            switchInput(ns("tc_interactive"),"Interactive plot", value=FALSE, size = "mini"),
                                             switchInput(ns("tc_show_traces"),"Show individual traces", value = TRUE, size = "mini"),
                                             sliderInput(ns("tc_trace_transparency"),"Trace transparency (%)", 0, 100, 65, 1, width = "100%"),
                                             switchInput(ns("tc_show_ribbon"),"Show SEM ribbon", value = TRUE, size = "mini"),
