@@ -118,6 +118,81 @@ calculate_cell_metrics <- function(cell_data, time_vec, baseline_frames = c(1, 2
   )
 }
 
+#' Create a named vector of default colors for groups
+#' @param groups A character vector of group names.
+#' @return A named character vector of hex color codes.
+default_group_colors <- function(groups) {
+  n <- length(groups)
+  if (n == 0) return(character(0))
+  
+  # Use a colorblind-friendly palette for a small number of groups
+  if (n <= 8) {
+    colors <- RColorBrewer::brewer.pal(max(3, n), "Set2")
+  } else {
+    # Generate more colors if needed
+    colors <- scales::hue_pal()(n)
+  }
+  
+  stats::setNames(colors[seq_len(n)], groups)
+}
+
+#' Convert wide format data to long format
+#' @param dt A data.table with a 'Time' column and cell traces.
+#' @param group_label A character string for the group name.
+#' @return A long format data.table.
+to_long <- function(dt, group_label) {
+  time_vec <- dt$Time
+  
+  # Ensure we only pivot numeric cell columns
+  cell_cols <- names(dt)[sapply(dt, is.numeric) & names(dt) != "Time"]
+  if (length(cell_cols) == 0) return(data.table())
+  
+  long_dt <- melt(dt, 
+                  id.vars = "Time", 
+                  measure.vars = cell_cols,
+                  variable.name = "Cell", 
+                  value.name = "dFF0")
+  
+  long_dt[, `:=`(
+    Group = group_label,
+    Cell_ID = paste(group_label, Cell, sep = "_")
+  )]
+  
+  return(long_dt)
+}
+
+#' Get a formatted label for a metric (for plot axes)
+#' @param metric The metric's variable name.
+#' @return An expression or character string for the label.
+metric_label <- function(metric) {
+  switch(metric,
+         Peak_dFF0 = expression(Delta*"F/F"[0]),
+         Response_Amplitude = expression("Response Amplitude ("*Delta*"F/F"[0]*")"),
+         Rise_Time = "Time (s)",
+         FWHM = "Time (s)",
+         Half_Width = "Time (s)",
+         AUC = "AUC", 
+         SNR = "SNR", 
+         Time_to_Peak = "Time (s)",
+         metric)
+}
+
+#' Get a formatted title for a metric (for plot titles)
+#' @param metric The metric's variable name.
+#' @return A character string for the title.
+metric_title <- function(metric) {
+  switch(metric,
+         Peak_dFF0 = "Peak ΔF/F₀",
+         Response_Amplitude = "Response Amplitude (ΔF/F₀)",
+         Rise_Time = "Rise Time (10-90%) (s)",
+         FWHM = "FWHM (s)",
+         Half_Width = "Half Width (HWHM, s)",
+         AUC = "Area Under Curve (AUC)", 
+         SNR = "Signal-to-Noise Ratio (SNR)",
+         Time_to_Peak = "Time to Peak (s)",
+         metric)
+}
+
 #' Compute metrics for a data.table of cell traces
 #' 
 #' @param dt A data.table with a 'Time' column and cell traces in other columns.
