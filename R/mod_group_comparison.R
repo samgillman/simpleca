@@ -46,16 +46,19 @@ mod_group_comparison_ui <- function(id) {
                    ),
                    fluidRow(
                      box(
-                       title = "Comparison by Animal", status = "success", solidHeader = TRUE, width = 12, collapsible = TRUE,
-                       plotOutput(ns("animal_metric_plot"))
+                       title = "Group Comparison by Cell", status = "info", solidHeader = TRUE, width = 12, collapsible = TRUE,
+                       p("Each point represents a single cell. The box plot shows the distribution for all cells within each experimental group."),
+                       plotOutput(ns("cell_metric_plot"))
                      ),
                      box(
-                       title = "Comparison by Ganglion", status = "warning", solidHeader = TRUE, width = 12, collapsible = TRUE,
+                       title = "Group Comparison by Ganglion", status = "warning", solidHeader = TRUE, width = 12, collapsible = TRUE,
+                       p("Each point represents the average value of all cells within a single ganglion. The box plot shows the distribution of these ganglion averages for each group."),
                        plotOutput(ns("ganglion_metric_plot"))
                      ),
                      box(
-                       title = "Comparison by Cell", status = "info", solidHeader = TRUE, width = 12, collapsible = TRUE,
-                       plotOutput(ns("cell_metric_plot"))
+                       title = "Group Comparison by Animal", status = "success", solidHeader = TRUE, width = 12, collapsible = TRUE,
+                       p("Each point represents the average value of all cells within a single animal. The box plot shows the distribution of these animal averages for each group."),
+                       plotOutput(ns("animal_metric_plot"))
                      )
                    )
           ),
@@ -294,62 +297,69 @@ mod_group_comparison_server <- function(id, rv_group) {
     observe({
         req(all_metrics())
         
-        # Get all numeric columns from the metrics table
         metric_choices <- names(all_metrics())[sapply(all_metrics(), is.numeric)]
-        
-        # Use a named list to provide prettier names in the UI
         names(metric_choices) <- gsub("_", " ", metric_choices)
         
         updateSelectInput(session, "metric_to_plot", choices = metric_choices)
     })
-
-    # Render plot for animal-level metric comparison
-    output$animal_metric_plot <- renderPlot({
-        req(all_metrics(), input$metric_to_plot)
+    
+    # Generic plotting function for metric comparisons
+    create_metric_plot <- function(data, metric, group_var, title, x_label) {
+        req(data, metric, group_var, title, x_label)
         
-        ggplot(all_metrics(), aes(x = AnimalID, y = .data[[input$metric_to_plot]], fill = GroupName)) +
-            geom_boxplot(alpha = 0.7) +
-            geom_jitter(width = 0.2, alpha = 0.5) +
-            facet_wrap(~ GroupName, scales = "free_x") +
-            labs(title = paste("Metric:", gsub("_", " ", input$metric_to_plot), "by Animal"),
-                 x = "Animal ID",
-                 y = gsub("_", " ", input$metric_to_plot)) +
-            theme_minimal(base_size = 14) +
-            theme(legend.position = "none")
+        ggplot(data, aes(x = .data[[group_var]], y = .data[[metric]], fill = .data[[group_var]])) +
+            geom_boxplot(alpha = 0.6, outlier.shape = NA) +
+            geom_jitter(width = 0.15, alpha = 0.7, size = 2) +
+            labs(title = title, x = x_label, y = gsub("_", " ", metric)) +
+            theme_minimal(base_size = 15) +
+            theme(legend.position = "none",
+                  axis.text.x = element_text(angle = 45, hjust = 1))
+    }
+
+    # Render plot for cell-level metric comparison
+    output$cell_metric_plot <- renderPlot({
+        req(all_metrics(), input$metric_to_plot)
+        create_metric_plot(
+            data = all_metrics(),
+            metric = input$metric_to_plot,
+            group_var = "GroupName",
+            title = paste("Metric:", gsub("_", " ", input$metric_to_plot), "by Cell"),
+            x_label = "Experimental Group"
+        )
     })
 
     # Render plot for ganglion-level metric comparison
     output$ganglion_metric_plot <- renderPlot({
         req(all_metrics(), input$metric_to_plot)
         
-        ggplot(all_metrics(), aes(x = GanglionID, y = .data[[input$metric_to_plot]], fill = GroupName)) +
-            geom_boxplot(alpha = 0.7) +
-            geom_jitter(width = 0.2, alpha = 0.5) +
-            facet_wrap(~ GroupName, scales = "free_x") +
-            labs(title = paste("Metric:", gsub("_", " ", input$metric_to_plot), "by Ganglion"),
-                 x = "Ganglion ID",
-                 y = gsub("_", " ", input$metric_to_plot)) +
-            theme_minimal(base_size = 14) +
-            theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 1))
+        ganglion_avg <- all_metrics() %>%
+            group_by(GanglionID, GroupName) %>%
+            summarise(across(where(is.numeric), ~mean(.x, na.rm = TRUE)), .groups = 'drop')
+        
+        create_metric_plot(
+            data = ganglion_avg,
+            metric = input$metric_to_plot,
+            group_var = "GroupName",
+            title = paste("Metric:", gsub("_", " ", input$metric_to_plot), "by Ganglion"),
+            x_label = "Experimental Group"
+        )
     })
 
-    # Render plot for cell-level metric comparison
-    output$cell_metric_plot <- renderPlot({
+    # Render plot for animal-level metric comparison
+    output$animal_metric_plot <- renderPlot({
         req(all_metrics(), input$metric_to_plot)
         
-        # Facet by group for better organization
-        ggplot(all_metrics(), aes(x = reorder(Cell_ID, .data[[input$metric_to_plot]]), 
-                                  y = .data[[input$metric_to_plot]], 
-                                  fill = GroupName)) +
-            geom_bar(stat = "identity") +
-            facet_wrap(~ GroupName, scales = "free_x", ncol = 1) +
-            labs(title = paste("Metric:", gsub("_", " ", input$metric_to_plot), "by Cell"),
-                 x = "Cell ID",
-                 y = gsub("_", " ", input$metric_to_plot)) +
-            theme_minimal(base_size = 14) +
-            theme(legend.position = "none",
-                  axis.text.x = element_blank(), # Hide x-axis labels to avoid clutter
-                  axis.ticks.x = element_blank())
+        animal_avg <- all_metrics() %>%
+            group_by(AnimalID, GroupName) %>%
+            summarise(across(where(is.numeric), ~mean(.x, na.rm = TRUE)), .groups = 'drop')
+            
+        create_metric_plot(
+            data = animal_avg,
+            metric = input$metric_to_plot,
+            group_var = "GroupName",
+            title = paste("Metric:", gsub("_", " ", input$metric_to_plot), "by Animal"),
+            x_label = "Experimental Group"
+        )
     })
     
   })
