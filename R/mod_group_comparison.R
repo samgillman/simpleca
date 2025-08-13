@@ -28,7 +28,14 @@ mod_group_comparison_ui <- function(id) {
       
       mainPanel(
         h4("Average Time Course Plot (Mean ± SEM)"),
-        plotOutput(ns("avg_time_course_plot"), height = "600px"),
+        plotOutput(ns("avg_time_course_plot"), height = "500px"),
+        
+        hr(),
+        
+        h4("Group Summary Statistics"),
+        p("This table shows the mean, standard error (SEM), and count (N) for each calculated metric, summarized by group."),
+        DTOutput(ns("summary_stats_table")),
+        
         width = 9
       )
     )
@@ -88,6 +95,70 @@ mod_group_comparison_server <- function(id, rv_group) {
         ) +
         theme_minimal(base_size = 14) +
         theme(legend.position = "bottom")
+    })
+    
+    # Reactive to calculate metrics for all cells in the combined dataset
+    all_metrics <- reactive({
+      req(rv_group$combined_data)
+      
+      # Nest data by cell
+      nested_data <- rv_group$combined_data %>%
+        group_by(Cell_ID, GroupName) %>%
+        nest()
+      
+      # Calculate metrics for each cell
+      # Using future_map for potential parallel processing on large datasets
+      plan(multisession, workers = availableCores() - 1)
+      
+      metrics_list <- future_map(seq_len(nrow(nested_data)), ~{
+        cell_df <- nested_data$data[[.x]]
+        calculate_cell_metrics(cell_df$dFF0, cell_df$Time, data_is_dFF0 = TRUE)
+      }, .progress = TRUE)
+      
+      plan(sequential) # Reset plan
+      
+      # Combine results
+      bind_cols(nested_data %>% select(Cell_ID, GroupName), bind_rows(metrics_list))
+    })
+    
+    # Reactive to calculate summary stats by group
+    summary_stats <- reactive({
+      req(all_metrics())
+      
+      all_metrics() %>%
+        select(-Cell_ID) %>%
+        pivot_longer(-GroupName, names_to = "Metric", values_to = "Value") %>%
+        group_by(GroupName, Metric) %>%
+        summarise(
+          Mean = mean(Value, na.rm = TRUE),
+          SEM = sd(Value, na.rm = TRUE) / sqrt(n()),
+          N = n(),
+          .groups = 'drop'
+        )
+    })
+    
+    # Render the summary statistics table
+    output$summary_stats_table <- renderDT({
+      req(summary_stats())
+      
+      # Pivot to a wider format for better readability
+      summary_wide <- summary_stats() %>%
+        pivot_wider(
+          names_from = Metric,
+          values_from = c(Mean, SEM, N)
+        )
+      
+      datatable(
+        summary_wide,
+        rownames = FALSE,
+        filter = "top",
+        options = list(
+          scrollX = TRUE,
+          pageLength = 10,
+          dom = 'Bfrtip',
+          buttons = c('copy', 'csv', 'excel')
+        )
+      ) %>% formatRound(columns = which(sapply(summary_wide, is.numeric)), digits = 4)
     })
     
   })

@@ -25,6 +25,9 @@ suppressPackageStartupMessages({
   library(bslib)
   library(gt)
   library(webshot2)
+  library(stringr)
+  library(tidyr)
+  library(furrr)
 })
 
 # ============================ Source Modules and Helpers =============================
@@ -57,8 +60,11 @@ ui <- dashboardPage(
         menuSubItem("Export", tabName = "export", icon = icon("download"))
       ),
       
-      # --- Menu Item 2: Group Analysis ---
-      menuItem("Group Analysis", tabName = "group", icon = icon("users")),
+      # --- Menu Item 2: Group Analysis (Collapsible) ---
+      menuItem("Group Analysis", tabName = "group_analysis", icon = icon("users"),
+        menuSubItem("Combine & Annotate", tabName = "group_combiner", icon = icon("object-group")),
+        menuSubItem("Group Comparisons", tabName = "group_comparison", icon = icon("chart-bar"))
+      ),
       
       # --- Menu Item 3: Help ---
       menuItem("Help", tabName = "help", icon = icon("circle-question"))
@@ -88,19 +94,9 @@ ui <- dashboardPage(
       mod_tables_ui("tables"),
       mod_export_ui("export"),
       
-      # --- Group Analysis Panel ---
-      tabItem(tabName = "group",
-              tabsetPanel(id = "group_analysis_tabs",
-                tabPanel("Step 1: Combine & Annotate", 
-                         value = "combiner_tab",
-                         mod_group_combiner_ui("group_combiner")
-                ),
-                tabPanel("Step 2: Group Comparisons", 
-                         value = "comparison_tab",
-                         mod_group_comparison_ui("group_comparison")
-                )
-              )
-      ),
+      # --- Group Analysis Panels ---
+      mod_group_combiner_ui("group_combiner"),
+      mod_group_comparison_ui("group_comparison"),
       
       # --- Help Panel ---
       mod_help_ui("help")
@@ -150,17 +146,10 @@ server <- function(input, output, session) {
 
   # --- Observers to manage UI state ---
   
-  # Disable the comparison tab initially
-  observe({
-    updateTabsetPanel(session, "group_analysis_tabs", selected = "combiner_tab")
-    shinyjs::disable(selector = "#group_analysis_tabs li a[data-value=comparison_tab]")
-  })
-  
-  # When data is combined, enable and switch to the comparison tab
+  # When data is combined, switch to the comparison tab
   observeEvent(rv_group$combined_data, {
     if(!is.null(rv_group$combined_data)) {
-      shinyjs::enable(selector = "#group_analysis_tabs li a[data-value=comparison_tab]")
-      updateTabsetPanel(session, "group_analysis_tabs", selected = "comparison_tab")
+      updateTabItems(session, "sidebar_tabs", selected = "group_comparison")
     }
   })
 
