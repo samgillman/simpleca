@@ -221,11 +221,7 @@ ui <- navbarPage(
   
   # Tab 2: Group Analysis (placeholder for new features)
   tabPanel("Group Analysis",
-           fluidPage(
-             titlePanel("Group-Level Data Analysis"),
-             p("This section is under construction. It will allow you to combine and analyze results from multiple individual experiments."),
-             # We will build out the UI for this section here
-           )
+           mod_group_combiner_ui("group_combiner")
   )
 )
 
@@ -260,6 +256,12 @@ server <- function(input, output, session) {
   
   
   # --- Group Analysis Server Logic (to be added) ---
+  rv_group <- reactiveValues(
+    combined_data = NULL,
+    metadata = NULL
+  )
+  
+  mod_group_combiner_server("group_combiner", rv_group)
   
 }
 
