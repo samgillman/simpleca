@@ -118,6 +118,41 @@ calculate_cell_metrics <- function(cell_data, time_vec, baseline_frames = c(1, 2
   )
 }
 
+#' Compute metrics for a data.table of cell traces
+#' 
+#' @param dt A data.table with a 'Time' column and cell traces in other columns.
+#' @param group_label A character string for the group name.
+#' @param baseline_frames A numeric vector of length 2 specifying the start and end frames for baseline calculation.
+#' @return A data.table with calculated metrics for each cell.
+compute_metrics_for_dt <- function(dt, group_label, baseline_frames = c(1, 20)) {
+  time_vec <- dt$Time
+  
+  # Identify numeric columns that are not 'Time'
+  cell_cols <- names(dt)[sapply(dt, is.numeric) & names(dt) != "Time"]
+  if (length(cell_cols) == 0) return(data.frame())
+  
+  # Calculate metrics for each cell column
+  metrics_list <- lapply(cell_cols, function(col_name) {
+    metrics <- calculate_cell_metrics(dt[[col_name]], time_vec, baseline_frames)
+    metrics$Group <- group_label
+    metrics$Cell <- col_name
+    metrics$Cell_ID <- paste(group_label, col_name, sep = "_")
+    return(metrics)
+  })
+  
+  # Combine the list of data.frames into a single data.frame
+  result_df <- dplyr::bind_rows(metrics_list)
+  
+  # Reorder columns to have identifiers first
+  id_cols <- c("Group", "Cell", "Cell_ID")
+  metric_cols <- setdiff(names(result_df), id_cols)
+  final_df <- result_df[, c(id_cols, metric_cols)]
+  
+  # Filter out rows where all metric values are NA
+  final_df[rowSums(is.na(final_df[, metric_cols])) < length(metric_cols), ]
+}
+
+
 #' Create a named vector of default colors for groups
 #' @param groups A character vector of group names.
 #' @return A named character vector of hex color codes.
@@ -191,28 +226,4 @@ metric_title <- function(metric) {
          SNR = "Signal-to-Noise Ratio (SNR)",
          Time_to_Peak = "Time to Peak (s)",
          metric)
-}
-
-#' Compute metrics for a data.table of cell traces
-#' 
-#' @param dt A data.table with a 'Time' column and cell traces in other columns.
-#' @param baseline_frames A numeric vector of length 2 specifying the start and end frames for baseline calculation.
-#' @param data_is_dFF0 A logical indicating if the input data is already processed (dF/F0).
-#' @return A data.table with calculated metrics for each cell.
-compute_metrics_for_dt <- function(dt, baseline_frames = c(1, 20), data_is_dFF0 = FALSE) {
-  # Ensure Time is numeric
-  dt[, Time := as.numeric(Time)]
-  
-  # Apply calculate_cell_metrics to each column (cell trace)
-  metrics_list <- lapply(dt[, -"Time", with = FALSE], function(col) {
-    calculate_cell_metrics(col, dt$Time, baseline_frames, data_is_dFF0)
-  })
-  
-  # Combine results into a data.table
-  metrics_dt <- rbindlist(metrics_list, idcol = "Cell_ID")
-  
-  # Merge with original data.table to get all columns
-  dt_with_metrics <- merge(dt, metrics_dt, by = "Cell_ID")
-  
-  return(dt_with_metrics)
 }
