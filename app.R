@@ -30,6 +30,7 @@ suppressPackageStartupMessages({
 })
 
 # ============================ Source Modules and Helpers =============================
+source("R/utils.R") # Ensure helper functions are available globally
 lapply(list.files("R", pattern = "\\.R$", full.names = TRUE), source)
 
 # Silence NSE/lint warnings for dplyr/data.table column references
