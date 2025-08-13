@@ -120,7 +120,29 @@ calculate_cell_metrics <- function(cell_data, time_vec, baseline_frames = 20) {
     right_crossings <- crossings[crossings >= peak_idx]
     idx_right <- if (length(right_crossings) > 0) min(right_crossings) + 1 else NA
     
-    if (!is.na(idx_left) && !is.na(idx_right)) {
+    # --- Start of Modified Logic ---
+    # If a left side is found but a right side is not (sustained response),
+    # use the end of the trace as the right-side time.
+    if (!is.na(idx_left) && is.na(idx_right)) {
+      # Left side interpolation remains the same
+      y1_l <- working_signal[idx_left - 1]; y2_l <- working_signal[idx_left]
+      t1_l <- t[idx_left - 1]; t2_l <- t[idx_left]
+      time_left <- if (y2_l != y1_l) {
+        t1_l + (t2_l - t1_l) * (threshold_half - y1_l) / (y2_l - y1_l)
+      } else { t1_l }
+      
+      # Use the last time point as the right edge
+      time_right <- t[length(t)]
+      
+      if (time_right > time_left) {
+        fwhm <- time_right - time_left
+        half_width <- fwhm / 2
+      }
+      
+    } else if (!is.na(idx_left) && !is.na(idx_right)) {
+    # --- End of Modified Logic ---
+    
+      # Original logic for signals that do cross on the right side
       # Left side interpolation (ascending)
       y1_l <- working_signal[idx_left - 1]; y2_l <- working_signal[idx_left]
       t1_l <- t[idx_left - 1]; t2_l <- t[idx_left]
