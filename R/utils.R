@@ -87,61 +87,40 @@ calculate_cell_metrics <- function(cell_data, time_vec, baseline_frames = 20) {
   
   fwhm <- NA_real_
   half_width <- NA_real_
-  
   if (response_amplitude > 1e-3) {
-    half_max_y <- baseline + response_amplitude / 2
+    threshold_half <- baseline + 0.5 * response_amplitude
     
-    # Find indices where the signal is above the half-max
-    above_half_max_indices <- which(working_signal > half_max_y)
+    # Find all crossings of the half-max threshold
+    above <- working_signal >= threshold_half
+    crossings <- which(diff(above) != 0)
     
-    if (length(above_half_max_indices) > 1) {
-      # Ensure these indices form a contiguous block around the peak
-      peak_loc_in_indices <- which(above_half_max_indices == peak_idx)
+    # Find the last crossing *before* the peak (left side)
+    left_crossings <- crossings[crossings < peak_idx]
+    idx_left <- if (length(left_crossings) > 0) max(left_crossings) + 1 else NA
+    
+    # Find the first crossing *after* the peak (right side)
+    right_crossings <- crossings[crossings >= peak_idx]
+    idx_right <- if (length(right_crossings) > 0) min(right_crossings) + 1 else NA
+    
+    if (!is.na(idx_left) && !is.na(idx_right)) {
+      # We have two indices. We can interpolate to get a more precise time.
       
-      if (length(peak_loc_in_indices) > 0) {
-        start_block <- above_half_max_indices[1]
-        end_block <- above_half_max_indices[length(above_half_max_indices)]
-        
-        # Refine to the contiguous block around the actual peak
-        # This handles cases with multiple small peaks above the threshold
-        diffs <- diff(above_half_max_indices)
-        if (any(diffs > 1)) {
-           breaks <- which(diffs > 1)
-           peak_break <- findInterval(peak_loc_in_indices, breaks)
-           
-           start_idx_in_block <- if (peak_break == 0) 1 else breaks[peak_break] + 1
-           end_idx_in_block <- if (peak_break < length(breaks) + 1) breaks[peak_break + 1] else length(above_half_max_indices)
-           
-           contiguous_indices <- above_half_max_indices[start_idx_in_block:end_idx_in_block]
-           start_block <- min(contiguous_indices)
-           end_block <- max(contiguous_indices)
-        }
-        
-        # Left-side interpolation
-        idx_left_1 <- start_block - 1
-        idx_left_2 <- start_block
-        
-        time_left <- if (idx_left_1 > 0 && idx_left_2 <= length(t)) {
-          y1 <- working_signal[idx_left_1]; y2 <- working_signal[idx_left_2]
-          t1 <- t[idx_left_1]; t2 <- t[idx_left_2]
-          if (y2 != y1) t1 + (t2 - t1) * (half_max_y - y1) / (y2 - y1) else t1
-        } else { t[start_block] }
-        
-        # Right-side interpolation
-        idx_right_1 <- end_block
-        idx_right_2 <- end_block + 1
-        
-        time_right <- if (idx_right_1 > 0 && idx_right_2 <= length(t)) {
-          y1 <- working_signal[idx_right_1]; y2 <- working_signal[idx_right_2]
-          t1 <- t[idx_right_1]; t2 <- t[idx_right_2]
-          if (y2 != y1) t1 + (t2 - t1) * (half_max_y - y1) / (y2 - y1) else t1
-        } else { t[end_block] }
-        
-        if (is.finite(time_left) && is.finite(time_right) && time_right > time_left) {
-          fwhm <- time_right - time_left
-          half_width <- fwhm / 2
-        }
-      }
+      # Left side interpolation
+      y1_l <- working_signal[idx_left - 1]; y2_l <- working_signal[idx_left]
+      t1_l <- t[idx_left - 1]; t2_l <- t[idx_left]
+      time_left <- if (y2_l != y1_l) {
+        t1_l + (t2_l - t1_l) * (threshold_half - y1_l) / (y2_l - y1_l)
+      } else { t1_l }
+      
+      # Right side interpolation
+      y1_r <- working_signal[idx_right - 1]; y2_r <- working_signal[idx_right]
+      t1_r <- t[idx_right - 1]; t2_r <- t[idx_right]
+      time_right <- if (y2_r != y1_r) {
+        t1_r + (t2_r - t1_r) * (threshold_half - y1_r) / (y2_r - y1_r)
+      } else { t1_r }
+      
+      fwhm <- time_right - time_left
+      half_width <- fwhm / 2
     }
   }
   
