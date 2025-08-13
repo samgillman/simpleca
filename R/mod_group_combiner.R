@@ -1,255 +1,189 @@
 # R/mod_group_combiner.R
 
 #' UI for the Group Data Combiner module
+#'
+#' @param id A character string specifying the module's ID.
+#' @return A UI definition for the group data combiner module.
 mod_group_combiner_ui <- function(id) {
   ns <- NS(id)
+  
   fluidPage(
+    # A placeholder for all the dynamic group UI elements
+    uiOutput(ns("group_panels_ui")),
     
-    sidebarLayout(
-      sidebarPanel(
-        h4("Step 1: Upload Files"),
-        p("Upload the 'processed_data' CSV files generated from the Individual Analysis tab. Each file should have 'Time' as the first column and cell traces in subsequent columns."),
-        
-        fileInput(ns("upload_processed_csv"), 
-                  "Upload Processed Time Course CSV(s)",
-                  multiple = TRUE,
-                  accept = c("text/csv", ".csv")),
-        
-        hr(),
-        
-        h4("Step 2: Review and Annotate"),
-        p("Click the 'Review & Annotate' button for each file to confirm its metadata. The app will attempt to auto-fill IDs from the filename."),
-        DTOutput(ns("metadata_table")),
-        
-        br(),
-        
-        h4("Step 3: Combine Datasets"),
-        p("Once all files have been annotated, click here to combine them into a single dataset for analysis."),
-        actionButton(ns("combine_btn"), "Combine Datasets", 
-                     icon = icon("object-group"), class = "btn-success"),
-        
-        width = 3
-      ),
-      
-      mainPanel(
-        h4("Step 2: Annotate Files"),
-        p("Click the 'Review & Annotate' button for each file to confirm its metadata. The app will attempt to auto-fill IDs from the filename."),
-        DTOutput(ns("metadata_table")),
-        
-        hr(),
-        
-        h4("Bulk Assign Group Name"),
-        p("To assign the same group to multiple files, select them from the list below, enter a group name, and click 'Apply'."),
-        
-        wellPanel(
-          selectInput(ns("bulk_select_files"), "Select Files to Group:", 
-                      choices = NULL, multiple = TRUE, width = "100%"),
-          textInput(ns("bulk_group_name"), "Enter Group Name:"),
-          actionButton(ns("bulk_assign_btn"), "Apply to Selected", icon = icon("tags"), class = "btn-info")
-        ),
-        
-        width = 9
-      )
+    # Action buttons at the bottom
+    fluidRow(
+      column(6, actionButton(ns("add_group_btn"), "Add New Group", 
+                             icon = icon("plus-circle"), class = "btn-primary")),
+      column(6, actionButton(ns("combine_btn"), "Combine & Analyze All Groups", 
+                             icon = icon("object-group"), class = "btn-success"))
     )
   )
 }
 
-
 #' Server for the Group Data Combiner module
+#'
+#' @param id A character string specifying the module's ID.
+#' @param rv_group A reactive values object to store the final combined data.
 mod_group_combiner_server <- function(id, rv_group) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
-    # Reactive value for this module's state
-    rv <- reactiveValues(
-      file_info = data.frame(
-        FileName = character(),
-        FilePath = character(),
-        GanglionID = character(),
-        AnimalID = character(),
-        GroupName = character(),
-        Actions = character(),
-        stringsAsFactors = FALSE
-      )
-    )
+    # Reactive value to store all group information
+    rv <- reactiveValues(groups = list())
     
-    # Observer for file uploads
-    observeEvent(input$upload_processed_csv, {
-      req(input$upload_processed_csv)
-      
-      new_files <- input$upload_processed_csv
-      
-      # Create a dataframe for the new files
-      new_info <- data.frame(
-        FileName = new_files$name,
-        FilePath = new_files$datapath,
-        GanglionID = sapply(new_files$name, function(name) {
-          str_extract(name, "(?<=_)(NG[0-9]+)")
-        }),
-        AnimalID = sapply(new_files$name, function(name) {
-          str_extract(name, "[0-9]{2}_[0-9]{2}_[0-9]{2}")
-        }),
-        GroupName = "Default",
-        stringsAsFactors = FALSE
-      )
-      
-      # Append new files to the existing list
-      rv$file_info <- rbind(rv$file_info, new_info)
+    # Observer to add a new group
+    observeEvent(input$add_group_btn, {
+      showModal(modalDialog(
+        title = "Create a New Group",
+        textInput(ns("new_group_name"), "Enter Group Name:", placeholder = "e.g., Wild Type, PDHA-KO"),
+        footer = tagList(
+          modalButton("Cancel"),
+          actionButton(ns("create_group_confirm"), "Create Group")
+        ),
+        easyClose = TRUE
+      ))
     })
     
-    # Render the metadata table
-    output$metadata_table <- renderDT({
+    # When the user confirms the new group name
+    observeEvent(input$create_group_confirm, {
+      req(input$new_group_name)
+      group_name <- trimws(input$new_group_name)
       
-      # Add a column for the action buttons
-      display_data <- rv$file_info
-      display_data$Actions <- vapply(seq_len(nrow(rv$file_info)), function(i) {
-        as.character(
-          actionButton(
-            inputId = ns(paste0("edit_", i)),
-            label = "Review & Annotate",
-            onclick = sprintf("Shiny.setInputValue('%s', %d, {priority: 'event'})", ns("button_clicked"), i)
+      if (nchar(group_name) > 0 && !group_name %in% names(rv$groups)) {
+        # Add the new group to the reactive list
+        rv$groups[[group_name]] <- list(
+          name = group_name,
+          files = data.frame(
+            FileName = character(),
+            FilePath = character(),
+            GanglionID = character(),
+            AnimalID = character(),
+            stringsAsFactors = FALSE
           )
         )
-      }, FUN.VALUE = character(1))
-      
-      datatable(
-        display_data,
-        escape = FALSE,
-        selection = 'none',
-        rownames = FALSE,
-        editable = FALSE, 
-        options = list(
-          scrollX = TRUE, 
-          dom = 't',
-          paging = FALSE,
-          ordering = FALSE,
-          columnDefs = list(
-            list(className = 'dt-center', targets = '_all'),
-            # Correctly hide the 'FilePath' column (which() is 1-based, DT is 0-based)
-            list(visible = FALSE, targets = which(names(display_data) == "FilePath") - 1)
+        removeModal()
+      } else {
+        showNotification("Please enter a unique and valid group name.", type = "error")
+      }
+    })
+    
+    # Dynamic UI generation for group panels
+    output$group_panels_ui <- renderUI({
+      if (length(rv$groups) == 0) {
+        return(
+          wellPanel(
+            h4("Start by adding a group", style = "text-align: center; color: #6c757d;"),
+            p("Click the 'Add New Group' button below to create your first experimental group.", style = "text-align: center; color: #6c757d;")
           )
         )
-      )
-    })
-    
-    # Observer to update the choices for the bulk assignment dropdown
-    observe({
-      req(rv$file_info)
-      file_choices <- rv$file_info$FileName
-      updateSelectInput(session, "bulk_select_files", choices = file_choices)
-    })
-    
-    # Observer for the bulk assignment button
-    observeEvent(input$bulk_assign_btn, {
-      req(input$bulk_select_files, input$bulk_group_name)
-      
-      group_name_to_assign <- trimws(input$bulk_group_name)
-      
-      if (nchar(group_name_to_assign) == 0) {
-        showNotification("Please enter a valid group name.", type = "warning")
-        return()
       }
       
-      rows_to_update <- which(rv$file_info$FileName %in% input$bulk_select_files)
-      
-      if (length(rows_to_update) > 0) {
-        rv$file_info[rows_to_update, "GroupName"] <- group_name_to_assign
+      # Create a UI panel for each group
+      lapply(names(rv$groups), function(group_name) {
+        group_data <- rv$groups[[group_name]]
         
-        showNotification(
-          paste("Assigned group '", group_name_to_assign, "' to", length(rows_to_update), "files."),
-          type = "message",
-          duration = 4
-        )
-      }
-    })
-    
-    # Observer for the "Review & Annotate" button clicks
-    observeEvent(input$button_clicked, {
-      req(input$button_clicked)
-      
-      selected_row_index <- as.integer(input$button_clicked)
-      
-      file_to_edit <- rv$file_info[selected_row_index, ]
-      
-      showModal(
-        modalDialog(
-          title = paste("Annotate File:", file_to_edit$FileName),
+        box(
+          title = tagList(icon("layer-group"), group_name),
+          status = "primary",
+          solidHeader = TRUE,
+          collapsible = TRUE,
+          width = 12,
           
-          textInput(ns("modal_ganglion_id"), "Ganglion ID", value = file_to_edit$GanglionID),
-          textInput(ns("modal_animal_id"), "Animal ID", value = file_to_edit$AnimalID),
-          textInput(ns("modal_group_name"), "Group Name", value = file_to_edit$GroupName),
+          fileInput(ns(paste0("upload_", group_name)), 
+                    label = "Upload Processed Time Course CSV(s) for this group:",
+                    multiple = TRUE,
+                    accept = c("text/csv", ".csv")),
           
-          footer = tagList(
-            modalButton("Cancel"),
-            actionButton(ns("save_modal"), "Save Changes")
-          ),
-          easyClose = TRUE
+          # Display uploaded files for this group
+          if (nrow(group_data$files) > 0) {
+            DT::renderDataTable({
+              datatable(group_data$files[, c("FileName", "GanglionID", "AnimalID")],
+                        options = list(dom = 't', paging = FALSE, scrollX = TRUE),
+                        rownames = FALSE)
+            })
+          }
         )
-      )
+      })
     })
-    
-    # Observer to save changes from the modal
-    observeEvent(input$save_modal, {
-      req(input$button_clicked) # Need to know which row we are saving
-      selected_row_index <- as.integer(input$button_clicked)
-      
-      # Update the reactive dataframe
-      rv$file_info[selected_row_index, "GanglionID"] <- input$modal_ganglion_id
-      rv$file_info[selected_row_index, "AnimalID"] <- input$modal_animal_id
-      rv$file_info[selected_row_index, "GroupName"] <- input$modal_group_name
-      
-      removeModal()
-      showNotification("Annotation saved successfully.", type = "message", duration = 3)
+
+    # Dynamically create observers for each group's fileInput
+    observe({
+      lapply(names(rv$groups), function(group_name) {
+        input_id <- paste0("upload_", group_name)
+        
+        observeEvent(input[[input_id]], {
+          req(input[[input_id]])
+          
+          uploaded_files <- input[[input_id]]
+          
+          new_files_df <- data.frame(
+            FileName = uploaded_files$name,
+            FilePath = uploaded_files$datapath,
+            GanglionID = sapply(uploaded_files$name, function(name) str_extract(name, "(?<=_)(NG[0-9]+)")),
+            AnimalID = sapply(uploaded_files$name, function(name) str_extract(name, "[0-9]{2}_[0-9]{2}_[0-9]{2}")),
+            stringsAsFactors = FALSE
+          )
+          
+          # Append new files to the specific group, avoiding duplicates
+          current_files <- rv$groups[[group_name]]$files$FileName
+          new_files_to_add <- new_files_df[!new_files_df$FileName %in% current_files, ]
+          
+          if (nrow(new_files_to_add) > 0) {
+            rv$groups[[group_name]]$files <- rbind(rv$groups[[group_name]]$files, new_files_to_add)
+          }
+        })
+      })
     })
-    
+
     # Observer for the 'Combine' button
     observeEvent(input$combine_btn, {
-      req(nrow(rv$file_info) > 0)
+      req(length(rv$groups) > 0)
       
-      if (any(rv$file_info$GanglionID == "" | rv$file_info$AnimalID == "" | rv$file_info$GroupName == "")) {
-        showNotification("Please fill in all GanglionID, AnimalID, and GroupName fields before combining.", type = "error", duration = 5)
-        return()
-      }
-      
-      id <- showNotification("Combining datasets...", duration = NULL, closeButton = FALSE, type = "message")
+      id <- showNotification("Combining all group datasets...", duration = NULL, closeButton = FALSE, type = "message")
       on.exit(removeNotification(id))
       
       tryCatch({
-        # Read, pivot, and combine all time course files
-        all_data <- lapply(1:nrow(rv$file_info), function(i) {
-          info <- rv$file_info[i, ]
-          
-          # Read the processed time course CSV
-          time_course_data <- fread(info$FilePath)
-          
-          # Ensure the first column is 'Time'
-          setnames(time_course_data, 1, "Time")
-          
-          # Pivot from wide to long format
-          long_data <- melt(time_course_data, id.vars = "Time", 
-                              variable.name = "OriginalCell", value.name = "dFF0")
-          
-          # Create a globally unique Cell_ID
-          long_data[, Cell_ID := paste(gsub("\\.csv$", "", info$FileName), OriginalCell, sep = "_")]
-          
-          # Add the metadata from the table
-          long_data[, GanglionID := info$GanglionID]
-          long_data[, AnimalID := info$AnimalID]
-          long_data[, GroupName := info$GroupName]
-          long_data[, OriginalFile := info$FileName]
-          
-          return(long_data)
-        })
+        all_group_data <- list()
         
-        # Combine into a single data.table
-        combined_df <- rbindlist(all_data, use.names = TRUE, fill = TRUE)
+        for (group_name in names(rv$groups)) {
+          group_info <- rv$groups[[group_name]]
+          
+          if (nrow(group_info$files) == 0) next # Skip empty groups
+          
+          group_files_data <- lapply(1:nrow(group_info$files), function(i) {
+            file_info <- group_info$files[i, ]
+            
+            time_course_data <- fread(file_info$FilePath)
+            setnames(time_course_data, 1, "Time")
+            
+            long_data <- melt(time_course_data, id.vars = "Time", variable.name = "OriginalCell", value.name = "dFF0")
+            
+            long_data[, `:=`(
+              Cell_ID = paste(gsub("\\.csv$", "", file_info$FileName), OriginalCell, sep = "_"),
+              GanglionID = file_info$GanglionID,
+              AnimalID = file_info$AnimalID,
+              GroupName = group_name,
+              OriginalFile = file_info$FileName
+            )]
+            
+            return(long_data)
+          })
+          
+          all_group_data[[group_name]] <- rbindlist(group_files_data, use.names = TRUE, fill = TRUE)
+        }
         
-        # Store in the shared reactive value
+        if (length(all_group_data) == 0) {
+          showNotification("No files were uploaded to any group.", type = "warning")
+          return()
+        }
+        
+        combined_df <- rbindlist(all_group_data, use.names = TRUE, fill = TRUE)
         rv_group$combined_data <- combined_df
         
         showNotification(
-          paste("Successfully combined", nrow(rv$file_info), "files. The final dataset has",
-                format(nrow(combined_df), big.mark = ","), "total observations."),
+          paste("Successfully combined", length(all_group_data), "groups.",
+                "Total observations:", format(nrow(combined_df), big.mark = ",")),
           type = "message",
           duration = 5
         )
