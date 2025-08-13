@@ -7,7 +7,7 @@
 mod_group_combiner_ui <- function(id) {
   ns <- NS(id)
   
-  fluidPage(
+  tabItem(tabName = "group_combiner",
     # A placeholder for all the dynamic group UI elements
     uiOutput(ns("group_panels_ui")),
     
