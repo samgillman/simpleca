@@ -40,30 +40,25 @@ utils::globalVariables(c(
 `%||%` <- function(a, b) if (!is.null(a)) a else b
 
 # ============================== UI =================================
-ui <- navbarPage(
-  title = "Calcium Imaging Analysis",
-  theme = bslib::bs_theme(version = 5, bootswatch = "cerulean"),
-  
-  # Tab 1: Individual Analysis (the existing app)
-  tabPanel("Individual Analysis",
-           dashboardPage(
-             header = dashboardHeader(title = "Individual Recording"),
-             sidebar = dashboardSidebar(
-               sidebarMenu(id = "sidebar_tabs",
-                           menuItem("Load Data", tabName = "load", icon = icon("database")),
-                           menuItem("Processed Data", tabName = "preproc", icon = icon("sliders")),
-                           menuItem("Time Course", tabName = "time", icon = icon("chart-line")),
-                           menuItem("Metrics", tabName = "metrics", icon = icon("chart-bar")),
-                           menuItem("Metric Explanations", tabName = "metrics_explained", icon = icon("lightbulb")),
-                           menuItem("Heatmap", tabName = "heatmap", icon = icon("th")),
-                           menuItem("Tables", tabName = "tables", icon = icon("table")),
-                           menuItem("Export", tabName = "export", icon = icon("download")),
-                           menuItem("Help", tabName = "help", icon = icon("circle-question"))
-               )
-             ),
-             body = dashboardBody(
-               useShinyjs(),
-               tags$head(tags$style(HTML("
+ui <- dashboardPage(
+  header = dashboardHeader(title = "Calcium Imaging Analysis"),
+  sidebar = dashboardSidebar(
+    sidebarMenu(id = "sidebar_tabs",
+                menuItem("Load Data", tabName = "load", icon = icon("database")),
+                menuItem("Processed Data", tabName = "preproc", icon = icon("sliders")),
+                menuItem("Time Course", tabName = "time", icon = icon("chart-line")),
+                menuItem("Metrics", tabName = "metrics", icon = icon("chart-bar")),
+                menuItem("Metric Explanations", tabName = "metrics_explained", icon = icon("lightbulb")),
+                menuItem("Heatmap", tabName = "heatmap", icon = icon("th")),
+                menuItem("Tables", tabName = "tables", icon = icon("table")),
+                menuItem("Export", tabName = "export", icon = icon("download")),
+                menuItem("Group Analysis", tabName = "group", icon = icon("users")),
+                menuItem("Help", tabName = "help", icon = icon("circle-question"))
+    )
+  ),
+  body = dashboardBody(
+    useShinyjs(),
+    tags$head(tags$style(HTML("
     .small-help {color:#6c757d;font-size:12px;margin-top:4px}
     .box-title {font-weight:600}
     details > summary {cursor:pointer;font-weight:600;margin-top:8px}
@@ -99,26 +94,22 @@ ui <- navbarPage(
     .stat-card h3 { margin: 0; font-size: 24px; font-weight: 600; }
     .stat-card p { margin: 0; font-size: 13px; opacity: 0.9; margin-top: 4px; }
   "))),
-               tabItems(
-                 mod_load_data_ui("load_data"),
-                 mod_preproc_ui("preproc"),
-                 mod_time_course_ui("time_course"),
-                 mod_metrics_ui("metrics"),
-                 mod_metrics_explained_ui("metrics_explained"),
-                 mod_heatmap_ui("heatmap"),
-                 mod_tables_ui("tables"),
-                 mod_export_ui("export"),
-                 mod_help_ui("help")
-               )
-             ),
-             skin = "blue"
-           )
+    tabItems(
+      mod_load_data_ui("load_data"),
+      mod_preproc_ui("preproc"),
+      mod_time_course_ui("time_course"),
+      mod_metrics_ui("metrics"),
+      mod_metrics_explained_ui("metrics_explained"),
+      mod_heatmap_ui("heatmap"),
+      mod_tables_ui("tables"),
+      mod_export_ui("export"),
+      tabItem(tabName = "group",
+              mod_group_combiner_ui("group_combiner")
+      ),
+      mod_help_ui("help")
+    )
   ),
-  
-  # Tab 2: Group Analysis
-  tabPanel("Group Analysis",
-           mod_group_combiner_ui("group_combiner")
-  )
+  skin = "blue"
 )
 
 # ============================= Server =============================
