@@ -8,40 +8,38 @@ mod_group_comparison_ui <- function(id) {
   ns <- NS(id)
   
   tabItem(tabName = "group_comparison",
-    fluidPage(
-      sidebarLayout(
-        sidebarPanel(
-          h4("Plot Settings"),
-          
-          # UI to select which groups to plot
-          selectInput(ns("groups_to_plot"), 
-                      label = "Select Groups to Display:",
-                      choices = NULL, # Will be updated dynamically
-                      multiple = TRUE),
-          
-          hr(),
-          
-          # Placeholder for future analysis options
-          h5("Analysis Options (Coming Soon)"),
-          
-          width = 3
-        ),
+    sidebarLayout(
+      sidebarPanel(
+        h4("Plot Settings"),
         
-        mainPanel(
-          h4("Average Time Course Plot (Mean ± SEM)"),
-          plotOutput(ns("avg_time_course_plot"), height = "500px"),
-          
-          hr(),
-          
-          h4("Group Summary Statistics"),
-          p("This table shows the mean, standard error (SEM), and count (N) for each calculated metric, summarized by group."),
-          DTOutput(ns("summary_stats_table")),
-          
-          width = 9
-        )
+        # UI to select which groups to plot
+        selectInput(ns("groups_to_plot"), 
+                    label = "Select Groups to Display:",
+                    choices = NULL, # Will be updated dynamically
+                    multiple = TRUE),
+        
+        hr(),
+        
+        # Placeholder for future analysis options
+        h5("Analysis Options (Coming Soon)"),
+        
+        width = 3
+      ),
+      
+      mainPanel(
+        h4("Average Time Course Plot (Mean ± SEM)"),
+        plotOutput(ns("avg_time_course_plot"), height = "500px"),
+        
+        hr(),
+        
+        h4("Group Summary Statistics"),
+        p("This table shows the mean, standard error (SEM), and count (N) for each calculated metric, summarized by group."),
+        DTOutput(ns("summary_stats_table")),
+        
+        width = 9
       )
-    )
-  )
+    ) # end sidebarLayout
+  ) # end tabItem
 }
 
 

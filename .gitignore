@@ -1,24 +1,20 @@
-# R specific
+# R project files
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
-.Renviron
-.Rprofile
 
-# Shiny specific
-rsconnect/
-.shiny_app_sw_version
+# renv files
+renv/
+renv.lock
 
-# macOS specific
+# Shiny settings
+.shiny_app/
+
+# Data files - DO NOT COMMIT DATA
+*.csv
+*.xlsx
+*.xls
+
+# macOS files
 .DS_Store
-.AppleDouble
-.LSOverride
-
-# Thumbs.db files
-Thumbs.db
-ehthumbs.db
-
-# My specific files
-Untitled.R
-calcium app 8-12-25.R
