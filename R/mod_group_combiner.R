@@ -189,7 +189,9 @@ mod_group_combiner_server <- function(id, rv_group) {
           new_files_df <- data.frame(
             FileName = uploaded_files$name,
             FilePath = uploaded_files$datapath,
-            GanglionID = sapply(uploaded_files$name, function(name) str_extract(name, "(?<=_)(NG[0-9]+)")),
+            # Use the filename (sans extension) as the GanglionID
+            GanglionID = tools::file_path_sans_ext(uploaded_files$name),
+            # Keep the AnimalID extraction, but users should verify it
             AnimalID = sapply(uploaded_files$name, function(name) str_extract(name, "[0-9]{2}_[0-9]{2}_[0-9]{2}")),
             stringsAsFactors = FALSE
           )
