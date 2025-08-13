@@ -117,10 +117,10 @@ mod_metrics_explained_server <- function(id, rv) {
         p <- p +
           geom_rect(
             aes(xmin = -Inf, xmax = baseline_end_time, ymin = -Inf, ymax = Inf),
-            fill = "steelblue", alpha = 0.1
+            fill = "gray", alpha = 0.2
           ) +
           annotate("text", x = baseline_end_time / 2, y = max(trace$dFF0, na.rm = TRUE) * 0.9,
-                   label = "Baseline Region\n(F₀)", color = "steelblue", fontface = "bold")
+                   label = "Baseline Region\n(F₀)", color = "gray40", fontface = "bold")
       }
       
       p <- p +
