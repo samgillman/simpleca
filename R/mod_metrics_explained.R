@@ -236,11 +236,9 @@ mod_metrics_explained_server <- function(id, rv) {
       
       req(nrow(trace) > 0, !is.na(metric$FWHM))
       
-      # Calculations for plot annotations
       peak_val <- metric$Peak_dFF0
       half_max <- peak_val / 2
       
-      # Find crossing points using the same logic as in utils.R
       above <- trace$dFF0 >= half_max
       crossings <- which(diff(above) != 0)
       
@@ -250,21 +248,28 @@ mod_metrics_explained_server <- function(id, rv) {
       right_crossings <- crossings[crossings >= which.max(trace$dFF0)]
       idx_right <- if (length(right_crossings) > 0) min(right_crossings) + 1 else NA
       
-      req(!is.na(idx_left), !is.na(idx_right))
+      req(!is.na(idx_left)) # Only require a left crossing to proceed
       
-      # Interpolate to get precise times
+      # Interpolate left time
       y1_l <- trace$dFF0[idx_left - 1]; y2_l <- trace$dFF0[idx_left]
       t1_l <- trace$Time[idx_left - 1]; t2_l <- trace$Time[idx_left]
       time_left <- t1_l + (t2_l - t1_l) * (half_max - y1_l) / (y2_l - y1_l)
       
-      y1_r <- trace$dFF0[idx_right - 1]; y2_r <- trace$dFF0[idx_right]
-      t1_r <- trace$Time[idx_right - 1]; t2_r <- trace$Time[idx_right]
-      time_right <- t1_r + (t2_r - t1_r) * (half_max - y1_r) / (y2_r - y1_r)
+      # Handle both normal and sustained responses for right time
+      is_sustained <- is.na(idx_right)
+      time_right <- if (is_sustained) {
+        max(trace$Time)
+      } else {
+        y1_r <- trace$dFF0[idx_right - 1]; y2_r <- trace$dFF0[idx_right]
+        t1_r <- trace$Time[idx_right - 1]; t2_r <- trace$Time[idx_right]
+        t1_r + (t2_r - t1_r) * (half_max - y1_r) / (y2_r - y1_r)
+      }
       
       list(
         t_left = time_left,
         t_right = time_right,
-        half_max_y = half_max
+        half_max_y = half_max,
+        is_sustained = is_sustained
       )
     })
     
@@ -300,8 +305,14 @@ mod_metrics_explained_server <- function(id, rv) {
         # Vertical lines for left and right crossings
         geom_segment(aes(x = times$t_left, xend = times$t_left, y = 0, yend = times$half_max_y), 
                      color = "dodgerblue", linetype = "dotted") +
-        geom_segment(aes(x = times$t_right, xend = times$t_right, y = 0, yend = times$half_max_y), 
-                     color = "dodgerblue", linetype = "dotted") +
+        
+        # Vertical line for right crossing (only if it exists)
+        {
+          if (!times$is_sustained) {
+            geom_segment(aes(x = times$t_right, xend = times$t_right, y = 0, yend = times$half_max_y), 
+                         color = "dodgerblue", linetype = "dotted")
+          }
+        } +
         
         # Arrow and label for FWHM
         geom_segment(aes(x = times$t_left, xend = times$t_right, y = times$half_max_y, yend = times$half_max_y),
@@ -316,6 +327,15 @@ mod_metrics_explained_server <- function(id, rv) {
         annotate("text", x = mean(c(times$t_left, mean(c(times$t_left, times$t_right)))), y = times$half_max_y * 0.8, 
                  label = paste("HWHM =", round(metric$Half_Width, 2), "s"), 
                  color = "darkorchid", vjust = -1, fontface = "bold") +
+        
+        # Add note for sustained responses
+        {
+          if (times$is_sustained) {
+            annotate("text", x = max(trace$Time), y = 0, 
+                     label = "* Measured to end of trace (sustained response)",
+                     hjust = 1, vjust = -0.5, color = "gray40", style = "italic")
+          }
+        } +
         
         labs(
           title = paste("FWHM Explained for Cell", gsub("[^0-9]", "", metric$Cell)),
