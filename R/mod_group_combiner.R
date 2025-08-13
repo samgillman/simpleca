@@ -33,7 +33,7 @@ mod_group_combiner_ui <- function(id) {
       
       mainPanel(
         h4("Step 2: Annotate Files"),
-        p("Click on a cell in the table to edit the Ganglion ID, Animal ID, or Group for each file."),
+        p("Click the 'Review & Annotate' button for each file to confirm its metadata. The app will attempt to auto-fill IDs from the filename."),
         DTOutput(ns("metadata_table")),
         width = 9
       )
@@ -97,12 +97,17 @@ mod_group_combiner_server <- function(id, rv_group) {
         escape = FALSE,
         selection = 'none',
         rownames = FALSE,
-        editable = FALSE, # Disable direct table editing
+        editable = FALSE, 
         options = list(
+          scrollX = TRUE, # Enable horizontal scrolling
           dom = 't',
           paging = FALSE,
           ordering = FALSE,
-          columnDefs = list(list(className = 'dt-center', targets = '_all'))
+          columnDefs = list(
+            list(className = 'dt-center', targets = '_all'),
+            # Hide the full file path column as it's not needed by the user
+            list(visible = FALSE, targets = which(names(rv$file_info) == "FilePath"))
+          )
         )
       )
     })
