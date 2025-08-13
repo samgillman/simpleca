@@ -19,6 +19,7 @@ mod_metrics_explained_ui <- function(id) {
                        hr(),
                        h4("Explanation"),
                        p("The 'Peak ΔF/F₀' is the highest point reached in the fluorescence signal after baseline correction. It indicates the maximum response intensity of the cell."),
+                       p(HTML("<b>F₀ (Baseline)</b> is the average fluorescence over an initial, stable period of the recording. On the plot, this is the region labeled 'F₀'.")),
                        h4("Calculation"),
                        withMathJax(),
                        p("It is calculated by finding the maximum value of the processed trace:"),
@@ -114,32 +115,34 @@ mod_metrics_explained_server <- function(id, rv) {
       # Add baseline highlight if applicable
       if (identical(rv$baseline_method, "first_n") && !is.null(rv$baseline_frames)) {
         baseline_end_time <- trace$Time[min(rv$baseline_frames, nrow(trace))]
-        max_plot_y <- max(trace$dFF0, na.rm = TRUE)
-        baseline_mid_time <- (min(trace$Time) + baseline_end_time) / 2
         
-        # Coordinates for a clean callout annotation
-        label_y <- max_plot_y * 0.3
-        
-        p <- p +
-          # Add the annotation text
-          annotate("text", x = baseline_mid_time, y = label_y,
-                   label = "F₀ (Baseline)", color = "gray20", fontface = "bold", size = 4) +
-          # Add an arrow pointing from the text to the baseline period
-          annotate("segment",
-                   x = baseline_mid_time, xend = baseline_mid_time,
-                   y = label_y * 0.9, yend = 0.05,
-                   arrow = arrow(length = unit(0.3, "cm"), type = "closed"),
-                   color = "gray20", linewidth = 0.8)
+        # Add a subtle shaded region for the baseline
+        p <- p + geom_rect(
+          aes(xmin = min(trace$Time), xmax = baseline_end_time, ymin = -Inf, ymax = Inf),
+          fill = "grey95", alpha = 1
+        )
+        # Add a simple F0 label inside the region
+        p <- p + annotate("text", 
+                          x = baseline_end_time / 2, 
+                          y = max(trace$dFF0, na.rm = TRUE) * 0.05,
+                          label = "F₀", color = "black", fontface = "bold", size = 5)
       }
       
       p <- p +
-        geom_line(color = "gray60", linewidth = 1) +
+        # Dashed vertical line for the peak
+        geom_segment(
+          aes(x = peak_time, xend = peak_time, y = 0, yend = metric$Peak_dFF0),
+          color = "red", linetype = "dashed", alpha = 0.7
+        ) +
+        geom_line(color = "gray50", linewidth = 1) +
+        # Point marker for the peak
         geom_point(data = data.frame(Time = peak_time, dFF0 = metric$Peak_dFF0),
                    aes(x = Time, y = dFF0),
                    color = "red", size = 4, shape = 18) +
+        # Text label for the peak value
         geom_text(data = data.frame(Time = peak_time, dFF0 = metric$Peak_dFF0),
-                  aes(x = Time, y = dFF0, label = paste0("Peak = ", round(dFF0, 2))),
-                  vjust = -1, hjust = 0.5, color = "red", size = 5) +
+                  aes(x = Time, y = dFF0, label = round(dFF0, 2)),
+                  vjust = -1.5, color = "red", size = 4) +
         labs(
           title = paste("Signal Trace for Cell:", metric$Cell),
           subtitle = paste("Group:", metric$Group),
