@@ -119,13 +119,11 @@ mod_group_comparison_server <- function(id, rv_group) {
                         selected = group_names) # Select all by default
     })
     
-    # Reactive expression to prepare data for plotting
-    plot_data <- reactive({
-      req(rv_group$combined_data, input$groups_to_plot)
+    # Reactive to calculate average time course data
+    avg_time_course <- reactive({
+      req(rv_group$combined_data, rv_group$combined_data$time_course)
       
-      # Filter for selected groups and calculate summary stats
-      rv_group$combined_data %>%
-        filter(GroupName %in% input$groups_to_plot) %>%
+      rv_group$combined_data$time_course %>%
         group_by(GroupName, Time) %>%
         summarise(
           Mean_dFF0 = mean(dFF0, na.rm = TRUE),
@@ -134,24 +132,42 @@ mod_group_comparison_server <- function(id, rv_group) {
         )
     })
     
-    # Render the plot
+    # Render the average time course plot
     output$avg_time_course_plot <- renderPlot({
-      req(plot_data())
+      req(avg_time_course())
       
-      ggplot(plot_data(), aes(x = Time, y = Mean_dFF0, color = GroupName, fill = GroupName)) +
+      p <- ggplot(avg_time_course(), aes(x = Time, y = Mean_dFF0, color = GroupName, fill = GroupName)) +
         geom_line(linewidth = 1) +
         geom_ribbon(aes(ymin = Mean_dFF0 - SEM, ymax = Mean_dFF0 + SEM), 
                     alpha = 0.2, linetype = "dashed") +
         labs(
-          title = "Group Average Time Course",
+          title = "Average Time Course per Group",
           subtitle = "Showing Mean ± SEM",
           x = "Time (s)",
           y = expression(paste("Average ", Delta, "F/F"[0])),
           color = "Group",
           fill = "Group"
         ) +
-        theme_minimal(base_size = 14) +
-        theme(legend.position = "bottom")
+        theme_minimal(base_size = 15) +
+        theme(
+          plot.title = element_text(hjust = 0.5, face = "bold"),
+          plot.subtitle = element_text(hjust = 0.5),
+          legend.position = "bottom"
+        )
+      
+      # Optionally add individual traces
+      if (isTruthy(input$show_individual_traces)) {
+        req(rv_group$combined_data$time_course)
+        p <- p + geom_line(
+          data = rv_group$combined_data$time_course,
+          aes(x = Time, y = dFF0, group = Cell_ID),
+          alpha = 0.15,
+          linewidth = 0.5,
+          inherit.aes = FALSE # Important to prevent aesthetic overwriting
+        )
+      }
+      
+      p
     })
     
     # Reactive for all metrics from the combined data
