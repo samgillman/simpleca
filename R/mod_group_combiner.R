@@ -86,23 +86,29 @@ mod_group_combiner_server <- function(id, rv_group) {
       lapply(names(rv$groups), function(group_name) {
         group_data <- rv$groups[[group_name]]
         
-        box(
+        # Build the list of UI elements for the box body dynamically
+        box_contents <- list(
+          fileInput(ns(paste0("upload_", group_name)), 
+                    label = "Upload Processed Time Course CSV(s) for this group:",
+                    multiple = TRUE,
+                    accept = c("text/csv", ".csv"))
+        )
+        
+        # Only add the data table output if there are files to display
+        if (nrow(group_data$files) > 0) {
+          box_contents <- c(box_contents, list(DTOutput(ns(paste0("table_", group_name)))))
+        }
+
+        # Use do.call to safely construct the box with its contents
+        args <- list(
           title = tagList(icon("layer-group"), group_name),
           status = "primary",
           solidHeader = TRUE,
           collapsible = TRUE,
-          width = 12,
-          
-          fileInput(ns(paste0("upload_", group_name)), 
-                    label = "Upload Processed Time Course CSV(s) for this group:",
-                    multiple = TRUE,
-                    accept = c("text/csv", ".csv")),
-          
-          # Display uploaded files for this group
-          if (nrow(group_data$files) > 0) {
-            DTOutput(ns(paste0("table_", group_name)))
-          }
+          width = 12
         )
+        
+        do.call(box, c(args, box_contents))
       })
     })
 
