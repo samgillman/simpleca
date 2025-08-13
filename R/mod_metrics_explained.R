@@ -3,22 +3,9 @@
 mod_metrics_explained_ui <- function(id) {
   ns <- NS(id)
   tabItem(tabName = "metrics_explained",
-          h2("Visual Metric Explanations"),
-          p("Select a metric and then a cell to see a visual breakdown of the calculation using your own data."),
-          br(),
-          
-          # Selector for which metric to explain
-          selectInput(ns("metric_to_explain"), "Select Metric to Explain:",
-                      choices = c("Peak ΔF/F₀" = "peak_dff0",
-                                  "FWHM & Half-Width" = "fwhm"),
-                      selected = "peak_dff0"),
-          hr(),
-          
-          # --- UI for Peak dF/F0 Explanation ---
-          conditionalPanel(
-            condition = paste0("input['", ns("metric_to_explain"), "'] == 'peak_dff0'"),
-            fluidRow(
-              box(
+    fluidRow(
+      column(width = 4,
+             box(
                 title = "Peak ΔF/F₀",
                 status = "primary",
                 solidHeader = TRUE,

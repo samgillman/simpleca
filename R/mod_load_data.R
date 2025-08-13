@@ -3,83 +3,87 @@
 mod_load_data_ui <- function(id) {
   ns <- NS(id)
   tabItem(tabName = "load",
-          fluidRow(class = "equal-row",
-                   div(class = "col-left",
-                       box(title = "Load Data", status = "primary", solidHeader = TRUE, width = 12,
-                           fileInput(ns("data_files"),"Upload CSV or Excel (wide; first column = Time)", multiple = TRUE,
-                                     accept = c(".csv",".xlsx",".xls"))
-                       ),
-                       box(title = "Processing Options", status = "warning", solidHeader = TRUE, width = 12, class = "proc-compact",
-                           switchInput(ns("pp_enable"),"Enable processing", onLabel="Yes", offLabel="No", value=TRUE, size = "mini"),
-                           checkboxInput(ns("pp_compute_dff"),"Compute ΔF/F₀ per cell", TRUE),
-                           selectInput(ns("pp_baseline_method"),"Baseline (F₀) method",
-                                       choices = c("Frame Range"="frame_range","Rolling minimum"="rolling_min","Percentile"="percentile"),
-                                       selected="frame_range"),
-                           conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'frame_range'"),
-                                            sliderInput(ns("pp_baseline_frames"),"Baseline Frame Range:", min = 1, max = 100, value = c(2, 20), step = 1)
-                           ),
-                           conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'rolling_min'"),
-                                            numericInput(ns("pp_window_size"),"Rolling window (frames)", value=50, min=5, step=1)
-                           ),
-                           conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'percentile'"),
-                                            numericInput(ns("pp_percentile"),"Baseline percentile", value=10, min=1, max=50, step=1)
-                           ),
-                           tags$details(
-                             tags$summary("Advanced"),
-                             checkboxInput(ns("pp_apply_bg"),"Background subtraction (single column)", FALSE),
-                             textInput(ns("pp_bg_col"),"Background column name (exact)", value=""),
-                             numericInput(ns("pp_sampling_rate"),"Sampling rate (Hz) if Time missing/invalid", value=1, min=0.0001, step=0.1)
-                           ),
-                           div(style = "margin-top:8px;", actionButton(ns("load_btn"),"Process Data", class = "btn-primary")),
-                           div(class="small-help","ΔF/F₀ = (F - F₀)/F₀. Operations apply per uploaded file.")
-                       )
-                   ),
-                   div(class = "col-right",
-                       box(title = "At a glance", status = "info", solidHeader = TRUE, width = 12,
-                           div(style = "padding: 5px;",
-                               div(class = "stat-card", style = "background: linear-gradient(135deg, #5bc0de 0%, #46b8da 100%);",
-                                   h3(textOutput(ns("n_files_text"), inline = TRUE)),
-                                   p("Files loaded")
-                               ),
-                               div(class = "stat-card", style = "background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);",
-                                   h3(textOutput(ns("n_cells_text"), inline = TRUE)),
-                                   p("Total cells")
-                               ),
-                               div(class = "stat-card", style = "background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);",
-                                   h3(textOutput(ns("n_timepoints_text"), inline = TRUE)),
-                                   p("Total timepoints")
-                               )
-                           )
-                       ),
-                       box(title = "Processing Status", status = "info", solidHeader = TRUE, width = 12,
-                           div(style = "padding: 10px;",
-                               fluidRow(
-                                 column(3, align = "center",
-                                        icon("file-import", class = "fa-2x", style = "color: #5bc0de; margin-bottom: 8px;"),
-                                        h5("Files Loaded", style = "margin: 5px 0; font-weight: 600;"),
-                                        textOutput(ns("status_files_loaded"), container = function(...) div(..., style = "font-size: 13px; color: #666;"))
-                                 ),
-                                 column(3, align = "center",
-                                        icon("check-circle", class = "fa-2x", style = "color: #5cb85c; margin-bottom: 8px;"),
-                                        h5("Processing", style = "margin: 5px 0; font-weight: 600;"),
-                                        textOutput(ns("status_processing"), container = function(...) div(..., style = "font-size: 13px; color: #666;"))
-                                 ),
-                                 column(3, align = "center",
-                                        icon("calculator", class = "fa-2x", style = "color: #f0ad4e; margin-bottom: 8px;"),
-                                        h5("Metrics", style = "margin: 5px 0; font-weight: 600;"),
-                                        textOutput(ns("status_metrics"), container = function(...) div(..., style = "font-size: 13px; color: #666;"))
-                                 ),
-                                 column(3, align = "center",
-                                        icon("chart-line", class = "fa-2x", style = "color: #9b59b6; margin-bottom: 8px;"),
-                                        h5("Ready", style = "margin: 5px 0; font-weight: 600;"),
-                                        textOutput(ns("status_ready"), container = function(...) div(..., style = "font-size: 13px; color: #666;"))
-                                 )
-                               )
-                           )
-                       )
-                   )
-          )
-  )
+    fluidRow(
+      # Left Column: Upload and Settings
+      column(
+        width = 6,
+        box(title = "Load Data", status = "primary", solidHeader = TRUE, width = 12,
+            fileInput(ns("data_files"),"Upload CSV or Excel (wide; first column = Time)", multiple = TRUE,
+                      accept = c(".csv",".xlsx",".xls"))
+        ),
+        box(title = "Processing Options", status = "warning", solidHeader = TRUE, width = 12, class = "proc-compact",
+            switchInput(ns("pp_enable"),"Enable processing", onLabel="Yes", offLabel="No", value=TRUE, size = "mini"),
+            checkboxInput(ns("pp_compute_dff"),"Compute ΔF/F₀ per cell", TRUE),
+            selectInput(ns("pp_baseline_method"),"Baseline (F₀) method",
+                        choices = c("Frame Range"="frame_range","Rolling minimum"="rolling_min","Percentile"="percentile"),
+                        selected="frame_range"),
+            conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'frame_range'"),
+                             sliderInput(ns("pp_baseline_frames"),"Baseline Frame Range:", min = 1, max = 100, value = c(2, 20), step = 1)
+            ),
+            conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'rolling_min'"),
+                             numericInput(ns("pp_window_size"),"Rolling window (frames)", value=50, min=5, step=1)
+            ),
+            conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'percentile'"),
+                             numericInput(ns("pp_percentile"),"Baseline percentile", value=10, min=1, max=50, step=1)
+            ),
+            tags$details(
+              tags$summary("Advanced"),
+              checkboxInput(ns("pp_apply_bg"),"Background subtraction (single column)", FALSE),
+              textInput(ns("pp_bg_col"),"Background column name (exact)", value=""),
+              numericInput(ns("pp_sampling_rate"),"Sampling rate (Hz) if Time missing/invalid", value=1, min=0.0001, step=0.1)
+            ),
+            div(style = "margin-top:8px;", actionButton(ns("load_btn"),"Process Data", class = "btn-primary")),
+            div(class="small-help","ΔF/F₀ = (F - F₀)/F₀. Operations apply per uploaded file.")
+        )
+      ),
+      # Right Column: At a glance and Processing Status
+      column(
+        width = 6,
+        box(title = "At a glance", status = "info", solidHeader = TRUE, width = 12,
+            div(style = "padding: 5px;",
+                div(class = "stat-card", style = "background: linear-gradient(135deg, #5bc0de 0%, #46b8da 100%);",
+                    h3(textOutput(ns("n_files_text"), inline = TRUE)),
+                    p("Files loaded")
+                ),
+                div(class = "stat-card", style = "background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);",
+                    h3(textOutput(ns("n_cells_text"), inline = TRUE)),
+                    p("Total cells")
+                ),
+                div(class = "stat-card", style = "background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);",
+                    h3(textOutput(ns("n_timepoints_text"), inline = TRUE)),
+                    p("Total timepoints")
+                )
+            )
+        ),
+        box(title = "Processing Status", status = "info", solidHeader = TRUE, width = 12,
+            div(style = "padding: 10px;",
+                fluidRow(
+                  column(3, align = "center",
+                         icon("file-import", class = "fa-2x", style = "color: #5bc0de; margin-bottom: 8px;"),
+                         h5("Files Loaded", style = "margin: 5px 0; font-weight: 600;"),
+                         textOutput(ns("status_files_loaded"), container = function(...) div(..., style = "font-size: 13px; color: #666;"))
+                  ),
+                  column(3, align = "center",
+                         icon("check-circle", class = "fa-2x", style = "color: #5cb85c; margin-bottom: 8px;"),
+                         h5("Processing", style = "margin: 5px 0; font-weight: 600;"),
+                         textOutput(ns("status_processing"), container = function(...) div(..., style = "font-size: 13px; color: #666;"))
+                  ),
+                  column(3, align = "center",
+                         icon("calculator", class = "fa-2x", style = "color: #f0ad4e; margin-bottom: 8px;"),
+                         h5("Metrics", style = "margin: 5px 0; font-weight: 600;"),
+                         textOutput(ns("status_metrics"), container = function(...) div(..., style = "font-size: 13px; color: #666;"))
+                  ),
+                  column(3, align = "center",
+                         icon("chart-line", class = "fa-2x", style = "color: #9b59b6; margin-bottom: 8px;"),
+                         h5("Ready", style = "margin: 5px 0; font-weight: 600;"),
+                         textOutput(ns("status_ready"), container = function(...) div(..., style = "font-size: 13px; color: #666;"))
+                  )
+                )
+            )
+        )
+      )
+    ) # End of fluidRow
+  ) # End of tabItem
 }
 
 mod_load_data_server <- function(id, rv) {
