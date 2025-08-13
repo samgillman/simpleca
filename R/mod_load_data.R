@@ -142,6 +142,19 @@ mod_load_data_server <- function(id, rv) {
         rv$raw_traces <- raw_traces
         rv$baselines <- baselines
         
+        # Store baseline calculation parameters for explanation module
+        if (isTRUE(input$pp_enable) && isTRUE(input$pp_compute_dff)) {
+          rv$baseline_method <- input$pp_baseline_method
+          if (identical(rv$baseline_method, "first_n")) {
+            rv$baseline_frames <- input$pp_baseline_frames %||% 20
+          } else {
+            rv$baseline_frames <- NULL # Not applicable for other methods
+          }
+        } else {
+          rv$baseline_method <- NULL
+          rv$baseline_frames <- NULL
+        }
+        
         rv$long <- purrr::imap(dts, ~to_long(.x, .y)) |> dplyr::bind_rows()
         rv$summary <- if (nrow(rv$long) > 0) {
           rv$long |>

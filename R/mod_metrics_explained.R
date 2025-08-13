@@ -109,7 +109,21 @@ mod_metrics_explained_server <- function(id, rv) {
       
       req(nrow(trace) > 0, nrow(metric) == 1)
       
-      ggplot(trace, aes(x = Time, y = dFF0)) +
+      p <- ggplot(trace, aes(x = Time, y = dFF0))
+      
+      # Add baseline highlight if applicable
+      if (identical(rv$baseline_method, "first_n") && !is.null(rv$baseline_frames)) {
+        baseline_end_time <- trace$Time[min(rv$baseline_frames, nrow(trace))]
+        p <- p +
+          geom_rect(
+            aes(xmin = -Inf, xmax = baseline_end_time, ymin = -Inf, ymax = Inf),
+            fill = "steelblue", alpha = 0.1
+          ) +
+          annotate("text", x = baseline_end_time / 2, y = max(trace$dFF0, na.rm = TRUE) * 0.9,
+                   label = "Baseline Region\n(F₀)", color = "steelblue", fontface = "bold")
+      }
+      
+      p <- p +
         geom_line(color = "gray60", linewidth = 1) +
         geom_point(data = data.frame(Time = peak_time, dFF0 = metric$Peak_dFF0),
                    aes(x = Time, y = dFF0),
@@ -125,6 +139,9 @@ mod_metrics_explained_server <- function(id, rv) {
         ) +
         theme_classic(base_size = 14) +
         theme(plot.title = element_text(face = "bold"))
+      
+      print(p)
+      
     }, res = 96)
     
   })
