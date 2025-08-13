@@ -226,7 +226,17 @@ mod_group_combiner_server <- function(id, rv_group) {
             time_course_data <- fread(file_info$FilePath)
             setnames(time_course_data, 1, "Time")
             
-            long_data <- melt(time_course_data, id.vars = "Time", variable.name = "OriginalCell", value.name = "dFF0")
+            # Select only numeric columns for melting, excluding 'Time'
+            measure_vars <- names(time_course_data)[sapply(time_course_data, is.numeric)]
+            measure_vars <- setdiff(measure_vars, "Time")
+
+            if (length(measure_vars) == 0) return(NULL) # Skip if no numeric trace columns
+
+            long_data <- melt(time_course_data, 
+                              id.vars = "Time", 
+                              measure.vars = measure_vars,
+                              variable.name = "OriginalCell", 
+                              value.name = "dFF0")
             
             long_data[, `:=`(
               Cell_ID = paste(gsub("\\.csv$", "", file_info$FileName), OriginalCell, sep = "_"),
