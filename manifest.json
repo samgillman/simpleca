@@ -517,6 +517,27 @@
         "Archs": "cli.so.dSYM"
       }
     },
+    "codetools": {
+      "Source": "CRAN",
+      "Repository": "https://packagemanager.posit.co/cran/latest",
+      "description": {
+        "Package": "codetools",
+        "Version": "0.2-20",
+        "Priority": "recommended",
+        "Author": "Luke Tierney <luke-tierney@uiowa.edu>",
+        "Description": "Code analysis tools for R.",
+        "Title": "Code Analysis Tools for R",
+        "Depends": "R (>= 2.1)",
+        "Maintainer": "Luke Tierney <luke-tierney@uiowa.edu>",
+        "URL": "https://gitlab.com/luke-tierney/codetools",
+        "License": "GPL",
+        "NeedsCompilation": "no",
+        "Packaged": "2024-03-31 18:18:09 UTC; luke",
+        "Repository": "CRAN",
+        "Date/Publication": "2024-03-31 20:10:06 UTC",
+        "Built": "R 4.4.3; ; 2025-02-28 21:20:46 UTC; unix"
+      }
+    },
     "colourpicker": {
       "Source": "CRAN",
       "Repository": "https://packagemanager.posit.co/cran/latest",
@@ -942,6 +963,79 @@
         "Archs": "fs.so.dSYM"
       }
     },
+    "furrr": {
+      "Source": "CRAN",
+      "Repository": "https://packagemanager.posit.co/cran/latest",
+      "description": {
+        "Package": "furrr",
+        "Title": "Apply Mapping Functions in Parallel using Futures",
+        "Version": "0.3.1",
+        "Authors@R": "c(\n    person(\"Davis\", \"Vaughan\", , \"davis@rstudio.com\", role = c(\"aut\", \"cre\")),\n    person(\"Matt\", \"Dancho\", , \"mdancho@business-science.io\", role = \"aut\"),\n    person(\"RStudio\", role = c(\"cph\", \"fnd\"))\n  )",
+        "Description": "Implementations of the family of map() functions from 'purrr'\n    that can be resolved using any 'future'-supported backend, e.g.\n    parallel on the local machine or distributed on a compute cluster.",
+        "License": "MIT + file LICENSE",
+        "URL": "https://github.com/DavisVaughan/furrr,\nhttps://furrr.futureverse.org/",
+        "BugReports": "https://github.com/DavisVaughan/furrr/issues",
+        "Depends": "future (>= 1.25.0), R (>= 3.4.0)",
+        "Imports": "globals (>= 0.14.0), lifecycle (>= 1.0.1), purrr (>= 0.3.4),\nrlang (>= 1.0.2), vctrs (>= 0.4.1)",
+        "Suggests": "carrier, covr, dplyr (>= 0.7.4), knitr, listenv (>= 0.6.0),\nmagrittr, rmarkdown, testthat (>= 3.0.0), tidyselect, withr",
+        "Config/Needs/website": "progressr",
+        "Config/testthat/edition": "3",
+        "Encoding": "UTF-8",
+        "RoxygenNote": "7.2.1",
+        "NeedsCompilation": "no",
+        "Packaged": "2022-08-15 19:00:06 UTC; davis",
+        "Author": "Davis Vaughan [aut, cre],\n  Matt Dancho [aut],\n  RStudio [cph, fnd]",
+        "Maintainer": "Davis Vaughan <davis@rstudio.com>",
+        "Repository": "RSPM",
+        "Date/Publication": "2022-08-15 19:40:02 UTC",
+        "Built": "R 4.4.0; ; 2024-04-25 05:54:21 UTC; unix",
+        "RemoteType": "standard",
+        "RemoteRef": "furrr",
+        "RemotePkgRef": "furrr",
+        "RemoteRepos": "https://packagemanager.posit.co/cran/latest",
+        "RemoteReposName": "CRAN",
+        "RemotePkgPlatform": "aarch64-apple-darwin20",
+        "RemoteSha": "0.3.1"
+      }
+    },
+    "future": {
+      "Source": "CRAN",
+      "Repository": "https://packagemanager.posit.co/cran/latest",
+      "description": {
+        "Package": "future",
+        "Version": "1.67.0",
+        "Title": "Unified Parallel and Distributed Processing in R for Everyone",
+        "Depends": "R (>= 3.2.0)",
+        "Imports": "digest, globals (>= 0.18.0), listenv (>= 0.8.0), parallel,\nparallelly (>= 1.44.0), utils",
+        "Suggests": "methods, RhpcBLASctl, R.rsp, markdown",
+        "VignetteBuilder": "R.rsp",
+        "Authors@R": "c(person(\"Henrik\", \"Bengtsson\",\n                    role = c(\"aut\", \"cre\", \"cph\"),\n                    email = \"henrikb@braju.com\",\n                    comment = c(ORCID = \"0000-0002-7579-5165\")))",
+        "Description": "The purpose of this package is to provide a lightweight and\n    unified Future API for sequential and parallel processing of R\n    expression via futures.  The simplest way to evaluate an expression\n    in parallel is to use `x %<-% { expression }` with `plan(multisession)`.\n    This package implements sequential, multicore, multisession, and\n    cluster futures.  With these, R expressions can be evaluated on the\n    local machine, in parallel a set of local machines, or distributed\n    on a mix of local and remote machines.\n    Extensions to this package implement additional backends for\n    processing futures via compute cluster schedulers, etc.\n    Because of its unified API, there is no need to modify any code in order\n    switch from sequential on the local machine to, say, distributed\n    processing on a remote compute cluster.\n    Another strength of this package is that global variables and functions\n    are automatically identified and exported as needed, making it\n    straightforward to tweak existing code to make use of futures.",
+        "License": "LGPL (>= 2.1)",
+        "LazyLoad": "TRUE",
+        "ByteCompile": "TRUE",
+        "URL": "https://future.futureverse.org,\nhttps://github.com/futureverse/future",
+        "BugReports": "https://github.com/futureverse/future/issues",
+        "Language": "en-US",
+        "Encoding": "UTF-8",
+        "RoxygenNote": "7.3.2",
+        "Collate": "'000.bquote.R' '000.import.R' '000.re-exports.R'\n'010.tweakable.R' '010.utils-parallelly.R'\n'backend_api-01-FutureBackend-class.R'\n'backend_api-03.MultiprocessFutureBackend-class.R'\n'backend_api-11.ClusterFutureBackend-class.R'\n'backend_api-11.MulticoreFutureBackend-class.R'\n'backend_api-11.SequentialFutureBackend-class.R'\n'backend_api-13.MultisessionFutureBackend-class.R'\n'backend_api-ConstantFuture-class.R'\n'backend_api-Future-class.R' 'backend_api-FutureRegistry.R'\n'backend_api-UniprocessFuture-class.R'\n'backend_api-evalFuture.R' 'core_api-cancel.R'\n'core_api-future.R' 'core_api-reset.R' 'core_api-resolved.R'\n'core_api-value.R' 'delayed_api-futureAssign.R'\n'delayed_api-futureOf.R' 'demo_api-mandelbrot.R'\n'infix_api-01-futureAssign_OP.R' 'infix_api-02-globals_OP.R'\n'infix_api-03-seed_OP.R' 'infix_api-04-stdout_OP.R'\n'infix_api-05-conditions_OP.R' 'infix_api-06-lazy_OP.R'\n'infix_api-07-label_OP.R' 'infix_api-08-plan_OP.R'\n'infix_api-09-tweak_OP.R'\n'protected_api-FutureCondition-class.R'\n'protected_api-FutureGlobals-class.R'\n'protected_api-FutureResult-class.R' 'protected_api-futures.R'\n'protected_api-globals.R' 'protected_api-journal.R'\n'protected_api-resolve.R' 'protected_api-signalConditions.R'\n'testme.R' 'utils-basic.R' 'utils-conditions.R'\n'utils-connections.R' 'utils-debug.R'\n'utils-immediateCondition.R' 'utils-marshalling.R'\n'utils-objectSize.R' 'utils-options.R' 'utils-prune_pkg_code.R'\n'utils-registerClusterTypes.R' 'utils-rng_utils.R'\n'utils-signalEarly.R' 'utils-stealth_sample.R'\n'utils-sticky_globals.R' 'utils-tweakExpression.R'\n'utils-uuid.R' 'utils-whichIndex.R' 'utils_api-backtrace.R'\n'utils_api-capture_journals.R' 'utils_api-futureCall.R'\n'utils_api-futureSessionInfo.R' 'utils_api-makeClusterFuture.R'\n'utils_api-minifuture.R' 'utils_api-nbrOfWorkers.R'\n'utils_api-plan.R' 'utils_api-plan-with.R'\n'utils_api-sessionDetails.R' 'utils_api-tweak.R' 'zzz.R'",
+        "NeedsCompilation": "no",
+        "Packaged": "2025-07-29 10:07:18 UTC; henrik",
+        "Author": "Henrik Bengtsson [aut, cre, cph] (ORCID:\n    <https://orcid.org/0000-0002-7579-5165>)",
+        "Maintainer": "Henrik Bengtsson <henrikb@braju.com>",
+        "Repository": "RSPM",
+        "Date/Publication": "2025-07-29 12:50:07 UTC",
+        "Built": "R 4.4.0; ; 2025-07-30 05:26:41 UTC; unix",
+        "RemoteType": "standard",
+        "RemoteRef": "future",
+        "RemotePkgRef": "future",
+        "RemoteRepos": "https://packagemanager.posit.co/cran/latest",
+        "RemoteReposName": "CRAN",
+        "RemotePkgPlatform": "aarch64-apple-darwin20",
+        "RemoteSha": "1.67.0"
+      }
+    },
     "generics": {
       "Source": "CRAN",
       "Repository": "https://packagemanager.posit.co/cran/latest",
@@ -1000,6 +1094,41 @@
         "Repository": "CRAN",
         "Date/Publication": "2025-04-09 09:40:10 UTC",
         "Built": "R 4.4.1; ; 2025-04-09 11:08:10 UTC; unix"
+      }
+    },
+    "globals": {
+      "Source": "CRAN",
+      "Repository": "https://packagemanager.posit.co/cran/latest",
+      "description": {
+        "Package": "globals",
+        "Version": "0.18.0",
+        "Depends": "R (>= 3.1.2)",
+        "Imports": "codetools",
+        "Title": "Identify Global Objects in R Expressions",
+        "Authors@R": "c(\n    person(\"Henrik\", \"Bengtsson\", role=c(\"aut\", \"cre\", \"cph\"),\n           email=\"henrikb@braju.com\"),\n    person(\"Davis\",\"Vaughan\", role=\"ctb\",\n           email=\"davis@posit.co\"))",
+        "Description": "Identifies global (\"unknown\" or \"free\") objects in R expressions\n    by code inspection using various strategies (ordered, liberal,\n    conservative, or deep-first search). The objective of this package is to\n    make it as simple as possible to identify global objects for the purpose\n    of exporting them in parallel, distributed compute environments.",
+        "License": "LGPL (>= 2.1)",
+        "LazyLoad": "TRUE",
+        "ByteCompile": "TRUE",
+        "Language": "en-US",
+        "Encoding": "UTF-8",
+        "URL": "https://globals.futureverse.org,\nhttps://github.com/futureverse/globals",
+        "BugReports": "https://github.com/futureverse/globals/issues",
+        "RoxygenNote": "7.3.2",
+        "NeedsCompilation": "no",
+        "Packaged": "2025-05-08 08:30:29 UTC; henrik",
+        "Author": "Henrik Bengtsson [aut, cre, cph],\n  Davis Vaughan [ctb]",
+        "Maintainer": "Henrik Bengtsson <henrikb@braju.com>",
+        "Repository": "RSPM",
+        "Date/Publication": "2025-05-08 09:00:03 UTC",
+        "Built": "R 4.4.0; ; 2025-05-09 04:52:49 UTC; unix",
+        "RemoteType": "standard",
+        "RemoteRef": "globals",
+        "RemotePkgRef": "globals",
+        "RemoteRepos": "https://packagemanager.posit.co/cran/latest",
+        "RemoteReposName": "CRAN",
+        "RemotePkgPlatform": "aarch64-apple-darwin20",
+        "RemoteSha": "0.18.0"
       }
     },
     "glue": {
@@ -1575,6 +1704,40 @@
         "Built": "R 4.4.0; ; 2024-04-05 22:31:19 UTC; unix"
       }
     },
+    "listenv": {
+      "Source": "CRAN",
+      "Repository": "https://packagemanager.posit.co/cran/latest",
+      "description": {
+        "Package": "listenv",
+        "Version": "0.9.1",
+        "Depends": "R (>= 3.1.2)",
+        "Suggests": "R.utils, R.rsp, markdown",
+        "VignetteBuilder": "R.rsp",
+        "Title": "Environments Behaving (Almost) as Lists",
+        "Authors@R": "c(person(\"Henrik\", \"Bengtsson\", role=c(\"aut\", \"cre\", \"cph\"),\n                                          email = \"henrikb@braju.com\"))",
+        "Description": "List environments are environments that have list-like properties.  For instance, the elements of a list environment are ordered and can be accessed and iterated over using index subsetting, e.g. 'x <- listenv(a = 1, b = 2); for (i in seq_along(x)) x[[i]] <- x[[i]] ^ 2; y <- as.list(x)'.",
+        "License": "LGPL (>= 2.1)",
+        "LazyLoad": "TRUE",
+        "URL": "https://listenv.futureverse.org,\nhttps://github.com/HenrikBengtsson/listenv",
+        "BugReports": "https://github.com/HenrikBengtsson/listenv/issues",
+        "RoxygenNote": "7.3.1",
+        "NeedsCompilation": "no",
+        "Packaged": "2024-01-28 20:40:45 UTC; henrik",
+        "Author": "Henrik Bengtsson [aut, cre, cph]",
+        "Maintainer": "Henrik Bengtsson <henrikb@braju.com>",
+        "Repository": "RSPM",
+        "Date/Publication": "2024-01-29 13:10:06 UTC",
+        "Encoding": "UTF-8",
+        "Built": "R 4.4.0; ; 2024-04-25 19:37:34 UTC; unix",
+        "RemoteType": "standard",
+        "RemoteRef": "listenv",
+        "RemotePkgRef": "listenv",
+        "RemoteRepos": "https://packagemanager.posit.co/cran/latest",
+        "RemoteReposName": "CRAN",
+        "RemotePkgPlatform": "aarch64-apple-darwin20",
+        "RemoteSha": "0.9.1"
+      }
+    },
     "litedown": {
       "Source": "CRAN",
       "Repository": "https://packagemanager.posit.co/cran/latest",
@@ -1820,6 +1983,42 @@
         "Date/Publication": "2025-02-03 14:20:02 UTC",
         "Built": "R 4.4.1; aarch64-apple-darwin20; 2025-02-03 14:46:49 UTC; unix",
         "Archs": "openssl.so.dSYM"
+      }
+    },
+    "parallelly": {
+      "Source": "CRAN",
+      "Repository": "https://packagemanager.posit.co/cran/latest",
+      "description": {
+        "Package": "parallelly",
+        "Version": "1.45.1",
+        "Title": "Enhancing the 'parallel' Package",
+        "Imports": "parallel, tools, utils",
+        "Suggests": "commonmark, base64enc",
+        "VignetteBuilder": "parallelly",
+        "Authors@R": "c(\n        person(\"Henrik\", \"Bengtsson\",\n               role = c(\"aut\", \"cre\", \"cph\"),\n               email = \"henrikb@braju.com\",\n               comment = c(ORCID = \"0000-0002-7579-5165\")),\n        person(\"Mike\", \"Cheng\",\n               role = c(\"ctb\"),\n               email = \"mikefc@coolbutuseless.com\")\n    )",
+        "Description": "Utility functions that enhance the 'parallel' package and support the built-in parallel backends of the 'future' package.  For example, availableCores() gives the number of CPU cores available to your R process as given by the operating system, 'cgroups' and Linux containers, R options, and environment variables, including those set by job schedulers on high-performance compute clusters. If none is set, it will fall back to parallel::detectCores(). Another example is makeClusterPSOCK(), which is backward compatible with parallel::makePSOCKcluster() while doing a better job in setting up remote cluster workers without the need for configuring the firewall to do port-forwarding to your local computer.",
+        "License": "LGPL (>= 2.1)",
+        "LazyLoad": "TRUE",
+        "ByteCompile": "TRUE",
+        "URL": "https://parallelly.futureverse.org,\nhttps://github.com/futureverse/parallelly",
+        "BugReports": "https://github.com/futureverse/parallelly/issues",
+        "Language": "en-US",
+        "Encoding": "UTF-8",
+        "RoxygenNote": "7.3.2",
+        "NeedsCompilation": "yes",
+        "Packaged": "2025-07-24 14:11:31 UTC; henrik",
+        "Author": "Henrik Bengtsson [aut, cre, cph] (ORCID:\n    <https://orcid.org/0000-0002-7579-5165>),\n  Mike Cheng [ctb]",
+        "Maintainer": "Henrik Bengtsson <henrikb@braju.com>",
+        "Repository": "RSPM",
+        "Date/Publication": "2025-07-24 15:50:02 UTC",
+        "Built": "R 4.4.0; x86_64-pc-linux-gnu; 2025-07-25 05:01:13 UTC; unix",
+        "RemoteType": "standard",
+        "RemoteRef": "parallelly",
+        "RemotePkgRef": "parallelly",
+        "RemoteRepos": "https://packagemanager.posit.co/cran/latest",
+        "RemoteReposName": "CRAN",
+        "RemotePkgPlatform": "aarch64-apple-darwin20",
+        "RemoteSha": "1.45.1"
       }
     },
     "pillar": {
@@ -3237,16 +3436,73 @@
   },
   "files": {
     ".Rprofile": {
-      "checksum": "50e2d0a73c24ad700af6030d48e17ae2"
+      "checksum": "11eb60c9500f5a00c3d0f8747b2d08c3"
     },
     "app.R": {
-      "checksum": "2588fc697ee5d1d9918c832d2231debf"
+      "checksum": "95ba64a2cfa11992e1a67578eddf427f"
     },
     "calcium app 8-12-25.R": {
       "checksum": "17dd7dffdd9f3c34df6e846ea1ce8f52"
     },
+    "Calcium PDHA ko Trpv1-GCaMP Males Lowosm processed data/processed_NG1_LowOsm_PDHA-TRPV1-GCaMP_04_18_25_2025-08-13.csv": {
+      "checksum": "c22900a3a1ca5636ded0324153bc06b7"
+    },
+    "Calcium PDHA ko Trpv1-GCaMP Males Lowosm processed data/processed_NG1_LowOsm_PDHA-TRPV1-GCaMP_Male_04_29_25_2025-08-13.csv": {
+      "checksum": "9a241d0f4b43887ae18d1f007774af66"
+    },
+    "Calcium PDHA ko Trpv1-GCaMP Males Lowosm processed data/processed_NG1_LowOsm_PDHAko-Trpv1-GCaMP_Male_08_05_25_2025-08-13.csv": {
+      "checksum": "98c1cf94f2267fc45a561608089e063d"
+    },
+    "Calcium PDHA ko Trpv1-GCaMP Males Lowosm processed data/processed_NG1_PDHA_LowOsm_01_28_25_2025-08-13.csv": {
+      "checksum": "39da35aadd52106785c41f3c2781f07d"
+    },
+    "Calcium PDHA ko Trpv1-GCaMP Males Lowosm processed data/processed_NG1_PDHA_Sham_lowOsm_01_24_25_2025-08-13.csv": {
+      "checksum": "03abc339ba57fb0cc66c5ea2cfb06545"
+    },
+    "Calcium PDHA ko Trpv1-GCaMP Males Lowosm processed data/processed_NG2_LowOsm_PDHA-TRPV1-GCaMP_04_18_25_2025-08-13.csv": {
+      "checksum": "1d41303ba51b88c6bf26c818803fc9a0"
+    },
+    "Calcium PDHA ko Trpv1-GCaMP Males Lowosm processed data/processed_NG2_LowOsm_PDHA-TRPV1-GCaMP_Male_04_29_25_2025-08-13.csv": {
+      "checksum": "52d330ce32fc6fa3298c8929634584db"
+    },
+    "Calcium PDHA ko Trpv1-GCaMP Males Lowosm processed data/processed_NG2_LowOsm_PDHAko-Trpv1-GCaMP_Male_08_05_25_2025-08-13.csv": {
+      "checksum": "7d00acb131bbfc3d5da67d47a8387034"
+    },
+    "Calcium Trpv1-GCaMP Males LowOsm Processed Data/processed_NG1_LowOsm_Trpv1-GCaMP_Male_06_10_25_2025-08-12.csv": {
+      "checksum": "f7547f7da711e416093f1a909baf5ae3"
+    },
+    "Calcium Trpv1-GCaMP Males LowOsm Processed Data/processed_NG1_LowOsm_Trpv1-GCaMP_Male_06_12_25_2025-08-12.csv": {
+      "checksum": "2cf04377e4f997e10f0fcca0b81b119d"
+    },
+    "Calcium Trpv1-GCaMP Males LowOsm Processed Data/processed_NG1_LowOsm_TRPV1-GCamP_Male_06-06-2025_2025-08-13.csv": {
+      "checksum": "5f09deb961541d250b7c6b1dbc73a48f"
+    },
+    "Calcium Trpv1-GCaMP Males LowOsm Processed Data/processed_NG1_Right_LowOsm_TRPV1-GCaMP_Male_06-03-25_2025-08-13.csv": {
+      "checksum": "8dbecb0795c5ad48060d7df781d914bb"
+    },
+    "Calcium Trpv1-GCaMP Males LowOsm Processed Data/processed_NG2_Left_LowOsm_TRPV1-GCaMP_Male_06-03-25_2025-08-13.csv": {
+      "checksum": "597cf2936f4597507149fd6d72f99660"
+    },
+    "Calcium Trpv1-GCaMP Males LowOsm Processed Data/processed_NG2_LowOsm_Trpv1-GCaMP_Male_06_10_25_2025-08-12.csv": {
+      "checksum": "19bd461b2a2b6797535c9b1ffd107b6c"
+    },
+    "Calcium Trpv1-GCaMP Males LowOsm Processed Data/processed_NG2_LowOsm_TRPV1-GCamP_Male_06-06-2025_2025-08-13.csv": {
+      "checksum": "9509732e14b8207e080282c859cb8e33"
+    },
+    "NG1_Capsaicin_PDHAko-Trpv1-GCaMP_08_05_25.csv": {
+      "checksum": "4c0e552418c819817b470bf88f205e1d"
+    },
+    "PROTOCOL.md": {
+      "checksum": "f6dda6fd6cd799e6b2f26a0c639681a3"
+    },
     "R/mod_export.R": {
-      "checksum": "32ef2862f882041f50956f368e6c65ea"
+      "checksum": "43c4a0608e2d9e6f1605c31585627fdd"
+    },
+    "R/mod_group_combiner.R": {
+      "checksum": "bbb0ffa5bb667279948a43b9954a6645"
+    },
+    "R/mod_group_comparison.R": {
+      "checksum": "c63a1e889bbdd7e3408f8717c00ae2db"
     },
     "R/mod_heatmap.R": {
       "checksum": "b875fc52d4694a7f0737ac7447f21faf"
@@ -3255,25 +3511,34 @@
       "checksum": "974e8a08a03e7ab76ce3935dfbffd136"
     },
     "R/mod_load_data.R": {
-      "checksum": "e16e274b0724b57ec48ba9c26f1e90f0"
+      "checksum": "f73342b3258371fd22bb945f4a21f2ae"
+    },
+    "R/mod_metrics_explained.R": {
+      "checksum": "dba7fcaa54dadd17d27318743e7bdd2b"
     },
     "R/mod_metrics.R": {
-      "checksum": "b8c3c1ab0922f1fb1e5c258ee152b69b"
+      "checksum": "d285a35dee8d604b7354d9cbedbe1866"
     },
     "R/mod_preproc.R": {
-      "checksum": "641cc0725549e229032668a02ed21f85"
+      "checksum": "d0165bd1bba0e4972e046118b098a7ce"
     },
     "R/mod_tables.R": {
-      "checksum": "0c8f85849be7ae9e69b2f057fa6d31fc"
+      "checksum": "c082cac2fbab852445e8a62f86b30177"
     },
     "R/mod_time_course.R": {
-      "checksum": "c501d88e6b405842c0e8544efa93e0d2"
+      "checksum": "58dd7f5350ba752fbf609884a10d1a4d"
     },
     "R/utils.R": {
-      "checksum": "f8b9abc6ecf352da451b779d91b23329"
+      "checksum": "0a676e105e33fdf9c721bf7a9178bf86"
     },
     "renv.lock": {
-      "checksum": "6bf370a8d34533070245c285583fdc12"
+      "checksum": "c161058bee610e1d56c2b8782a9db27a"
+    },
+    "Screenshot 2025-08-12 174355.png": {
+      "checksum": "839d68894940aa6a8ccd473a4a1d5562"
+    },
+    "Screenshot 2025-08-12 at 3.52.13 PM.png": {
+      "checksum": "ac9f9c6f51a5c340f8f6e010f4fdfe15"
     },
     "Untitled.R": {
       "checksum": "2ebce71406fc385f2ce033a7b70727c0"
