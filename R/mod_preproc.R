@@ -35,7 +35,7 @@ mod_preproc_server <- function(id, rv) {
     
     output$preproc_avg_metrics <- renderDT({
       req(rv$metrics)
-      cols <- c("Peak_dFF0","Response_Amplitude","AUC","Half_Width","Calcium_Entry_Rate",
+      cols <- c("Peak_dFF0","Response_Amplitude","AUC","FWHM", "Half_Width","Calcium_Entry_Rate",
                 "Time_to_Peak","Time_to_25_Peak","Time_to_50_Peak","Time_to_75_Peak","Rise_Time","SNR")
       present <- intersect(cols, names(rv$metrics))
       sm <- lapply(present, function(cl) {
@@ -53,7 +53,7 @@ mod_preproc_server <- function(id, rv) {
     
     avg_metrics_gt <- reactive({
       req(rv$metrics)
-      cols <- c("Peak_dFF0","Response_Amplitude","AUC","Half_Width","Calcium_Entry_Rate",
+      cols <- c("Peak_dFF0","Response_Amplitude","AUC","FWHM", "Half_Width","Calcium_Entry_Rate",
                 "Time_to_Peak","Time_to_25_Peak","Time_to_50_Peak","Time_to_75_Peak","Rise_Time","SNR")
       present <- intersect(cols, names(rv$metrics))
       sm <- lapply(present, function(cl) {
