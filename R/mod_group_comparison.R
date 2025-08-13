@@ -27,39 +27,67 @@ mod_group_comparison_ui <- function(id) {
       ),
       
       mainPanel(
-        h4("Average Time Course Plot (Mean ± SEM)"),
-        plotOutput(ns("avg_time_course_plot"), height = "500px"),
-        
-        hr(),
-        
-        box(
-            title = "Individual Cell Metrics (All Groups)",
-            status = "primary", solidHeader = TRUE, width = 12, collapsible = TRUE, collapsed = TRUE,
-            p("This table contains all the calculated metrics for every individual cell in the combined dataset."),
-            DT::DTOutput(ns("all_metrics_table"))
+        tabsetPanel(
+          id = ns("group_tabs"),
+          
+          # --- Tab 1: Time Course Plot ---
+          tabPanel("Time Course",
+                   h4("Average Time Course Plot (Mean ± SEM)"),
+                   plotOutput(ns("avg_time_course_plot"), height = "500px")
+          ),
+          
+          # --- Tab 2: Metric Comparison Plots ---
+          tabPanel("Metric Plots",
+                   fluidRow(
+                     box(
+                       width = 12, status = "primary",
+                       selectInput(ns("metric_to_plot"), "Select Metric to Plot:", choices = NULL)
+                     )
+                   ),
+                   fluidRow(
+                     box(
+                       title = "Comparison by Animal", status = "success", solidHeader = TRUE, width = 12, collapsible = TRUE,
+                       plotOutput(ns("animal_metric_plot"))
+                     ),
+                     box(
+                       title = "Comparison by Ganglion", status = "warning", solidHeader = TRUE, width = 12, collapsible = TRUE,
+                       plotOutput(ns("ganglion_metric_plot"))
+                     ),
+                     box(
+                       title = "Comparison by Cell", status = "info", solidHeader = TRUE, width = 12, collapsible = TRUE,
+                       plotOutput(ns("cell_metric_plot"))
+                     )
+                   )
+          ),
+          
+          # --- Tab 3: Summary Tables ---
+          tabPanel("Summary Tables",
+                   box(
+                       title = "Group Summary Statistics",
+                       status = "info", solidHeader = TRUE, width = 12, collapsible = TRUE,
+                       p("This table shows the mean, standard deviation (SD), standard error (SEM), and count (N) for each metric, summarized by group."),
+                       DT::DTOutput(ns("summary_stats_table"))
+                   ),
+                   box(
+                       title = "Metrics by Animal",
+                       status = "success", solidHeader = TRUE, width = 12, collapsible = TRUE, collapsed = TRUE,
+                       p("This table summarizes each metric for every animal, grouped by the main experimental condition."),
+                       DT::DTOutput(ns("animal_summary_table"))
+                   ),
+                   box(
+                       title = "Metrics by Ganglion",
+                       status = "warning", solidHeader = TRUE, width = 12, collapsible = TRUE, collapsed = TRUE,
+                       p("This table breaks down each metric by individual ganglion."),
+                       DT::DTOutput(ns("ganglion_summary_table"))
+                   ),
+                   box(
+                       title = "Individual Cell Metrics (All Groups)",
+                       status = "primary", solidHeader = TRUE, width = 12, collapsible = TRUE, collapsed = TRUE,
+                       p("This table contains all the calculated metrics for every individual cell in the combined dataset."),
+                       DT::DTOutput(ns("all_metrics_table"))
+                   )
+          )
         ),
-        
-        box(
-            title = "Group Summary Statistics",
-            status = "info", solidHeader = TRUE, width = 12, collapsible = TRUE,
-            p("This table shows the mean, standard deviation (SD), standard error (SEM), and count (N) for each metric, summarized by group."),
-            DT::DTOutput(ns("summary_stats_table"))
-        ),
-        
-        box(
-            title = "Metrics by Animal",
-            status = "success", solidHeader = TRUE, width = 12, collapsible = TRUE, collapsed = TRUE,
-            p("This table summarizes each metric for every animal, grouped by the main experimental condition."),
-            DT::DTOutput(ns("animal_summary_table"))
-        ),
-        
-        box(
-            title = "Metrics by Ganglion",
-            status = "warning", solidHeader = TRUE, width = 12, collapsible = TRUE, collapsed = TRUE,
-            p("This table breaks down each metric by individual ganglion."),
-            DT::DTOutput(ns("ganglion_summary_table"))
-        ),
-        
         width = 9
       )
     ) # end sidebarLayout
@@ -258,6 +286,70 @@ mod_group_comparison_server <- function(id, rv_group) {
             rownames = FALSE, filter = "top", extensions = "Buttons",
             options = list(pageLength = 15, dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel'))
         ) %>% DT::formatRound(columns = c("Mean", "SD", "SEM"), digits = 4)
+    })
+    
+    # --- Metric Comparison Plots ---
+
+    # Observer to update the metric choices for the plot dropdown
+    observe({
+        req(all_metrics())
+        
+        # Get all numeric columns from the metrics table
+        metric_choices <- names(all_metrics())[sapply(all_metrics(), is.numeric)]
+        
+        # Use a named list to provide prettier names in the UI
+        names(metric_choices) <- gsub("_", " ", metric_choices)
+        
+        updateSelectInput(session, "metric_to_plot", choices = metric_choices)
+    })
+
+    # Render plot for animal-level metric comparison
+    output$animal_metric_plot <- renderPlot({
+        req(all_metrics(), input$metric_to_plot)
+        
+        ggplot(all_metrics(), aes(x = AnimalID, y = .data[[input$metric_to_plot]], fill = GroupName)) +
+            geom_boxplot(alpha = 0.7) +
+            geom_jitter(width = 0.2, alpha = 0.5) +
+            facet_wrap(~ GroupName, scales = "free_x") +
+            labs(title = paste("Metric:", gsub("_", " ", input$metric_to_plot), "by Animal"),
+                 x = "Animal ID",
+                 y = gsub("_", " ", input$metric_to_plot)) +
+            theme_minimal(base_size = 14) +
+            theme(legend.position = "none")
+    })
+
+    # Render plot for ganglion-level metric comparison
+    output$ganglion_metric_plot <- renderPlot({
+        req(all_metrics(), input$metric_to_plot)
+        
+        ggplot(all_metrics(), aes(x = GanglionID, y = .data[[input$metric_to_plot]], fill = GroupName)) +
+            geom_boxplot(alpha = 0.7) +
+            geom_jitter(width = 0.2, alpha = 0.5) +
+            facet_wrap(~ GroupName, scales = "free_x") +
+            labs(title = paste("Metric:", gsub("_", " ", input$metric_to_plot), "by Ganglion"),
+                 x = "Ganglion ID",
+                 y = gsub("_", " ", input$metric_to_plot)) +
+            theme_minimal(base_size = 14) +
+            theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 1))
+    })
+
+    # Render plot for cell-level metric comparison
+    output$cell_metric_plot <- renderPlot({
+        req(all_metrics(), input$metric_to_plot)
+        
+        # Facet by group for better organization
+        ggplot(all_metrics(), aes(x = reorder(Cell_ID, .data[[input$metric_to_plot]]), 
+                                  y = .data[[input$metric_to_plot]], 
+                                  fill = GroupName)) +
+            geom_bar(stat = "identity") +
+            facet_wrap(~ GroupName, scales = "free_x", ncol = 1) +
+            labs(title = paste("Metric:", gsub("_", " ", input$metric_to_plot), "by Cell"),
+                 x = "Cell ID",
+                 y = gsub("_", " ", input$metric_to_plot)) +
+            theme_minimal(base_size = 14) +
+            theme(legend.position = "none",
+                  axis.text.x = element_blank(), # Hide x-axis labels to avoid clutter
+                  axis.ticks.x = element_blank())
     })
     
   })
