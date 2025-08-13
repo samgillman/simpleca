@@ -74,6 +74,13 @@ mod_group_comparison_ui <- function(id) {
                    p("These tables provide the underlying data for the plots. You can download the data from any table using the 'CSV' button."),
                    br(),
                    
+                   box(
+                     title = "Group-Level Summary Statistics",
+                     status = "info", solidHeader = TRUE, width = 12, collapsible = TRUE,
+                     p("This table shows the overall mean, standard error (SEM), and count (N) for each metric, summarized by group based on individual cell data."),
+                     DT::DTOutput(ns("group_summary_stats_table"))
+                   ),
+                   
                    # Table for Animal-Level Data
                    box(
                      title = "Animal-Level Summary",
@@ -187,7 +194,8 @@ mod_group_comparison_server <- function(id, rv_group) {
       req(all_metrics())
       all_metrics() %>%
         group_by(AnimalID, GroupName) %>%
-        summarise(across(where(is.numeric), ~mean(.x, na.rm = TRUE)), .groups = 'drop')
+        summarise(across(where(is.numeric), ~mean(.x, na.rm = TRUE)), .groups = 'drop') %>%
+        relocate(GroupName, AnimalID)
     })
     
     # Reactive for ganglion-level average metrics
@@ -195,7 +203,32 @@ mod_group_comparison_server <- function(id, rv_group) {
       req(all_metrics())
       all_metrics() %>%
         group_by(GanglionID, GroupName) %>%
-        summarise(across(where(is.numeric), ~mean(.x, na.rm = TRUE)), .groups = 'drop')
+        summarise(across(where(is.numeric), ~mean(.x, na.rm = TRUE)), .groups = 'drop') %>%
+        relocate(GroupName, GanglionID)
+    })
+    
+    # Reactive to calculate overall summary stats for each group
+    group_summary_stats <- reactive({
+      req(all_metrics())
+      
+      all_metrics() %>%
+        # Select only the numeric metric columns and the grouping variable
+        select(where(is.numeric), GroupName) %>%
+        # Pivot to a long format for easier summarization
+        pivot_longer(
+          cols = -GroupName,
+          names_to = "Metric",
+          values_to = "Value"
+        ) %>%
+        # Group by the experimental group and the metric name
+        group_by(GroupName, Metric) %>%
+        # Calculate summary stats
+        summarise(
+          Mean = mean(Value, na.rm = TRUE),
+          SEM = sd(Value, na.rm = TRUE) / sqrt(n()),
+          N = n(),
+          .groups = 'drop'
+        )
     })
     
     # --- Metric Comparison Plots ---
@@ -331,11 +364,22 @@ mod_group_comparison_server <- function(id, rv_group) {
     
     # --- Table Logic ---
     
+    # Render the new group-level summary stats table
+    output$group_summary_stats_table <- DT::renderDT({
+      req(group_summary_stats())
+      DT::datatable(group_summary_stats(),
+                options = list(pageLength = 15, scrollX = TRUE, dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel')),
+                extensions = 'Buttons',
+                filter = 'top',
+                rownames = FALSE) %>%
+        DT::formatRound(columns = c("Mean", "SEM"), digits = 4)
+    })
+    
     # Render table for all individual cell metrics
     output$all_metrics_table <- DT::renderDT({
       req(all_metrics())
       DT::datatable(all_metrics(),
-                options = list(pageLength = 10, scrollX = TRUE),
+                options = list(pageLength = 10, scrollX = TRUE, dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel')),
                 extensions = 'Buttons',
                 filter = 'top',
                 rownames = FALSE) %>%
@@ -346,7 +390,7 @@ mod_group_comparison_server <- function(id, rv_group) {
     output$animal_summary_table <- DT::renderDT({
       req(animal_summary())
       DT::datatable(animal_summary(),
-                options = list(pageLength = 10, scrollX = TRUE),
+                options = list(pageLength = 10, scrollX = TRUE, dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel')),
                 extensions = 'Buttons',
                 filter = 'top',
                 rownames = FALSE) %>%
@@ -357,7 +401,7 @@ mod_group_comparison_server <- function(id, rv_group) {
     output$ganglion_summary_table <- DT::renderDT({
       req(ganglion_summary())
       DT::datatable(ganglion_summary(),
-                options = list(pageLength = 10, scrollX = TRUE),
+                options = list(pageLength = 10, scrollX = TRUE, dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel')),
                 extensions = 'Buttons',
                 filter = 'top',
                 rownames = FALSE) %>%
