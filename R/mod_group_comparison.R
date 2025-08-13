@@ -53,12 +53,18 @@ mod_group_comparison_ui <- function(id) {
                      box(
                        title = "Group Comparison by Ganglion", status = "warning", solidHeader = TRUE, width = 12, collapsible = TRUE,
                        p("Each point represents the average value of all cells within a single ganglion. The box plot shows the distribution of these ganglion averages for each group."),
-                       plotOutput(ns("ganglion_metric_plot"))
+                       plotOutput(ns("ganglion_metric_plot")),
+                       hr(),
+                       h4("Statistical Comparison"),
+                       verbatimTextOutput(ns("ganglion_stats_output"))
                      ),
                      box(
                        title = "Group Comparison by Animal", status = "success", solidHeader = TRUE, width = 12, collapsible = TRUE,
                        p("Each point represents the average value of all cells within a single animal. The box plot shows the distribution of these animal averages for each group."),
-                       plotOutput(ns("animal_metric_plot"))
+                       plotOutput(ns("animal_metric_plot")),
+                       hr(),
+                       h4("Statistical Comparison"),
+                       verbatimTextOutput(ns("animal_stats_output"))
                      )
                    )
           ),
@@ -192,41 +198,6 @@ mod_group_comparison_server <- function(id, rv_group) {
         summarise(across(where(is.numeric), ~mean(.x, na.rm = TRUE)), .groups = 'drop')
     })
     
-    # --- Table Logic ---
-    
-    # Render table for all individual cell metrics
-    output$all_metrics_table <- DT::renderDT({
-      req(all_metrics())
-      DT::datatable(all_metrics(),
-                options = list(pageLength = 10, scrollX = TRUE),
-                extensions = 'Buttons',
-                filter = 'top',
-                rownames = FALSE) %>%
-        DT::formatRound(columns = which(sapply(all_metrics(), is.numeric)), digits = 3)
-    })
-    
-    # Render table for animal-level summary
-    output$animal_summary_table <- DT::renderDT({
-      req(animal_summary())
-      DT::datatable(animal_summary(),
-                options = list(pageLength = 10, scrollX = TRUE),
-                extensions = 'Buttons',
-                filter = 'top',
-                rownames = FALSE) %>%
-        DT::formatRound(columns = which(sapply(animal_summary(), is.numeric)), digits = 3)
-    })
-    
-    # Render table for ganglion-level summary
-    output$ganglion_summary_table <- DT::renderDT({
-      req(ganglion_summary())
-      DT::datatable(ganglion_summary(),
-                options = list(pageLength = 10, scrollX = TRUE),
-                extensions = 'Buttons',
-                filter = 'top',
-                rownames = FALSE) %>%
-        DT::formatRound(columns = which(sapply(ganglion_summary(), is.numeric)), digits = 3)
-    })
-    
     # --- Metric Comparison Plots ---
 
     # Observer to update the metric choices for the plot dropdown
@@ -296,6 +267,101 @@ mod_group_comparison_server <- function(id, rv_group) {
             title = paste("Metric:", gsub("_", " ", input$metric_to_plot), "by Animal"),
             x_label = "Experimental Group"
         )
+    })
+    
+    # --- Statistical Analysis Logic ---
+    
+    # Generic function to run stats and format the output for display
+    run_and_format_stats <- function(data, metric, group_var = "GroupName") {
+      req(data, metric, group_var)
+      
+      # Ensure there are at least two groups and the metric exists and has variance
+      if (!metric %in% names(data) || n_distinct(data[[group_var]]) < 2 || sd(data[[metric]], na.rm = TRUE) == 0) {
+        return("Statistical comparison requires at least two groups with variability.")
+      }
+      
+      formula <- as.formula(paste0("`", metric, "` ~ `", group_var, "`"))
+      num_groups <- n_distinct(data[[group_var]])
+      
+      tryCatch({
+        if (num_groups == 2) {
+          # Perform Welch's t-test for two groups
+          test_result <- t.test(formula, data = data)
+          title <- "Welch's Two Sample t-test"
+          output_summary <- capture.output(print(test_result))
+        } else {
+          # Perform ANOVA for more than two groups
+          aov_result <- aov(formula, data = data)
+          test_summary <- summary(aov_result)
+          title <- "Analysis of Variance (ANOVA)"
+          output_summary <- capture.output(print(test_summary))
+          
+          # Add Tukey HSD post-hoc test
+          tukey_result <- TukeyHSD(aov_result)
+          output_summary <- c(output_summary, "", "Tukey Honest Significant Differences (Post-Hoc Test):", capture.output(print(tukey_result)))
+        }
+        
+        return(paste(c(title, "---", output_summary), collapse = "\n"))
+        
+      }, error = function(e) {
+        return(paste("An error occurred during statistical analysis:", e$message))
+      })
+    }
+    
+    # Reactive for ganglion-level statistics
+    ganglion_stats <- reactive({
+      req(ganglion_summary(), input$metric_to_plot)
+      run_and_format_stats(ganglion_summary(), input$metric_to_plot)
+    })
+    
+    # Reactive for animal-level statistics
+    animal_stats <- reactive({
+      req(animal_summary(), input$metric_to_plot)
+      run_and_format_stats(animal_summary(), input$metric_to_plot)
+    })
+    
+    # Render the statistical outputs
+    output$ganglion_stats_output <- renderText({
+      ganglion_stats()
+    })
+    
+    output$animal_stats_output <- renderText({
+      animal_stats()
+    })
+    
+    # --- Table Logic ---
+    
+    # Render table for all individual cell metrics
+    output$all_metrics_table <- DT::renderDT({
+      req(all_metrics())
+      DT::datatable(all_metrics(),
+                options = list(pageLength = 10, scrollX = TRUE),
+                extensions = 'Buttons',
+                filter = 'top',
+                rownames = FALSE) %>%
+        DT::formatRound(columns = which(sapply(all_metrics(), is.numeric)), digits = 3)
+    })
+    
+    # Render table for animal-level summary
+    output$animal_summary_table <- DT::renderDT({
+      req(animal_summary())
+      DT::datatable(animal_summary(),
+                options = list(pageLength = 10, scrollX = TRUE),
+                extensions = 'Buttons',
+                filter = 'top',
+                rownames = FALSE) %>%
+        DT::formatRound(columns = which(sapply(animal_summary(), is.numeric)), digits = 3)
+    })
+    
+    # Render table for ganglion-level summary
+    output$ganglion_summary_table <- DT::renderDT({
+      req(ganglion_summary())
+      DT::datatable(ganglion_summary(),
+                options = list(pageLength = 10, scrollX = TRUE),
+                extensions = 'Buttons',
+                filter = 'top',
+                rownames = FALSE) %>%
+        DT::formatRound(columns = which(sapply(ganglion_summary(), is.numeric)), digits = 3)
     })
     
   })
