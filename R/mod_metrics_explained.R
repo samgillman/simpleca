@@ -124,7 +124,7 @@ mod_metrics_explained_server <- function(id, rv) {
         # Add a simple F0 label inside the region
         p <- p + annotate("text", 
                           x = baseline_end_time / 2, 
-                          y = max(trace$dFF0, na.rm = TRUE) * 0.05,
+                          y = max(trace$dFF0, na.rm = TRUE) * 0.15,
                           label = "F₀", color = "black", fontface = "bold", size = 5)
       }
       
@@ -143,6 +143,10 @@ mod_metrics_explained_server <- function(id, rv) {
         geom_text(data = data.frame(Time = peak_time, dFF0 = metric$Peak_dFF0),
                   aes(x = Time, y = dFF0, label = round(dFF0, 2)),
                   vjust = -1.5, color = "red", size = 4) +
+        # Text label for the peak line itself
+        annotate("text", x = peak_time, y = metric$Peak_dFF0 / 2, 
+                 label = "Peak ΔF/F₀", color = "red", angle = 90, 
+                 vjust = -0.5, fontface = "bold", size = 4) +
         labs(
           title = paste("Signal Trace for Cell:", metric$Cell),
           subtitle = paste("Group:", metric$Group),
