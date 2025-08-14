@@ -121,6 +121,11 @@ mod_group_timecourse_server <- function(id, rv_group) {
     build_group_timecourse <- function() {
       req(rv_group$combined_data, rv_group$combined_data$time_course)
       tc <- rv_group$combined_data$time_course
+      # Alias columns if needed
+      if (!"GroupName" %in% names(tc) && "Group" %in% names(tc)) tc$GroupName <- tc$Group
+      # Coerce numeric and drop invalid rows
+      if (!is.numeric(tc$Time)) tc$Time <- suppressWarnings(as.numeric(tc$Time))
+      if (!is.numeric(tc$dFF0)) tc$dFF0 <- suppressWarnings(as.numeric(tc$dFF0))
       tc <- tc %>% dplyr::filter(is.finite(Time), is.finite(dFF0))
       validate(need(nrow(tc) > 0, "No group time course data. Use Combine & Annotate first."))
 
@@ -132,10 +137,19 @@ mod_group_timecourse_server <- function(id, rv_group) {
 
       p <- ggplot2::ggplot()
       if (isTRUE(input$gt_show_traces) && nrow(tc) > 0) {
-        alpha_traces <- 1 - (as.numeric(input$gt_trace_transparency) %||% 65) / 100
-        p <- p + ggplot2::geom_line(data = tc,
-               ggplot2::aes(x = Time, y = dFF0, group = interaction(GroupName, Cell_ID, drop = TRUE), color = GroupName),
-               inherit.aes = FALSE, alpha = alpha_traces, linewidth = 0.35)
+        alpha_traces <- 1 - (as.numeric(input$gt_trace_transparency)) / 100
+        alpha_traces <- if (is.finite(alpha_traces)) max(0, min(1, alpha_traces)) else 0.35
+        # Determine trace grouping column fallback
+        trace_col <- if ("Cell_ID" %in% names(tc)) "Cell_ID" else if ("OriginalCell" %in% names(tc)) "OriginalCell" else NULL
+        if (is.null(trace_col)) {
+          p <- p + ggplot2::geom_line(data = tc,
+                 ggplot2::aes(x = Time, y = dFF0, group = GroupName, color = GroupName),
+                 inherit.aes = FALSE, alpha = alpha_traces, linewidth = 0.35)
+        } else {
+          p <- p + ggplot2::geom_line(data = tc,
+                 ggplot2::aes(x = Time, y = dFF0, group = interaction(GroupName, .data[[trace_col]], drop = TRUE), color = GroupName),
+                 inherit.aes = FALSE, alpha = alpha_traces, linewidth = 0.35)
+        }
       }
 
       p <- p +
@@ -145,15 +159,16 @@ mod_group_timecourse_server <- function(id, rv_group) {
         ggplot2::geom_line(data = summary, ggplot2::aes(x = Time, y = mean_dFF0, color = GroupName),
                            linewidth = input$gt_line_width)
 
-      # Colors
+      # Colors override
       if (!is.null(input$gt_line_color) && nzchar(input$gt_line_color)) {
         groups <- unique(summary$GroupName)
         cols <- stats::setNames(rep(input$gt_line_color, length(groups)), groups)
         p <- p + ggplot2::scale_color_manual(values = cols) + ggplot2::scale_fill_manual(values = cols)
       }
 
-      p <- p + ggplot2::labs(title = input$gt_title, subtitle = input$gt_subtitle,
-              x = input$gt_x %||% "Time (s)", y = input$gt_y %||% "ΔF/F₀")
+      lbl_x <- if (is.null(input$gt_x) || !nzchar(input$gt_x)) "Time (s)" else input$gt_x
+      lbl_y <- if (is.null(input$gt_y) || !nzchar(input$gt_y)) "ΔF/F₀" else input$gt_y
+      p <- p + ggplot2::labs(title = input$gt_title, subtitle = input$gt_subtitle, x = lbl_x, y = lbl_y)
 
       base_theme <- switch(input$gt_theme,
                            classic = ggplot2::theme_classic(),
