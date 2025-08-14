@@ -126,9 +126,11 @@ mod_group_comparison_server <- function(id, rv_group) {
       num_groups <- n_distinct(data[[group_var]])
       method <- if (num_groups == 2) "t.test" else "anova"
       
+      full_title <- paste("Metric:", gsub("_", " ", metric), title)
+      
       p <- ggplot(data, aes(x = .data[[group_var]], y = .data[[metric]], fill = .data[[group_var]])) +
         geom_boxplot(alpha = 0.6, outlier.shape = NA) +
-        labs(title = title, x = "Experimental Group", y = gsub("_", " ", metric)) +
+        labs(title = full_title, x = "Experimental Group", y = gsub("_", " ", metric)) +
         theme_minimal(base_size = 15) +
         theme(legend.position = "none", plot.title = element_text(hjust = 0.5))
       
@@ -136,7 +138,7 @@ mod_group_comparison_server <- function(id, rv_group) {
         p <- p + geom_jitter(width = 0.15, alpha = 0.7, size = 2.5)
       }
       
-      if (num_groups >= 2 && nrow(data) > num_groups && title != "by Cell (No Stats)") {
+      if (num_groups >= 2 && nrow(data) > num_groups && !grepl("by Cell", title, fixed = TRUE)) {
         p <- p + ggpubr::stat_compare_means(method = method, label.y.npc = 0.9)
         if (num_groups > 2) {
           p <- p + ggpubr::stat_compare_means(label = "p.signif", method = "t.test", ref.group = ".all.")
