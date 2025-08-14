@@ -450,7 +450,7 @@ mod_metrics_explained_server <- function(id, rv) {
         geom_point(data = data$metric, aes(x = Time_to_Peak, y = Peak_dFF0), color = "red", size = 4) +
         geom_text(data = data$metric, aes(x = Time_to_Peak, y = Peak_dFF0, label = round(Peak_dFF0, 3)), vjust = -1.5, color = "red") +
         labs(title = paste("Peak ΔF/F₀ for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
-        explanation_theme()
+        explanation_theme() + coord_cartesian(clip = "off")
     }, res = 96)
     
     output$snr_plot <- renderPlot({
@@ -462,19 +462,20 @@ mod_metrics_explained_server <- function(id, rv) {
       b_end_time <- trace$Time[min(rv$baseline_frames[2], nrow(trace))]
       y_range <- diff(range(trace$dFF0, na.rm = TRUE))
       signal_label_y <- metric$Peak_dFF0 + y_range * 0.1
-      noise_label_y <- metric$Baseline_SD + y_range * 0.05
+      noise_label_y <- metric$Baseline_SD + y_range * 0.1
       
       ggplot(trace, aes(x = Time, y = dFF0)) +
         geom_line(color = "gray50", linewidth = 1) +
         geom_ribbon(aes(ymin = -metric$Baseline_SD, ymax = metric$Baseline_SD), 
                     fill = "firebrick", alpha = 0.2, data = . %>% dplyr::filter(Time <= b_end_time)) +
-        geom_segment(aes(x = b_end_time / 2, y = noise_label_y + y_range * 0.05, xend = b_end_time / 2, yend = metric$Baseline_SD),
+        geom_segment(aes(x = b_end_time / 2, y = noise_label_y, xend = b_end_time / 2, yend = metric$Baseline_SD + y_range * 0.01),
                      arrow = arrow(length = unit(0.2, "cm")), color = "firebrick") +
-        annotate("text", x = b_end_time / 2, y = noise_label_y + y_range * 0.05, label = "Baseline Noise (SD)", vjust = -0.5, color = "firebrick", fontface = "bold") +
+        geom_label(aes(x = b_end_time / 2, y = noise_label_y, label = "Baseline Noise (SD)"), 
+                   color = "firebrick", fontface = "bold", size = 4, fill = alpha("white", 0.7), label.size = NA) +
         geom_point(data = metric, aes(x = Time_to_Peak, y = Peak_dFF0), color = "blue", size = 4) +
         annotate("text", x = metric$Time_to_Peak, y = signal_label_y, label = "Signal", hjust = 0.5, color = "blue", fontface = "bold") +
         labs(title = paste("Signal-to-Noise Ratio (SNR) for Cell", metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
-        explanation_theme()
+        explanation_theme() + coord_cartesian(clip = "off")
     }, res = 96)
 
     output$rise_time_plot <- renderPlot({
@@ -554,13 +555,24 @@ mod_metrics_explained_server <- function(id, rv) {
       trace <- data$processed_trace
       metric <- data$metric
       
+      # For positioning the duration arrow
+      y_pos <- min(trace$dFF0, na.rm = TRUE) - diff(range(trace$dFF0, na.rm = TRUE)) * 0.05
+
       ggplot(trace, aes(x = Time, y = dFF0)) +
         geom_line(color = "gray50", linewidth = 1) +
         geom_segment(data = metric, aes(x = Time_to_Peak, xend = Time_to_Peak, y = 0, yend = Peak_dFF0), color = "red", linetype = "dashed") +
         geom_point(data = metric, aes(x = Time_to_Peak, y = Peak_dFF0), color = "red", size = 4) +
-        geom_text(data = metric, aes(x = Time_to_Peak, y = Peak_dFF0, label = round(Peak_dFF0, 3)), vjust = -1.5, color = "red") +
+        
+        # --- Arrow and Label for the Time to Peak duration ---
+        geom_segment(data = metric, aes(x = 0, xend = Time_to_Peak, y = y_pos, yend = y_pos),
+                     arrow = arrow(length = unit(0.25, "cm"), ends = "both"), color = "purple", linewidth = 1) +
+        annotate("text", x = metric$Time_to_Peak / 2, y = y_pos, 
+                 label = paste("Time to Peak =", round(metric$Time_to_Peak, 2), "s"),
+                 color = "purple", vjust = 1.5, fontface = "bold", size = 4.5) +
+
         labs(title = paste("Time to Peak for Cell", metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
-        explanation_theme() + coord_cartesian(clip = "off")
+        explanation_theme() +
+        coord_cartesian(clip = "off") # Ensure labels are not clipped
     }, res = 96)
     
     # --- FWHM Plot and Calculation Logic ---
@@ -601,7 +613,7 @@ mod_metrics_explained_server <- function(id, rv) {
                   color = "darkorange", vjust = -1.2, fontface = "bold", size = 4.5) +
 
         labs(title = paste("FWHM & Half-Width for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
-        explanation_theme()
+        explanation_theme() + coord_cartesian(clip = "off")
       
       if (times$is_sustained) {
         p <- p + annotate("text", x = annotation_df$x_mid, y = annotation_df$y_mid, 
@@ -621,7 +633,7 @@ mod_metrics_explained_server <- function(id, rv) {
         annotate("text", x = mean(range(data$processed_trace$Time)), y = max(data$processed_trace$dFF0, na.rm=TRUE)/2, 
                  label = paste("AUC =", round(data$metric$AUC, 2)), color = "black", fontface = "bold", size = 6) +
         labs(title = paste("Area Under Curve (AUC) for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
-        explanation_theme()
+        explanation_theme() + coord_cartesian(clip = "off")
     }, res = 96)
 
     output$ca_plot <- renderPlot({
@@ -655,7 +667,7 @@ mod_metrics_explained_server <- function(id, rv) {
                  color = "dodgerblue", fontface = "bold", size = 4.5, vjust = -0.5) +
 
         labs(title = paste("Calcium Entry Rate for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
-        explanation_theme()
+        explanation_theme() + coord_cartesian(clip = "off")
     }, res = 96)
     
   })
