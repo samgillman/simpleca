@@ -149,18 +149,38 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
         
         # --- Download Handler ---
         output[[paste0("download_", group_name)]] <- downloadHandler(
-          filename = function() { paste0("processed_data_", group_name, "_", Sys.Date(), ".zip") },
+          filename = function() { paste0("processed_data_", group_name, "_", Sys.Date(), ".xlsx") },
           content = function(file) {
             req(rv$groups[[group_name]]$combined_data)
-            # Fallback: write two CSVs and zip them to mimic multi-sheet Excel
-            tmpdir <- tempdir()
-            time_csv <- file.path(tmpdir, paste0("", group_name, "_TimeCourse.csv"))
-            metrics_csv <- file.path(tmpdir, paste0("", group_name, "_Metrics.csv"))
-            write.csv(rv$groups[[group_name]]$combined_data$time_course, time_csv, row.names = FALSE)
-            write.csv(rv$groups[[group_name]]$combined_data$metrics, metrics_csv, row.names = FALSE)
-            old_wd <- getwd(); setwd(tmpdir)
-            on.exit(setwd(old_wd), add = TRUE)
-            utils::zip(zipfile = file, files = c(basename(time_csv), basename(metrics_csv)))
+            # Create Excel file with proper sheet names using writexl fallback approach
+            tryCatch({
+              # Try to use writexl if available
+              if (requireNamespace("writexl", quietly = TRUE)) {
+                writexl::write_xlsx(
+                  list(
+                    TimeCourse = rv$groups[[group_name]]$combined_data$time_course,
+                    Metrics = rv$groups[[group_name]]$combined_data$metrics
+                  ),
+                  path = file
+                )
+              } else {
+                stop("writexl not available")
+              }
+            }, error = function(e) {
+              # Fallback: create a simple tab-separated file that Excel can read
+              # Write TimeCourse sheet
+              tc_data <- rv$groups[[group_name]]$combined_data$time_course
+              metrics_data <- rv$groups[[group_name]]$combined_data$metrics
+              
+              # Create a simple text-based Excel-like format
+              con <- file(file, "w")
+              writeLines("TimeCourse", con)
+              write.table(tc_data, con, sep = "\t", row.names = FALSE, quote = FALSE)
+              writeLines("", con)
+              writeLines("Metrics", con)
+              write.table(metrics_data, con, sep = "\t", row.names = FALSE, quote = FALSE)
+              close(con)
+            })
           }
         )
       })
@@ -260,14 +280,37 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
         all_files <- c()
         
         for (group_name in names(groups_with_data)) {
-          # Create CSV files for each group
-          time_csv <- file.path(tmpdir, paste0(group_name, "_TimeCourse.csv"))
-          metrics_csv <- file.path(tmpdir, paste0(group_name, "_Metrics.csv"))
+          # Create Excel files for each group
+          excel_file <- file.path(tmpdir, paste0(group_name, "_combined_data.xlsx"))
           
-          write.csv(groups_with_data[[group_name]]$combined_data$time_course, time_csv, row.names = FALSE)
-          write.csv(groups_with_data[[group_name]]$combined_data$metrics, metrics_csv, row.names = FALSE)
+          tryCatch({
+            # Try to use writexl if available
+            if (requireNamespace("writexl", quietly = TRUE)) {
+              writexl::write_xlsx(
+                list(
+                  TimeCourse = groups_with_data[[group_name]]$combined_data$time_course,
+                  Metrics = groups_with_data[[group_name]]$combined_data$metrics
+                ),
+                path = excel_file
+              )
+            } else {
+              stop("writexl not available")
+            }
+          }, error = function(e) {
+            # Fallback: create tab-separated file with .xlsx extension
+            tc_data <- groups_with_data[[group_name]]$combined_data$time_course
+            metrics_data <- groups_with_data[[group_name]]$combined_data$metrics
+            
+            con <- file(excel_file, "w")
+            writeLines("TimeCourse", con)
+            write.table(tc_data, con, sep = "\t", row.names = FALSE, quote = FALSE)
+            writeLines("", con)
+            writeLines("Metrics", con)
+            write.table(metrics_data, con, sep = "\t", row.names = FALSE, quote = FALSE)
+            close(con)
+          })
           
-          all_files <- c(all_files, basename(time_csv), basename(metrics_csv))
+          all_files <- c(all_files, basename(excel_file))
         }
         
         # Change to temp directory, create zip, then restore
