@@ -424,16 +424,17 @@ mod_metrics_explained_server <- function(id, rv) {
       metric <- data$metric
       
       b_end_time <- trace$Time[min(rv$baseline_frames[2], nrow(trace))]
-      
-      # Dynamically position labels to prevent overlap
       y_range <- diff(range(trace$dFF0, na.rm = TRUE))
       signal_label_y <- metric$Peak_dFF0 + y_range * 0.1
       noise_label_y <- metric$Baseline_SD + y_range * 0.05
       
       ggplot(trace, aes(x = Time, y = dFF0)) +
         geom_line(color = "gray50", linewidth = 1) +
-        annotate("rect", xmin = min(trace$Time), xmax = b_end_time, ymin = -metric$Baseline_SD, ymax = metric$Baseline_SD, fill = "firebrick", alpha = 0.2) +
-        annotate("text", x = min(trace$Time) + (b_end_time - min(trace$Time))/2, y = noise_label_y, label = "Baseline Noise (SD)", vjust = -0.5, color = "firebrick", fontface = "bold") +
+        geom_ribbon(aes(ymin = -metric$Baseline_SD, ymax = metric$Baseline_SD), 
+                    fill = "firebrick", alpha = 0.2, data = . %>% dplyr::filter(Time <= b_end_time)) +
+        geom_segment(aes(x = b_end_time / 2, y = noise_label_y + y_range * 0.05, xend = b_end_time / 2, yend = metric$Baseline_SD),
+                     arrow = arrow(length = unit(0.2, "cm")), color = "firebrick") +
+        annotate("text", x = b_end_time / 2, y = noise_label_y + y_range * 0.05, label = "Baseline Noise (SD)", vjust = -0.5, color = "firebrick", fontface = "bold") +
         geom_point(data = metric, aes(x = Time_to_Peak, y = Peak_dFF0), color = "blue", size = 4) +
         annotate("text", x = metric$Time_to_Peak, y = signal_label_y, label = "Signal", hjust = 0.5, color = "blue", fontface = "bold") +
         labs(title = paste("Signal-to-Noise Ratio (SNR) for Cell", metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
@@ -459,8 +460,7 @@ mod_metrics_explained_server <- function(id, rv) {
       
       y_offset <- (max(trace$dFF0, na.rm = TRUE) - min(trace$dFF0, na.rm = TRUE)) * 0.05
       label_y_pos <- p90_val + y_offset
-      label_x_pos <- min(trace$Time)
-
+      
       ggplot(trace, aes(x = Time, y = dFF0)) +
         geom_line(color = "gray50", linewidth = 1) +
         geom_segment(aes(x = 0, y = p10_val, xend = t10, yend = p10_val), color = "darkorange", linetype = "dotted") +
@@ -470,17 +470,17 @@ mod_metrics_explained_server <- function(id, rv) {
         geom_segment(aes(x = t90, y = 0, xend = t90, yend = p90_val), color = "darkorange", linetype = "dashed") +
         geom_point(aes(x = !!t90, y = !!p90_val), color = "darkorange", size = 4) +
         
-        annotate("text", x = label_x_pos, y = p10_val, label = "10%", color = "darkorange", fontface = "bold", hjust = -0.2) +
-        annotate("text", x = label_x_pos, y = p90_val, label = "90%", color = "darkorange", fontface = "bold", hjust = -0.2) +
+        annotate("text", x = 0, y = p10_val, label = "10%", color = "darkorange", fontface = "bold", hjust = 1.2) +
+        annotate("text", x = 0, y = p90_val, label = "90%", color = "darkorange", fontface = "bold", hjust = 1.2) +
         
         geom_segment(aes(x = t10, xend = t90, y = label_y_pos, yend = label_y_pos), 
-                     arrow = arrow(length = unit(0.25, "cm"), ends = "both"), color = "firebrick", linewidth = 1.2) +
+                     arrow = arrow(length = unit(0.25, "cm"), ends = "both"), color = "firebrick", linewidth = 1) +
         annotate("text", x = mean(c(t10, t90)), y = label_y_pos, 
                  label = paste("Rise Time =", round(metric$Rise_Time, 2), "s"),
                  color = "firebrick", vjust = -0.8, fontface = "bold", size = 4.5) +
                  
         labs(title = paste("Rise Time (10-90%) for Cell", metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
-        explanation_theme()
+        explanation_theme() + coord_cartesian(clip = "off")
     }, res = 96)
     
     output$ttp_plot <- renderPlot({
@@ -493,25 +493,23 @@ mod_metrics_explained_server <- function(id, rv) {
       p50 <- 0.50 * metric$Peak_dFF0
       p75 <- 0.75 * metric$Peak_dFF0
       
-      label_x_pos <- min(trace$Time)
-
       ggplot(trace, aes(x = Time, y = dFF0)) +
         geom_line(color = "gray50", linewidth = 1) +
         
         geom_hline(yintercept = p25, color = "seagreen", linetype = "dotted") +
         geom_segment(data = metric, aes(x = Time_to_25_Peak, xend = Time_to_25_Peak, y=0, yend=p25), color = "seagreen", linetype = "dashed") +
-        annotate("text", x = label_x_pos, y = p25, label = "25%", color = "seagreen", fontface = "bold", hjust = -0.2) +
+        annotate("text", x = 0, y = p25, label = "25%", color = "seagreen", fontface = "bold", hjust = 1.2) +
         
         geom_hline(yintercept = p50, color = "goldenrod", linetype = "dotted") +
         geom_segment(data = metric, aes(x = Time_to_50_Peak, xend = Time_to_50_Peak, y=0, yend=p50), color = "goldenrod", linetype = "dashed") +
-        annotate("text", x = label_x_pos, y = p50, label = "50%", color = "goldenrod", fontface = "bold", hjust = -0.2) +
+        annotate("text", x = 0, y = p50, label = "50%", color = "goldenrod", fontface = "bold", hjust = 1.2) +
         
         geom_hline(yintercept = p75, color = "firebrick", linetype = "dotted") +
         geom_segment(data = metric, aes(x = Time_to_75_Peak, xend = Time_to_75_Peak, y=0, yend=p75), color = "firebrick", linetype = "dashed") +
-        annotate("text", x = label_x_pos, y = p75, label = "75%", color = "firebrick", fontface = "bold", hjust = -0.2) +
+        annotate("text", x = 0, y = p75, label = "75%", color = "firebrick", fontface = "bold", hjust = 1.2) +
         
         labs(title = paste("Time to % Peak for Cell", metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
-        explanation_theme()
+        explanation_theme() + coord_cartesian(clip = "off")
     }, res = 96)
     
     # --- FWHM Plot and Calculation Logic ---
@@ -603,7 +601,7 @@ mod_metrics_explained_server <- function(id, rv) {
         # --- Clean, Horizontal Rate Label ---
         annotate("text", x = mean(c(t10, t90)), y = p10_val,
                  label = paste("Rate =", round(data$metric$Calcium_Entry_Rate, 3)),
-                 color = "dodgerblue", fontface = "bold", size = 5, vjust = -1) +
+                 color = "dodgerblue", fontface = "bold", size = 4.5, vjust = -0.5) +
 
         labs(title = paste("Calcium Entry Rate for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme()
