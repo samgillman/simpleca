@@ -148,16 +148,18 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
         
         # --- Download Handler ---
         output[[paste0("download_", group_name)]] <- downloadHandler(
-          filename = function() { paste0("processed_data_", group_name, "_", Sys.Date(), ".xlsx") },
+          filename = function() { paste0("processed_data_", group_name, "_", Sys.Date(), ".zip") },
           content = function(file) {
             req(rv$groups[[group_name]]$combined_data)
-            # Use openxlsx to write to a multi-sheet file
-            wb <- createWorkbook()
-            addWorksheet(wb, "TimeCourse")
-            addWorksheet(wb, "Metrics")
-            writeData(wb, "TimeCourse", rv$groups[[group_name]]$combined_data$time_course)
-            writeData(wb, "Metrics", rv$groups[[group_name]]$combined_data$metrics)
-            saveWorkbook(wb, file, overwrite = TRUE)
+            # Fallback: write two CSVs and zip them to mimic multi-sheet Excel
+            tmpdir <- tempdir()
+            time_csv <- file.path(tmpdir, paste0("", group_name, "_TimeCourse.csv"))
+            metrics_csv <- file.path(tmpdir, paste0("", group_name, "_Metrics.csv"))
+            write.csv(rv$groups[[group_name]]$combined_data$time_course, time_csv, row.names = FALSE)
+            write.csv(rv$groups[[group_name]]$combined_data$metrics, metrics_csv, row.names = FALSE)
+            old_wd <- getwd(); setwd(tmpdir)
+            on.exit(setwd(old_wd), add = TRUE)
+            utils::zip(zipfile = file, files = c(basename(time_csv), basename(metrics_csv)))
           }
         )
       })
