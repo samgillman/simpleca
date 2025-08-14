@@ -61,7 +61,7 @@ ui <- dashboardPage(
       # --- Menu Item 2: Group Analysis (Collapsible) ---
       menuItem("Group Analysis", tabName = "group_analysis", icon = icon("users"),
         menuSubItem("Combine & Annotate", tabName = "group_combiner", icon = icon("object-group")),
-        menuSubItem("Group Comparisons", tabName = "group_comparison", icon = icon("chart-bar"))
+        menuSubItem("Group Time Course", tabName = "group_timecourse", icon = icon("chart-line"))
       ),
       
       # --- Menu Item 3: Help ---
@@ -94,7 +94,9 @@ ui <- dashboardPage(
       
       # --- Group Analysis Panels ---
       mod_group_combiner_ui("group_combiner"),
-      mod_group_comparison_ui("group_comparison"),
+      mod_group_timecourse_ui("group_timecourse"),
+      # Commenting out Group Comparisons temporarily
+      # mod_group_comparison_ui("group_comparison"),
       
       # --- Help Panel ---
       mod_help_ui("help")
@@ -140,14 +142,16 @@ server <- function(input, output, session) {
     combined_data = NULL # This will store the master combined dataset for group analysis
   )
   mod_group_combiner_server("group_combiner", rv_group, parent_session = session)
-  mod_group_comparison_server("group_comparison", rv_group)
+  mod_group_timecourse_server("group_timecourse", rv_group)
+  # Temporarily disable group comparisons
+  # mod_group_comparison_server("group_comparison", rv_group)
 
   # --- Observers to manage UI state ---
   
   # When data is combined, switch to the comparison tab
   observeEvent(rv_group$combined_data, {
     if(!is.null(rv_group$combined_data)) {
-      updateTabItems(session, "sidebar_tabs", selected = "group_comparison")
+      updateTabItems(session, "sidebar_tabs", selected = "group_timecourse")
     }
   })
 
