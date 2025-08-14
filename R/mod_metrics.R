@@ -12,7 +12,7 @@ mod_metrics_ui <- function(id) {
                                         "FWHM (s)"="FWHM",
                                         "Half Width (HWHM)"="Half_Width",
                                         "Ca²⁺ Entry Rate"="Calcium_Entry_Rate","AUC"="AUC",
-                                        "Response Amplitude"="Response_Amplitude","SNR"="SNR"),
+                                        "SNR"="SNR"),
                             selected="Peak_dFF0"),
                 checkboxInput(ns("metric_sort_cells"),"Sort cell bars within group", TRUE),
                 sliderInput(ns("metric_inset_scale"),"Inset size", min = 0.5, max = 3, value = 1, step = 0.1),

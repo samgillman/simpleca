@@ -209,13 +209,13 @@ mod_time_course_server <- function(id, rv) {
     
     output$tc_summary_table <- renderUI({
       req(rv$metrics)
-      metric_cols <- c("Peak_dFF0","Response_Amplitude","AUC","Half_Width","Calcium_Entry_Rate",
+      metric_cols <- c("Peak_dFF0","AUC","Half_Width","Calcium_Entry_Rate",
                        "Time_to_Peak","Time_to_25_Peak","Time_to_50_Peak","Time_to_75_Peak","Rise_Time","SNR")
       present <- intersect(metric_cols, names(rv$metrics))
       if (length(present) == 0) return(NULL)
       nice_name <- function(cl){
         switch(cl,
-               Peak_dFF0 = "Peak ΔF/F₀", Response_Amplitude = "Response Amplitude (ΔF/F₀)",
+               Peak_dFF0 = "Peak ΔF/F₀", 
                Calcium_Entry_Rate = "Ca²⁺ Entry Rate", Time_to_Peak = "Time to Peak (s)",
                Time_to_25_Peak = "Time to 25% Peak (s)", Time_to_50_Peak = "Time to 50% Peak (s)",
                Time_to_75_Peak = "Time to 75% Peak (s)", Rise_Time = "Rise Time (s)",
