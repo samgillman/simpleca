@@ -41,15 +41,15 @@ mod_load_data_ui <- function(id) {
         width = 6,
         box(title = "At a glance", status = "info", solidHeader = TRUE, width = 12,
             div(style = "padding: 5px;",
-                div(class = "stat-card", style = "background: linear-gradient(135deg, #5bc0de 0%, #46b8da 100%);",
+                div(class = "stat-card", style = "background: linear-gradient(135deg, #5bc0de 0%, #46b8da 100%); color: white; text-align: center;",
                     h3(textOutput(ns("n_files_text"), inline = TRUE)),
                     p("Files loaded")
                 ),
-                div(class = "stat-card", style = "background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);",
+                div(class = "stat-card", style = "background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); color: white; text-align: center;",
                     h3(textOutput(ns("n_cells_text"), inline = TRUE)),
                     p("Total cells")
                 ),
-                div(class = "stat-card", style = "background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);",
+                div(class = "stat-card", style = "background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%); color: white; text-align: center;",
                     h3(textOutput(ns("n_timepoints_text"), inline = TRUE)),
                     p("Total timepoints")
                 )
