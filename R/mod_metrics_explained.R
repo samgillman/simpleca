@@ -24,8 +24,8 @@ mod_metrics_explained_ui <- function(id) {
           # --- UI for Peak dF/F0 Explanation ---
           conditionalPanel(
             condition = paste0("input['", ns("metric_to_explain"), "'] == 'peak_dff0'"),
-            fluidRow(
-              box(
+    fluidRow(
+             box(
                 title = "Peak ΔF/F₀",
                 status = "primary",
                 solidHeader = TRUE,
@@ -105,18 +105,18 @@ mod_metrics_explained_ui <- function(id) {
                          h4("Time Course Plot"),
                          plotOutput(ns("snr_plot"))
                   )
+                  )
                 )
               )
-            )
-          ),
-
+            ),
+            
           # --- UI for Rise Time Explanation ---
-          conditionalPanel(
+            conditionalPanel(
             condition = paste0("input['", ns("metric_to_explain"), "'] == 'rise_time'"),
             fluidRow(
               box(
                 title = "Rise Time (10-90%)", status = "warning", solidHeader = TRUE, width = 12, collapsible = TRUE,
-                fluidRow(
+              fluidRow(
                   column(4,
                          h4("Explore a Single Cell"),
                          uiOutput(ns("cell_selector_ui_rise")),
@@ -163,43 +163,43 @@ mod_metrics_explained_ui <- function(id) {
                          h4("Time Course Plot"),
                          plotOutput(ns("ttp_plot"))
                   )
+                       )
                 )
               )
-            )
-          ),
-
-          # --- UI for FWHM Explanation (to be added) ---
-          conditionalPanel(
-            condition = paste0("input['", ns("metric_to_explain"), "'] == 'fwhm'"),
-            fluidRow(
-              box(
-                title = "FWHM & Half-Width",
-                status = "success",
-                solidHeader = TRUE,
-                width = 12,
-                collapsible = TRUE,
-                fluidRow(
-                  column(4,
-                         h4("Explore a Single Cell"),
-                         # The same cell selector can be used for both explanations
-                         uiOutput(ns("cell_selector_ui_fwhm")),
-                         hr(),
-                         h4("Explanation"),
-                         p(strong("FWHM (Full-Width at Half-Maximum)"), " measures the total duration a signal is above 50% of its peak amplitude. It's a common way to quantify the duration of a transient response."),
-                         p(strong("Half-Width (HWHM)"), " is exactly half of the FWHM."),
-                         h4("Calculation"),
-                         withMathJax(),
-                         p("FWHM is the difference between the time the signal crosses 50% on the way down (t_right) and on the way up (t_left):"),
-                         helpText("$$ \\text{FWHM} = t_{right} - t_{left} $$"),
-                         uiOutput(ns("fwhm_calculation_ui"))
-                  ),
-                  column(8,
-                         h4("Time Course Plot"),
-                         plotOutput(ns("fwhm_plot"))
+            ),
+            
+            # --- UI for FWHM Explanation (to be added) ---
+            conditionalPanel(
+              condition = paste0("input['", ns("metric_to_explain"), "'] == 'fwhm'"),
+              fluidRow(
+                box(
+                  title = "FWHM & Half-Width",
+                  status = "success",
+                  solidHeader = TRUE,
+                  width = 12,
+                  collapsible = TRUE,
+                  fluidRow(
+                    column(4,
+                           h4("Explore a Single Cell"),
+                           # The same cell selector can be used for both explanations
+                           uiOutput(ns("cell_selector_ui_fwhm")),
+                           hr(),
+                           h4("Explanation"),
+                           p(strong("FWHM (Full-Width at Half-Maximum)"), " measures the total duration a signal is above 50% of its peak amplitude. It's a common way to quantify the duration of a transient response."),
+                           p(strong("Half-Width (HWHM)"), " is exactly half of the FWHM."),
+                           h4("Calculation"),
+                           withMathJax(),
+                           p("FWHM is the difference between the time the signal crosses 50% on the way down (t_right) and on the way up (t_left):"),
+                           helpText("$$ \\text{FWHM} = t_{right} - t_{left} $$"),
+                           uiOutput(ns("fwhm_calculation_ui"))
+                    ),
+                    column(8,
+                           h4("Time Course Plot"),
+                           plotOutput(ns("fwhm_plot"))
+                    )
                   )
                 )
               )
-            )
           ),
 
           # --- UI for AUC Explanation ---
@@ -257,7 +257,7 @@ mod_metrics_explained_ui <- function(id) {
                 )
               )
             )
-          )
+            )
   )
 }
 
@@ -275,9 +275,9 @@ mod_metrics_explained_server <- function(id, rv) {
     
     create_cell_selector <- function(input_id) {
       renderUI({
-        req(rv$metrics)
-        cell_choices <- rv$metrics$Cell_ID
-        names(cell_choices) <- paste(rv$metrics$Group, "-", rv$metrics$Cell)
+      req(rv$metrics)
+      cell_choices <- rv$metrics$Cell_ID
+      names(cell_choices) <- paste(rv$metrics$Group, "-", rv$metrics$Cell)
         selectInput(ns(input_id), "Select a Cell to Visualize:", choices = cell_choices, selected = cell_choices[1])
       })
     }
@@ -467,7 +467,7 @@ mod_metrics_explained_server <- function(id, rv) {
             labs(title = paste("Rise Time (10-90%) for Cell", metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
             explanation_theme()
     }, res = 96)
-
+    
     output$ttp_plot <- renderPlot({
       req(selected_cell_data())
       data <- selected_cell_data()
@@ -524,7 +524,7 @@ mod_metrics_explained_server <- function(id, rv) {
       
       list(t_left = time_left, t_right = time_right, half_max_y = half_max, is_sustained = is_sustained)
     })
-
+    
     output$fwhm_plot <- renderPlot({
       req(selected_cell_data(), fwhm_times())
       data <- selected_cell_data()
