@@ -633,6 +633,7 @@ mod_metrics_explained_server <- function(id, rv) {
       
       p <- ggplot(trace, aes(x = Time, y = dFF0)) +
         explanation_theme() +
+        geom_line(color = "gray50", linewidth = 1) +
         
         # Horizontal line at 50% max
         geom_hline(yintercept = times$half_max_y, color = "dodgerblue", linetype = "dashed") +
