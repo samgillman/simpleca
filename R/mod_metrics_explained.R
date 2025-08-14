@@ -439,17 +439,23 @@ mod_metrics_explained_server <- function(id, rv) {
     output$peak_plot <- renderPlot({
       req(selected_cell_data())
       data <- selected_cell_data()
-      p <- ggplot(data$processed_trace, aes(x = Time, y = dFF0)) +
+      trace <- data$processed_trace
+      metric <- data$metric
+      
+      y_range <- diff(range(trace$dFF0, na.rm = TRUE))
+      label_y_pos <- metric$Peak_dFF0 + y_range * 0.05
+      
+      p <- ggplot(trace, aes(x = Time, y = dFF0)) +
         geom_line(color = "gray50", linewidth = 1)
       if (identical(rv$baseline_method, "frame_range") && !is.null(rv$baseline_frames)) {
-        b_start <- data$processed_trace$Time[min(rv$baseline_frames[1], nrow(data$processed_trace))]
-        b_end <- data$processed_trace$Time[min(rv$baseline_frames[2], nrow(data$processed_trace))]
+        b_start <- trace$Time[min(rv$baseline_frames[1], nrow(trace))]
+        b_end <- trace$Time[min(rv$baseline_frames[2], nrow(trace))]
         p <- p + annotate("rect", xmin = b_start, xmax = b_end, ymin = -Inf, ymax = Inf, fill = "grey95", alpha = 0.5)
       }
-      p + geom_segment(data = data$metric, aes(x = Time_to_Peak, xend = Time_to_Peak, y = 0, yend = Peak_dFF0), color = "red", linetype = "dashed") +
-        geom_point(data = data$metric, aes(x = Time_to_Peak, y = Peak_dFF0), color = "red", size = 4) +
-        geom_text(data = data$metric, aes(x = Time_to_Peak, y = Peak_dFF0, label = round(Peak_dFF0, 3)), vjust = -1.5, color = "red") +
-        labs(title = paste("Peak ΔF/F₀ for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
+      p + geom_segment(data = metric, aes(x = Time_to_Peak, xend = Time_to_Peak, y = 0, yend = Peak_dFF0), color = "red", linetype = "dashed") +
+        geom_point(data = metric, aes(x = Time_to_Peak, y = Peak_dFF0), color = "red", size = 4) +
+        annotate("text", x = metric$Time_to_Peak, y = label_y_pos, label = round(metric$Peak_dFF0, 3), vjust = 0, color = "red", size = 4.5) +
+        labs(title = paste("Peak ΔF/F₀ for Cell", metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme() + coord_cartesian(clip = "off")
     }, res = 96)
     
@@ -461,7 +467,6 @@ mod_metrics_explained_server <- function(id, rv) {
       
       b_end_time <- trace$Time[min(rv$baseline_frames[2], nrow(trace))]
       y_range <- diff(range(trace$dFF0, na.rm = TRUE))
-      signal_label_y <- metric$Peak_dFF0 + y_range * 0.1
       noise_label_y <- metric$Baseline_SD + y_range * 0.1
       
       ggplot(trace, aes(x = Time, y = dFF0)) +
@@ -473,7 +478,7 @@ mod_metrics_explained_server <- function(id, rv) {
         geom_label(aes(x = b_end_time / 2, y = noise_label_y, label = "Baseline Noise (SD)"), 
                    color = "firebrick", fontface = "bold", size = 4, fill = alpha("white", 0.7), label.size = NA) +
         geom_point(data = metric, aes(x = Time_to_Peak, y = Peak_dFF0), color = "blue", size = 4) +
-        annotate("text", x = metric$Time_to_Peak, y = signal_label_y, label = "Signal", hjust = 0.5, color = "blue", fontface = "bold") +
+        annotate("text", x = metric$Time_to_Peak, y = metric$Peak_dFF0 + y_range * 0.1, label = "Signal", hjust = 0.5, color = "blue", fontface = "bold") +
         labs(title = paste("Signal-to-Noise Ratio (SNR) for Cell", metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme() + coord_cartesian(clip = "off")
     }, res = 96)
@@ -627,10 +632,14 @@ mod_metrics_explained_server <- function(id, rv) {
     output$auc_plot <- renderPlot({
       req(selected_cell_data())
       data <- selected_cell_data()
-      ggplot(data$processed_trace, aes(x = Time, y = dFF0)) +
+      trace <- data$processed_trace
+      
+      label_y_pos <- min(trace$dFF0, na.rm = TRUE) + 0.8 * diff(range(trace$dFF0, na.rm = TRUE))
+      
+      ggplot(trace, aes(x = Time, y = dFF0)) +
         geom_ribbon(aes(ymin = 0, ymax = dFF0), fill = "darkseagreen", alpha = 0.7) +
         geom_line(color = "gray50", linewidth = 1) +
-        annotate("text", x = mean(range(data$processed_trace$Time)), y = max(data$processed_trace$dFF0, na.rm=TRUE)/2, 
+        annotate("text", x = mean(range(trace$Time)), y = label_y_pos, 
                  label = paste("AUC =", round(data$metric$AUC, 2)), color = "black", fontface = "bold", size = 6) +
         labs(title = paste("Area Under Curve (AUC) for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme() + coord_cartesian(clip = "off")
@@ -660,12 +669,9 @@ mod_metrics_explained_server <- function(id, rv) {
         geom_point(aes(x=!!t10, y=!!p10_val), color="dodgerblue", size=4) +
         geom_point(aes(x=!!t90, y=!!p90_val), color="dodgerblue", size=4) +
         geom_segment(aes(x = t10, y = p10_val, xend = t90, yend = p90_val), color = "dodgerblue", linewidth = 1.5) +
-        
-        # --- Clean, Horizontal Rate Label ---
-        annotate("text", x = mean(c(t10, t90)), y = p10_val,
+        annotate("text", x = mean(c(t10, t90)), y = p90_val,
                  label = paste("Rate =", round(data$metric$Calcium_Entry_Rate, 3)),
-                 color = "dodgerblue", fontface = "bold", size = 4.5, vjust = -0.5) +
-
+                 color = "dodgerblue", fontface = "bold", size = 4.5, vjust = -1) +
         labs(title = paste("Calcium Entry Rate for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme() + coord_cartesian(clip = "off")
     }, res = 96)
