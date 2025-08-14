@@ -447,19 +447,38 @@ mod_metrics_explained_server <- function(id, rv) {
     }, res = 96)
 
     output$rise_time_plot <- renderPlot({
-      req(selected_cell_data())
-      data <- selected_cell_data()
-      p10 <- 0.10 * data$metric$Response_Amplitude
-      p90 <- 0.90 * data$metric$Response_Amplitude
-      t10 <- data$metric$Time_to_Peak - data$metric$Rise_Time # Approx for viz
-      t90 <- data$metric$Time_to_Peak
-      ggplot(data$processed_trace, aes(x = Time, y = dFF0)) +
-        geom_line(color = "gray50", linewidth = 1) +
-        geom_hline(yintercept = c(p10, p90), color = "darkorange", linetype = "dashed") +
-        geom_segment(aes(x = t10, xend = t90, y = p90, yend = p90), arrow = arrow(length = unit(0.3, "cm"), ends = "both"), color = "firebrick", linewidth = 1.2) +
-        annotate("text", x = mean(c(t10, t90)), y = p90, label = paste("Rise Time =", round(data$metric$Rise_Time, 2), "s"), color = "firebrick", vjust = -1, fontface = "bold") +
-        labs(title = paste("Rise Time for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
-        explanation_theme()
+        req(selected_cell_data())
+        data <- selected_cell_data()
+        metric <- data$metric
+        trace <- data$processed_trace
+        
+        # Accurately find the t10 and t90 time points for visualization
+        search_start_idx <- min(rv$baseline_frames[2] + 1, which.max(trace$dFF0))
+        peak_idx <- which.max(trace$dFF0)
+        
+        t10 <- find_rising_crossing_time(trace$dFF0, trace$Time, 0.10 * metric$Response_Amplitude, search_start_idx, peak_idx)
+        t90 <- find_rising_crossing_time(trace$dFF0, trace$Time, 0.90 * metric$Response_Amplitude, search_start_idx, peak_idx)
+        
+        req(t10, t90)
+
+        p10_val <- 0.10 * metric$Response_Amplitude
+        p90_val <- 0.90 * metric$Response_Amplitude
+
+        ggplot(trace, aes(x = Time, y = dFF0)) +
+            geom_line(color = "gray50", linewidth = 1) +
+            # Highlight the 10% and 90% amplitude levels
+            geom_hline(yintercept = c(p10_val, p90_val), color = "darkorange", linetype = "dotted") +
+            # Show the vertical lines at the crossing points
+            geom_segment(aes(x = t10, y = 0, xend = t10, yend = p10_val), color = "darkorange", linetype = "dashed") +
+            geom_segment(aes(x = t90, y = 0, xend = t90, yend = p90_val), color = "darkorange", linetype = "dashed") +
+            # Arrow and label for the Rise Time duration
+            geom_segment(aes(x = t10, xend = t90, y = p90_val, yend = p90_val), color = "firebrick", linewidth = 1.2,
+                         arrow = arrow(length = unit(0.3, "cm"), ends = "both")) +
+            annotate("text", x = mean(c(t10, t90)), y = p90_val, 
+                     label = paste("Rise Time =", round(metric$Rise_Time, 2), "s"),
+                     color = "firebrick", vjust = -1.5, fontface = "bold", size = 5) +
+            labs(title = paste("Rise Time (10-90%) for Cell", metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
+            explanation_theme()
     }, res = 96)
 
     output$ttp_plot <- renderPlot({
@@ -556,15 +575,34 @@ mod_metrics_explained_server <- function(id, rv) {
     output$ca_plot <- renderPlot({
       req(selected_cell_data())
       data <- selected_cell_data()
-      t10 <- data$metric$Time_to_Peak - data$metric$Rise_Time # Approx for viz
-      t90 <- data$metric$Time_to_Peak
+      metric <- data$metric
+      trace <- data$processed_trace
+
+      # Accurately find the t10 and t90 time points for visualization
+      search_start_idx <- min(rv$baseline_frames[2] + 1, which.max(trace$dFF0))
+      peak_idx <- which.max(trace$dFF0)
+      
+      t10 <- find_rising_crossing_time(trace$dFF0, trace$Time, 0.10 * metric$Response_Amplitude, search_start_idx, peak_idx)
+      t90 <- find_rising_crossing_time(trace$dFF0, trace$Time, 0.90 * metric$Response_Amplitude, search_start_idx, peak_idx)
+      
+      req(t10, t90)
+
+      p10_val <- 0.10 * metric$Response_Amplitude
+      p90_val <- 0.90 * metric$Response_Amplitude
+      
       ggplot(data$processed_trace, aes(x = Time, y = dFF0)) +
         geom_line(color = "gray50", linewidth = 1) +
-        geom_segment(aes(x = t10, y = 0.1 * data$metric$Response_Amplitude, xend = t90, yend = 0.9 * data$metric$Response_Amplitude), 
-                     color = "dodgerblue", linewidth = 1.5, inherit.aes = FALSE) +
-        annotate("text", x = mean(c(t10, t90)), y = mean(c(0.1, 0.9)) * data$metric$Response_Amplitude,
+        # Add points and line segment for the slope calculation
+        geom_point(aes(x=!!t10, y=!!p10_val), color="dodgerblue", size=4) +
+        geom_point(aes(x=!!t90, y=!!p90_val), color="dodgerblue", size=4) +
+        geom_segment(aes(x = t10, y = p10_val, xend = t90, yend = p90_val), 
+                     color = "dodgerblue", linewidth = 1.5) +
+        # Add horizontal and vertical dashed lines to guide the eye
+        geom_segment(aes(x=0, xend=t90, y=p90_val, yend=p90_val), linetype="dashed", color="gray70") +
+        geom_segment(aes(x=t90, xend=t90, y=0, yend=p90_val), linetype="dashed", color="gray70") +
+        annotate("text", x = mean(c(t10, t90)), y = mean(c(p10_val, p90_val)),
                  label = paste("Rate =", round(data$metric$Calcium_Entry_Rate, 3)),
-                 color = "dodgerblue", fontface = "bold", size = 5, angle = 30, vjust = -1) +
+                 color = "dodgerblue", fontface = "bold", size = 5, angle = (atan((p90_val-p10_val)/(t90-t10)) * 180/pi), vjust = -1) +
         labs(title = paste("Calcium Entry Rate for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme()
     }, res = 96)
