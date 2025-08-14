@@ -152,8 +152,30 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
               stop("Unsupported file format. Please upload Excel (.xlsx) or ZIP files.")
             }
             
-            # Ensure group name is consistent
-            time_course[, GroupName := group_name]
+            # Convert wide format time course back to long format for internal use
+            if ("Time" %in% names(time_course)) {
+              # If it's in wide format (Time + multiple Mean columns), convert to long
+              mean_cols <- names(time_course)[grepl("^Mean[0-9]", names(time_course))]
+              if (length(mean_cols) > 0) {
+                time_course_long <- time_course %>%
+                  tidyr::pivot_longer(cols = all_of(mean_cols), names_to = "OriginalCell", values_to = "dFF0") %>%
+                  dplyr::mutate(
+                    Cell_ID = paste(group_name, OriginalCell, sep = "_"),
+                    GanglionID = group_name,
+                    AnimalID = group_name,
+                    GroupName = group_name
+                  ) %>%
+                  dplyr::select(Time, dFF0, Cell_ID, OriginalCell, GanglionID, AnimalID, GroupName)
+                time_course <- as.data.table(time_course_long)
+              } else {
+                # Already in long format, just ensure group name
+                time_course[, GroupName := group_name]
+              }
+            } else {
+              time_course[, GroupName := group_name]
+            }
+            
+            # Ensure group name is consistent in metrics
             metrics[, GroupName := group_name]
             
             rv$groups[[group_name]]$combined_data <- list(time_course = time_course, metrics = metrics)
@@ -181,7 +203,14 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
             time_csv <- file.path(tmpdir, "TimeCourse.csv")
             metrics_csv <- file.path(tmpdir, "Metrics.csv")
             
-            write.csv(rv$groups[[group_name]]$combined_data$time_course, time_csv, row.names = FALSE)
+            # Convert time course back to wide format (Time as rows, cells as columns)
+            tc_long <- rv$groups[[group_name]]$combined_data$time_course
+            tc_wide <- tc_long %>%
+              dplyr::select(Time, OriginalCell, dFF0) %>%
+              tidyr::pivot_wider(names_from = OriginalCell, values_from = dFF0, names_prefix = "") %>%
+              dplyr::arrange(Time)
+            
+            write.csv(tc_wide, time_csv, row.names = FALSE)
             write.csv(rv$groups[[group_name]]$combined_data$metrics, metrics_csv, row.names = FALSE)
             
             old_wd <- getwd(); setwd(tmpdir)
@@ -296,7 +325,14 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
           group_time_csv <- file.path(tmpdir, paste0(group_name, "_TimeCourse.csv"))
           group_metrics_csv <- file.path(tmpdir, paste0(group_name, "_Metrics.csv"))
           
-          write.csv(groups_with_data[[group_name]]$combined_data$time_course, group_time_csv, row.names = FALSE)
+          # Convert time course back to wide format for each group
+          tc_long <- groups_with_data[[group_name]]$combined_data$time_course
+          tc_wide <- tc_long %>%
+            dplyr::select(Time, OriginalCell, dFF0) %>%
+            tidyr::pivot_wider(names_from = OriginalCell, values_from = dFF0, names_prefix = "") %>%
+            dplyr::arrange(Time)
+          
+          write.csv(tc_wide, group_time_csv, row.names = FALSE)
           write.csv(groups_with_data[[group_name]]$combined_data$metrics, group_metrics_csv, row.names = FALSE)
           
           all_files <- c(all_files, basename(group_time_csv), basename(group_metrics_csv))
