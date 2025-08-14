@@ -10,6 +10,7 @@ mod_metrics_explained_ui <- function(id) {
           # Selector for which metric to explain
           selectInput(ns("metric_to_explain"), "Select Metric to Explain:",
                       choices = c("Peak ΔF/F₀" = "peak_dff0",
+                                  "Time to Peak" = "time_to_peak",
                                   "Signal-to-Noise Ratio (SNR)" = "snr",
                                   "Rise Time (10-90%)" = "rise_time",
                                   "Time to % Peak" = "time_to_percent_peak",
@@ -53,6 +54,33 @@ mod_metrics_explained_ui <- function(id) {
             )
           ),
           
+          # --- UI for Time to Peak Explanation ---
+          conditionalPanel(
+            condition = paste0("input['", ns("metric_to_explain"), "'] == 'time_to_peak'"),
+            fluidRow(
+              box(
+                title = "Time to Peak", status = "info", solidHeader = TRUE, width = 12, collapsible = TRUE,
+                fluidRow(
+                  column(4,
+                         h4("Explore a Single Cell"),
+                         uiOutput(ns("cell_selector_ui_ttpk")),
+                         hr(),
+                         h4("Explanation"),
+                         p("The 'Time to Peak' is the duration from the start of the recording until the signal reaches its maximum value (the Peak ΔF/F₀)."),
+                         h4("Calculation"),
+                         withMathJax(),
+                         helpText("$$ t_{\\text{peak}} = \\text{Time at which signal first reaches its maximum} $$"),
+                         uiOutput(ns("ttpk_calculation_ui"))
+                  ),
+                  column(8,
+                         h4("Time Course Plot"),
+                         plotOutput(ns("ttpk_plot"))
+                  )
+                )
+              )
+            )
+          ),
+
           # --- UI for SNR Explanation ---
           conditionalPanel(
             condition = paste0("input['", ns("metric_to_explain"), "'] == 'snr'"),
@@ -260,6 +288,7 @@ mod_metrics_explained_server <- function(id, rv) {
     output$cell_selector_ui_ttp <- create_cell_selector("selected_cell_ttp")
     output$cell_selector_ui_auc <- create_cell_selector("selected_cell_auc")
     output$cell_selector_ui_ca <- create_cell_selector("selected_cell_ca")
+    output$cell_selector_ui_ttpk <- create_cell_selector("selected_cell_ttpk")
 
     selected_cell_data <- reactive({
       req(rv$long, rv$metrics, rv$raw_traces, rv$baselines)
@@ -272,7 +301,8 @@ mod_metrics_explained_server <- function(id, rv) {
         "rise_time" = input$selected_cell_rise,
         "time_to_percent_peak" = input$selected_cell_ttp,
         "auc" = input$selected_cell_auc,
-        "ca_entry_rate" = input$selected_cell_ca
+        "ca_entry_rate" = input$selected_cell_ca,
+        "time_to_peak" = input$selected_cell_ttpk
       )
       req(cell_id)
       
@@ -328,6 +358,12 @@ mod_metrics_explained_server <- function(id, rv) {
            helpText(sprintf("$$ t_{50\\%%} = %.2f \\text{ s} $$", data$metric$Time_to_50_Peak)),
            helpText(sprintf("$$ t_{75\\%%} = %.2f \\text{ s} $$", data$metric$Time_to_75_Peak))
       ))
+    })
+
+    output$ttpk_calculation_ui <- renderUI({
+      req(selected_cell_data())
+      data <- selected_cell_data()
+      withMathJax(helpText(sprintf("$$ t_{\\text{peak}} = %.2f \\text{ s} $$", data$metric$Time_to_Peak)))
     })
 
     fwhm_times <- reactive({
@@ -509,6 +545,21 @@ mod_metrics_explained_server <- function(id, rv) {
         annotate("text", x = 0, y = p75, label = "75%", color = "firebrick", fontface = "bold", hjust = 1.2) +
         
         labs(title = paste("Time to % Peak for Cell", metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
+        explanation_theme() + coord_cartesian(clip = "off")
+    }, res = 96)
+    
+    output$ttpk_plot <- renderPlot({
+      req(selected_cell_data())
+      data <- selected_cell_data()
+      trace <- data$processed_trace
+      metric <- data$metric
+      
+      ggplot(trace, aes(x = Time, y = dFF0)) +
+        geom_line(color = "gray50", linewidth = 1) +
+        geom_segment(data = metric, aes(x = Time_to_Peak, xend = Time_to_Peak, y = 0, yend = Peak_dFF0), color = "red", linetype = "dashed") +
+        geom_point(data = metric, aes(x = Time_to_Peak, y = Peak_dFF0), color = "red", size = 4) +
+        geom_text(data = metric, aes(x = Time_to_Peak, y = Peak_dFF0, label = round(Peak_dFF0, 3)), vjust = -1.5, color = "red") +
+        labs(title = paste("Time to Peak for Cell", metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme() + coord_cartesian(clip = "off")
     }, res = 96)
     
