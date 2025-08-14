@@ -121,6 +121,7 @@ mod_group_timecourse_server <- function(id, rv_group) {
     build_group_timecourse <- function() {
       req(rv_group$combined_data, rv_group$combined_data$time_course)
       tc <- rv_group$combined_data$time_course
+      tc <- tc %>% dplyr::filter(is.finite(Time), is.finite(dFF0))
       validate(need(nrow(tc) > 0, "No group time course data. Use Combine & Annotate first."))
 
       # Summary per group/time
@@ -133,7 +134,7 @@ mod_group_timecourse_server <- function(id, rv_group) {
       if (isTRUE(input$gt_show_traces) && nrow(tc) > 0) {
         alpha_traces <- 1 - (as.numeric(input$gt_trace_transparency) %||% 65) / 100
         p <- p + ggplot2::geom_line(data = tc,
-               ggplot2::aes(x = Time, y = dFF0, group = interaction(GroupName, Cell_ID), color = GroupName),
+               ggplot2::aes(x = Time, y = dFF0, group = interaction(GroupName, Cell_ID, drop = TRUE), color = GroupName),
                inherit.aes = FALSE, alpha = alpha_traces, linewidth = 0.35)
       }
 

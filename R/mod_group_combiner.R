@@ -185,10 +185,15 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
                 file_info <- files_to_process[i, ]
                 dt <- fread(file_info$FilePath)
                 setnames(dt, 1, "Time")
+                # Coerce Time column to numeric
+                dt[["Time"]] <- suppressWarnings(as.numeric(dt[["Time"]]))
                 measure_vars <- setdiff(names(dt)[sapply(dt, is.numeric)], "Time")
                 if (length(measure_vars) == 0) return(NULL)
                 
                 long_dt <- melt(dt, id.vars = "Time", measure.vars = measure_vars, variable.name = "OriginalCell", value.name = "dFF0")
+                # Ensure numeric dFF0 and drop invalid rows
+                long_dt[, dFF0 := suppressWarnings(as.numeric(dFF0))]
+                long_dt <- long_dt[is.finite(Time) & is.finite(dFF0)]
                 long_dt[, `:=`(Cell_ID = paste(file_info$GanglionID, OriginalCell, sep = "_"),
                                GanglionID = file_info$GanglionID, AnimalID = file_info$AnimalID, GroupName = group_name)]
                 return(long_dt)
