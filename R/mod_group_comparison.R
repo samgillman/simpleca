@@ -114,19 +114,16 @@ mod_group_comparison_server <- function(id, rv_group) {
         relocate(GroupName, GanglionID)
     })
     
-    observe({
-      req(all_metrics())
-      numeric_cols <- names(all_metrics())[sapply(all_metrics(), is.numeric)]
-      updateSelectInput(session, "metric_to_plot", choices = setdiff(numeric_cols, c("AnimalID", "GanglionID")))
-    })
-    
     # --- Plotting ---
     create_metric_plot <- function(data, metric, group_var, title) {
-      req(data, metric, title, group_var %in% names(data), metric %in% names(data))
-      num_groups <- dplyr::n_distinct(data[[group_var]])
+      req(data, metric, title)
+      req(ncol(data) > 0, nrow(data) > 0)
+      
+      gx <- rlang::sym(group_var)
+      gy <- rlang::sym(metric)
       full_title <- paste("Metric:", gsub("_", " ", metric), title)
       
-      p <- ggplot2::ggplot(data, ggplot2::aes(x = .data[[group_var]], y = .data[[metric]], fill = .data[[group_var]])) +
+      p <- ggplot2::ggplot(data, ggplot2::aes(x = !!gx, y = !!gy, fill = !!gx)) +
         ggplot2::geom_boxplot(alpha = 0.6, outlier.shape = NA) +
         ggplot2::labs(title = full_title, x = "Experimental Group", y = gsub("_", " ", metric)) +
         ggplot2::theme_minimal(base_size = 15) +
@@ -135,32 +132,54 @@ mod_group_comparison_server <- function(id, rv_group) {
       if (isTruthy(input$show_jitter)) {
         p <- p + ggplot2::geom_jitter(width = 0.15, alpha = 0.7, size = 2.5)
       }
-      
-      # Note: Statistical annotations require ggpubr; omit on Connect Cloud
       return(p)
     }
-    
-    output$animal_metric_plot <- renderPlot(create_metric_plot(animal_summary(), input$metric_to_plot, "GroupName", "by Animal"))
-    output$ganglion_metric_plot <- renderPlot(create_metric_plot(ganglion_summary(), input$metric_to_plot, "GroupName", "by Ganglion"))
-    output$cell_metric_plot <- renderPlot(create_metric_plot(filtered_metrics(), input$metric_to_plot, "GroupName", "by Cell (No Stats)"))
-    
+
+    # Ensure metric selector has a default
+    observe({
+      req(all_metrics())
+      numeric_cols <- names(all_metrics())[sapply(all_metrics(), is.numeric)]
+      metric_choices <- setdiff(numeric_cols, c("AnimalID", "GanglionID"))
+      if (length(metric_choices) > 0) {
+        updateSelectInput(session, "metric_to_plot", choices = metric_choices, selected = metric_choices[[1]])
+      } else {
+        updateSelectInput(session, "metric_to_plot", choices = character(0))
+      }
+    })
+
+    output$animal_metric_plot <- renderPlot({
+      req(input$metric_to_plot)
+      df <- animal_summary()
+      validate(need(nrow(df) > 0, "No animal-level data. Combine/upload groups first."))
+      create_metric_plot(df, input$metric_to_plot, "GroupName", "by Animal")
+    })
+
+    output$ganglion_metric_plot <- renderPlot({
+      req(input$metric_to_plot)
+      df <- ganglion_summary()
+      validate(need(nrow(df) > 0, "No ganglion-level data. Combine/upload groups first."))
+      create_metric_plot(df, input$metric_to_plot, "GroupName", "by Ganglion")
+    })
+
+    output$cell_metric_plot <- renderPlot({
+      req(input$metric_to_plot)
+      df <- filtered_metrics()
+      validate(need(nrow(df) > 0, "No cell-level data. Combine/upload groups first."))
+      create_metric_plot(df, input$metric_to_plot, "GroupName", "by Cell (No Stats)")
+    })
+
     output$avg_time_course_plot <- renderPlot({
       req(rv_group$combined_data$time_course, input$groups_to_display)
-      plot_data <- rv_group$combined_data$time_course %>% filter(GroupName %in% input$groups_to_display)
+      plot_data <- rv_group$combined_data$time_course %>% dplyr::filter(GroupName %in% input$groups_to_display)
+      validate(need(nrow(plot_data) > 0, "No time course data. Combine/upload groups first."))
       avg_data <- plot_data %>%
-        group_by(GroupName, Time) %>%
-        summarise(Mean_dFF0 = mean(dFF0, na.rm = TRUE), SEM = sd(dFF0, na.rm = TRUE) / sqrt(n()), .groups = 'drop')
-      
-      p <- ggplot(avg_data, aes(x = Time, y = Mean_dFF0, color = GroupName, fill = GroupName)) +
-        geom_line(linewidth = 1.2) +
-        geom_ribbon(aes(ymin = Mean_dFF0 - SEM, ymax = Mean_dFF0 + SEM), alpha = 0.2, linetype = "dotted") +
-        labs(x = "Time (s)", y = expression(paste(Delta, "F/F"[0])), color = "Group", fill = "Group") +
-        theme_minimal(base_size = 15) + theme(legend.position = "bottom")
-        
-      if (isTruthy(input$show_individual_traces)) {
-        p <- p + geom_line(data = plot_data, aes(group = Cell_ID), alpha = 0.1, inherit.aes = FALSE)
-      }
-      p
+        dplyr::group_by(GroupName, Time) %>%
+        dplyr::summarise(Mean_dFF0 = mean(dFF0, na.rm = TRUE), SEM = sd(dFF0, na.rm = TRUE) / sqrt(dplyr::n()), .groups = 'drop')
+      ggplot2::ggplot(avg_data, ggplot2::aes(x = Time, y = Mean_dFF0, color = GroupName, fill = GroupName)) +
+        ggplot2::geom_line(linewidth = 1.2) +
+        ggplot2::geom_ribbon(ggplot2::aes(ymin = Mean_dFF0 - SEM, ymax = Mean_dFF0 + SEM), alpha = 0.2, linetype = "dotted") +
+        ggplot2::labs(x = "Time (s)", y = expression(paste(Delta, "F/F"[0])), color = "Group", fill = "Group") +
+        ggplot2::theme_minimal(base_size = 15) + ggplot2::theme(legend.position = "bottom")
     })
     
     # --- Tables ---
