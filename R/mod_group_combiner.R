@@ -151,7 +151,13 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
           filename = function() { paste0("processed_data_", group_name, "_", Sys.Date(), ".xlsx") },
           content = function(file) {
             req(rv$groups[[group_name]]$combined_data)
-            writexl::write_xlsx(rv$groups[[group_name]]$combined_data, path = file)
+            # Use openxlsx to write to a multi-sheet file
+            wb <- createWorkbook()
+            addWorksheet(wb, "TimeCourse")
+            addWorksheet(wb, "Metrics")
+            writeData(wb, "TimeCourse", rv$groups[[group_name]]$combined_data$time_course)
+            writeData(wb, "Metrics", rv$groups[[group_name]]$combined_data$metrics)
+            saveWorkbook(wb, file, overwrite = TRUE)
           }
         )
       })

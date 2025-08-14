@@ -9,7 +9,7 @@ dplyr
 tidyr
 data.table
 readxl
-writexl
+openxlsx
 purrr
 RColorBrewer
 scales

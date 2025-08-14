@@ -13,7 +13,7 @@ suppressPackageStartupMessages({
   library(tidyr)
   library(data.table)
   library(readxl)
-  library(writexl)
+  library(openxlsx)
   library(purrr)
   library(RColorBrewer)
   library(scales)
