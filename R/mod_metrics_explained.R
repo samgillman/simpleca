@@ -558,7 +558,6 @@ mod_metrics_explained_server <- function(id, rv) {
       metric <- data$metric
       trace <- data$processed_trace
 
-      # Accurately find the t10 and t90 time points for visualization
       search_start_idx <- min(rv$baseline_frames[2] + 1, which.max(trace$dFF0))
       peak_idx <- which.max(trace$dFF0)
       
@@ -569,20 +568,26 @@ mod_metrics_explained_server <- function(id, rv) {
 
       p10_val <- 0.10 * metric$Response_Amplitude
       p90_val <- 0.90 * metric$Response_Amplitude
-      
+
       ggplot(data$processed_trace, aes(x = Time, y = dFF0)) +
         geom_line(color = "gray50", linewidth = 1) +
-        # Add points and line segment for the slope calculation
+        
+        # --- Triangle Rise/Run ---
+        geom_segment(aes(x = t10, y = p10_val, xend = t90, yend = p10_val), linetype = "dotted", color = "gray50") + # Run
+        geom_segment(aes(x = t90, y = p10_val, xend = t90, yend = p90_val), linetype = "dotted", color = "gray50") + # Rise
+
+        # --- Slope and Points ---
         geom_point(aes(x=!!t10, y=!!p10_val), color="dodgerblue", size=4) +
         geom_point(aes(x=!!t90, y=!!p90_val), color="dodgerblue", size=4) +
-        geom_segment(aes(x = t10, y = p10_val, xend = t90, yend = p90_val), 
-                     color = "dodgerblue", linewidth = 1.5) +
-        # Add horizontal and vertical dashed lines to guide the eye
-        geom_segment(aes(x=0, xend=t90, y=p90_val, yend=p90_val), linetype="dashed", color="gray70") +
-        geom_segment(aes(x=t90, xend=t90, y=0, yend=p90_val), linetype="dashed", color="gray70") +
+        geom_segment(aes(x = t10, y = p10_val, xend = t90, yend = p90_val), color = "dodgerblue", linewidth = 1.5) +
+        
+        # --- Labels ---
+        annotate("text", x = mean(c(t10, t90)), y = p10_val, label = "Rise Time", vjust = 1.5, fontface = "bold", color = "gray50") +
+        annotate("text", x = t90, y = mean(c(p10_val, p90_val)), label = "Δ Amplitude", hjust = -0.1, angle = 90, fontface = "bold", color = "gray50") +
         annotate("text", x = mean(c(t10, t90)), y = mean(c(p10_val, p90_val)),
                  label = paste("Rate =", round(data$metric$Calcium_Entry_Rate, 3)),
                  color = "dodgerblue", fontface = "bold", size = 5, angle = (atan((p90_val-p10_val)/(t90-t10)) * 180/pi), vjust = -1) +
+
         labs(title = paste("Calcium Entry Rate for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme()
     }, res = 96)
