@@ -529,15 +529,40 @@ mod_metrics_explained_server <- function(id, rv) {
       req(selected_cell_data(), fwhm_times())
       data <- selected_cell_data()
       times <- fwhm_times()
-      ggplot(data$processed_trace, aes(x = Time, y = dFF0)) +
+      
+      # Prepare a data frame for annotations to avoid ggplot2 warnings
+      annotation_df <- data.frame(
+        x_mid = mean(c(times$t_left, times$t_right)),
+        y_mid = times$half_max_y,
+        fwhm_label = paste("FWHM =", round(data$metric$FWHM, 2), "s"),
+        hwhm_label = paste("Half-Width =", round(data$metric$Half_Width, 2), "s")
+      )
+      
+      p <- ggplot(data$processed_trace, aes(x = Time, y = dFF0)) +
         geom_line(color = "gray50", linewidth = 1) +
         geom_hline(yintercept = times$half_max_y, color = "dodgerblue", linetype = "dashed") +
-        geom_segment(aes(x = times$t_left, xend = times$t_left, y = 0, yend = times$half_max_y), color = "dodgerblue", linetype = "dotted", inherit.aes = FALSE) +
-        (if (!times$is_sustained) geom_segment(aes(x = times$t_right, xend = times$t_right, y = 0, yend = times$half_max_y), color = "dodgerblue", linetype = "dotted", inherit.aes = FALSE)) +
-        geom_segment(aes(x = times$t_left, xend = times$t_right, y = times$half_max_y, yend = times$half_max_y), arrow = arrow(length = unit(0.3, "cm"), ends = "both"), color = "firebrick", linewidth = 1, inherit.aes = FALSE) +
-        annotate("text", x = mean(c(times$t_left, times$t_right)), y = times$half_max_y, label = paste("FWHM =", round(data$metric$FWHM, 2), "s"), color = "firebrick", vjust = -1, fontface = "bold") +
-        labs(title = paste("FWHM Explained for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
+        geom_segment(aes(x = times$t_left, xend = times$t_left, y = 0, yend = times$half_max_y), color = "dodgerblue", linetype = "dotted") +
+        (if (!times$is_sustained) geom_segment(aes(x = times$t_right, xend = times$t_right, y = 0, yend = times$half_max_y), color = "dodgerblue", linetype = "dotted")) +
+        geom_segment(aes(x = times$t_left, xend = times$t_right, y = times$half_max_y, yend = times$half_max_y), 
+                     arrow = arrow(length = unit(0.3, "cm"), ends = "both"), color = "firebrick", linewidth = 1) +
+        
+        # Use the annotation data frame for clean labeling
+        geom_text(data = annotation_df, aes(x = x_mid, y = y_mid, label = fwhm_label), 
+                  color = "firebrick", vjust = -1.5, fontface = "bold", size = 5) +
+        geom_text(data = annotation_df, aes(x = x_mid, y = y_mid, label = hwhm_label), 
+                  color = "firebrick", vjust = 3, fontface = "bold", size = 5) +
+                
+        labs(title = paste("FWHM & Half-Width for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme()
+      
+      # Conditional annotation for sustained responses
+      if (times$is_sustained) {
+        p <- p + annotate("text", x = annotation_df$x_mid, y = annotation_df$y_mid, 
+                          label = "(Sustained response, right edge is end of trace)", 
+                          color = "firebrick", vjust = -3.5, size = 3.5, fontface = "italic")
+      }
+      
+      p # Return the final plot
     }, res = 96)
     
     output$auc_plot <- renderPlot({
