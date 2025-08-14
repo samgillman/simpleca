@@ -66,7 +66,7 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
     output$group_panels_ui <- renderUI({
       if (length(rv$groups) == 0) return(wellPanel(h4("Start by adding a group...")))
       
-      lapply(names(rv$groups), function(group_name) {
+        lapply(names(rv$groups), function(group_name) {
         box(
           title = tagList(icon("layer-group"), group_name),
           status = "primary", solidHeader = TRUE, collapsible = TRUE, width = 12,
@@ -101,7 +101,7 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
               FilePath = input[[paste0("upload_ind_", group_name)]]$datapath,
               GanglionID = tools::file_path_sans_ext(input[[paste0("upload_ind_", group_name)]]$name),
               AnimalID = sapply(input[[paste0("upload_ind_", group_name)]]$name, function(n) str_extract(n, "[0-9]{2}_[0-9]{2}_[0-9]{2}")),
-              stringsAsFactors = FALSE
+            stringsAsFactors = FALSE
           )
           
           current_files <- rv$groups[[group_name]]$files$FileName
@@ -130,52 +130,26 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
             if (file_ext == "zip") {
               # Handle ZIP files (our download format)
               tmpdir <- tempdir()
+              on.exit(unlink(tmpdir, recursive = TRUE))
               utils::unzip(infile$datapath, exdir = tmpdir)
               
               # Look for TimeCourse.csv and Metrics.csv
-              time_csv <- file.path(tmpdir, "TimeCourse.csv")
-              metrics_csv <- file.path(tmpdir, "Metrics.csv")
-              
-              if (file.exists(time_csv) && file.exists(metrics_csv)) {
-                time_course <- as.data.table(data.table::fread(time_csv))
-                metrics <- as.data.table(data.table::fread(metrics_csv))
-              } else {
-                stop("ZIP file does not contain TimeCourse.csv and Metrics.csv")
-              }
+              # This approach is now deprecated in favor of uploading individual files.
+              # We keep the Excel path for legacy combined files.
+              stop("Please unzip the archive and use the 'Upload Individual Files' button for each ganglion's TimeCourse.csv file.")
               
             } else if (file_ext %in% c("xlsx", "xls")) {
-              # Handle Excel files
+              # Handle Legacy Excel files
               time_course <- as.data.table(readxl::read_excel(infile$datapath, sheet = "TimeCourse"))
               metrics <- as.data.table(readxl::read_excel(infile$datapath, sheet = "Metrics"))
               
             } else {
-              stop("Unsupported file format. Please upload Excel (.xlsx) or ZIP files.")
+              stop("Unsupported file format. Please upload legacy Excel (.xlsx) files or use the 'Upload Individual Files' button.")
             }
             
-            # Convert wide format time course back to long format for internal use
-            if ("Time" %in% names(time_course)) {
-              # If it's in wide format (Time + multiple Mean columns), convert to long
-              mean_cols <- names(time_course)[grepl("^Mean[0-9]", names(time_course))]
-              if (length(mean_cols) > 0) {
-                time_course_long <- time_course %>%
-                  tidyr::pivot_longer(cols = all_of(mean_cols), names_to = "OriginalCell", values_to = "dFF0") %>%
-                  dplyr::mutate(
-                    Cell_ID = paste(group_name, OriginalCell, sep = "_"),
-                    GanglionID = group_name,
-                    AnimalID = group_name,
-                    GroupName = group_name
-                  ) %>%
-                  dplyr::select(Time, dFF0, Cell_ID, OriginalCell, GanglionID, AnimalID, GroupName)
-                time_course <- as.data.table(time_course_long)
-              } else {
-                # Already in long format, just ensure group name
-                time_course[, GroupName := group_name]
-              }
-            } else {
-              time_course[, GroupName := group_name]
-            }
-            
-            # Ensure group name is consistent in metrics
+            # This path is now only for legacy Excel files.
+            # The new combined data from downloads should be unzipped and uploaded individually.
+            time_course[, GroupName := group_name]
             metrics[, GroupName := group_name]
             
             rv$groups[[group_name]]$combined_data <- list(time_course = time_course, metrics = metrics)
@@ -198,24 +172,53 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
           filename = function() { paste0("processed_data_", group_name, "_", Sys.Date(), ".zip") },
           content = function(file) {
             req(rv$groups[[group_name]]$combined_data)
-            # Create ZIP with CSV files (reliable approach)
-            tmpdir <- tempdir()
-            time_csv <- file.path(tmpdir, "TimeCourse.csv")
-            metrics_csv <- file.path(tmpdir, "Metrics.csv")
             
-            # Convert time course back to wide format (Time as rows, cells as columns)
             tc_long <- rv$groups[[group_name]]$combined_data$time_course
-            tc_wide <- tc_long %>%
-              dplyr::select(Time, OriginalCell, dFF0) %>%
-              tidyr::pivot_wider(names_from = OriginalCell, values_from = dFF0, names_prefix = "") %>%
-              dplyr::arrange(Time)
+            metrics_df <- rv$groups[[group_name]]$combined_data$metrics
             
-            write.csv(tc_wide, time_csv, row.names = FALSE)
-            write.csv(rv$groups[[group_name]]$combined_data$metrics, metrics_csv, row.names = FALSE)
+            tmpdir <- tempdir()
+            on.exit(unlink(tmpdir, recursive = TRUE))
             
-            old_wd <- getwd(); setwd(tmpdir)
+            # Create one wide-format TimeCourse CSV per Ganglion
+            ganglion_files <- tc_long %>%
+              dplyr::group_by(GanglionID) %>%
+              dplyr::group_split() %>%
+              purrr::map_chr(function(ganglion_data) {
+                
+                # Ensure there are rows to process
+                if(nrow(ganglion_data) == 0) return(NA_character_)
+
+                file_name <- paste0(unique(ganglion_data$GanglionID), "_TimeCourse.csv")
+                
+                # Pivot this specific ganglion's data to wide format
+                tc_wide <- ganglion_data %>%
+                  dplyr::select(Time, OriginalCell, dFF0) %>%
+                  tidyr::pivot_wider(
+                    names_from = OriginalCell,
+                    values_from = dFF0,
+                    names_sort = TRUE,
+                    names_prefix = ""
+                   ) %>%
+                  dplyr::arrange(Time)
+                  
+                file_path <- file.path(tmpdir, file_name)
+                write.csv(tc_wide, file_path, row.names = FALSE)
+                return(file_path)
+              }) %>%
+              stats::na.omit() # Remove any NAs from failed splits
+
+            # Save the single metrics file for the whole group
+            metrics_path <- file.path(tmpdir, "Metrics.csv")
+            write.csv(metrics_df, metrics_path, row.names = FALSE)
+            
+            all_files_to_zip <- c(basename(ganglion_files), "Metrics.csv")
+            
+            # Change to temp directory, create zip, then restore
+            old_wd <- getwd()
+            setwd(tmpdir)
             on.exit(setwd(old_wd), add = TRUE)
-            utils::zip(zipfile = file, files = c("TimeCourse.csv", "Metrics.csv"))
+            
+            utils::zip(zipfile = file, files = all_files_to_zip)
           }
         )
       })
@@ -281,9 +284,9 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
         
         if (length(final_combined_list) == 0) {
             showNotification("No data available to combine.", type = "warning")
-            return()
+          return()
         }
-
+        
         # 3. Final assembly for the comparison tab
         final_time_course <- rbindlist(lapply(final_combined_list, `[[`, "time_course"))
         final_metrics <- rbindlist(lapply(final_combined_list, `[[`, "metrics"))
@@ -318,30 +321,41 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
         req(length(groups_with_data) > 0)
         
         tmpdir <- tempdir()
-        all_files <- c()
+        on.exit(unlink(tmpdir, recursive = TRUE))
         
-        for (group_name in names(groups_with_data)) {
-          # Create separate ZIP for each group with CSV files
-          group_time_csv <- file.path(tmpdir, paste0(group_name, "_TimeCourse.csv"))
-          group_metrics_csv <- file.path(tmpdir, paste0(group_name, "_Metrics.csv"))
+        all_files_to_zip <- purrr::map(names(groups_with_data), function(group_name) {
+          group_data <- groups_with_data[[group_name]]$combined_data
           
-          # Convert time course back to wide format for each group
-          tc_long <- groups_with_data[[group_name]]$combined_data$time_course
-          tc_wide <- tc_long %>%
-            dplyr::select(Time, OriginalCell, dFF0) %>%
-            tidyr::pivot_wider(names_from = OriginalCell, values_from = dFF0, names_prefix = "") %>%
-            dplyr::arrange(Time)
+          # Create wide-format TimeCourse CSVs for each ganglion within the group
+          ganglion_files <- group_data$time_course %>%
+            dplyr::group_by(GanglionID) %>%
+            dplyr::group_split() %>%
+            purrr::map_chr(function(ganglion_data) {
+              if(nrow(ganglion_data) == 0) return(NA_character_)
+              file_name <- paste0(group_name, "_", unique(ganglion_data$GanglionID), "_TimeCourse.csv")
+              tc_wide <- ganglion_data %>%
+                dplyr::select(Time, OriginalCell, dFF0) %>%
+                tidyr::pivot_wider(names_from = OriginalCell, values_from = dFF0, names_sort = TRUE, names_prefix = "") %>%
+                dplyr::arrange(Time)
+              file_path <- file.path(tmpdir, file_name)
+              write.csv(tc_wide, file_path, row.names = FALSE)
+              return(file_path)
+            }) %>%
+            stats::na.omit()
+            
+          # Save the metrics file for the group
+          metrics_path <- file.path(tmpdir, paste0(group_name, "_Metrics.csv"))
+          write.csv(group_data$metrics, metrics_path, row.names = FALSE)
           
-          write.csv(tc_wide, group_time_csv, row.names = FALSE)
-          write.csv(groups_with_data[[group_name]]$combined_data$metrics, group_metrics_csv, row.names = FALSE)
-          
-          all_files <- c(all_files, basename(group_time_csv), basename(group_metrics_csv))
-        }
-        
+          c(basename(ganglion_files), basename(metrics_path))
+        }) %>% unlist()
+
         # Change to temp directory, create zip, then restore
-        old_wd <- getwd(); setwd(tmpdir)
+        old_wd <- getwd()
+        setwd(tmpdir)
         on.exit(setwd(old_wd), add = TRUE)
-        utils::zip(zipfile = file, files = all_files)
+        
+        utils::zip(zipfile = file, files = all_files_to_zip)
       }
     )
   })
