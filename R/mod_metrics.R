@@ -14,7 +14,6 @@ mod_metrics_ui <- function(id) {
                                         "Ca²⁺ Entry Rate"="Calcium_Entry_Rate","AUC"="AUC",
                                         "Response Amplitude"="Response_Amplitude","SNR"="SNR"),
                             selected="Peak_dFF0"),
-                shinyjs::hidden(selectInput(ns("metric_geom"),"Plot type", choices = c("Cell bars"="cellbar"), selected="cellbar")),
                 checkboxInput(ns("metric_sort_cells"),"Sort cell bars within group", TRUE),
                 sliderInput(ns("metric_inset_scale"),"Inset size", min = 0.5, max = 3, value = 1, step = 0.1),
                 textInput(ns("metric_title"),"Custom title (optional)",""),
