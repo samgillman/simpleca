@@ -144,8 +144,7 @@ server <- function(input, output, session) {
   )
   mod_group_combiner_server("group_combiner", rv_group, parent_session = session)
   mod_group_timecourse_server("group_timecourse", rv_group)
-  # Temporarily disable group comparisons
-  # mod_group_comparison_server("group_comparison", rv_group)
+  mod_group_comparison_server("group_comparison", rv_group)
 
   # --- Observers to manage UI state ---
   

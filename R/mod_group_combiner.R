@@ -214,7 +214,13 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
                 setnames(dt, 1, "Time")
                 # Coerce Time column to numeric
                 dt[["Time"]] <- suppressWarnings(as.numeric(dt[["Time"]]))
-                measure_vars <- setdiff(names(dt)[sapply(dt, is.numeric)], "Time")
+                # Get numeric columns but exclude background columns and other non-cell columns
+                numeric_cols <- names(dt)[sapply(dt, is.numeric)]
+                measure_vars <- setdiff(numeric_cols, c("Time"))
+                # Exclude background columns
+                measure_vars <- measure_vars[!grepl("background|Background", measure_vars, ignore.case = TRUE)]
+                # Only include Mean columns (cell data)
+                measure_vars <- measure_vars[grepl("^Mean[0-9]", measure_vars)]
                 if (length(measure_vars) == 0) return(NULL)
                 
                 long_dt <- melt(dt, id.vars = "Time", measure.vars = measure_vars, variable.name = "OriginalCell", value.name = "dFF0")
