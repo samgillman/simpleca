@@ -25,7 +25,6 @@ library(bslib)
 library(gt)
 library(webshot2)
 library(stringr)
-library(ggpubr)
 library(tools)
 
 # ============================ Source Modules and Helpers =============================

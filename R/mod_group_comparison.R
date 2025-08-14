@@ -123,27 +123,20 @@ mod_group_comparison_server <- function(id, rv_group) {
     # --- Plotting ---
     create_metric_plot <- function(data, metric, group_var, title) {
       req(data, metric, title, group_var %in% names(data), metric %in% names(data))
-      num_groups <- n_distinct(data[[group_var]])
-      method <- if (num_groups == 2) "t.test" else "anova"
-      
+      num_groups <- dplyr::n_distinct(data[[group_var]])
       full_title <- paste("Metric:", gsub("_", " ", metric), title)
       
-      p <- ggplot(data, aes(x = .data[[group_var]], y = .data[[metric]], fill = .data[[group_var]])) +
-        geom_boxplot(alpha = 0.6, outlier.shape = NA) +
-        labs(title = full_title, x = "Experimental Group", y = gsub("_", " ", metric)) +
-        theme_minimal(base_size = 15) +
-        theme(legend.position = "none", plot.title = element_text(hjust = 0.5))
+      p <- ggplot2::ggplot(data, ggplot2::aes(x = .data[[group_var]], y = .data[[metric]], fill = .data[[group_var]])) +
+        ggplot2::geom_boxplot(alpha = 0.6, outlier.shape = NA) +
+        ggplot2::labs(title = full_title, x = "Experimental Group", y = gsub("_", " ", metric)) +
+        ggplot2::theme_minimal(base_size = 15) +
+        ggplot2::theme(legend.position = "none", plot.title = ggplot2::element_text(hjust = 0.5))
       
       if (isTruthy(input$show_jitter)) {
-        p <- p + geom_jitter(width = 0.15, alpha = 0.7, size = 2.5)
+        p <- p + ggplot2::geom_jitter(width = 0.15, alpha = 0.7, size = 2.5)
       }
       
-      if (num_groups >= 2 && nrow(data) > num_groups && !grepl("by Cell", title, fixed = TRUE)) {
-        p <- p + ggpubr::stat_compare_means(method = method, label.y.npc = 0.9)
-        if (num_groups > 2) {
-          p <- p + ggpubr::stat_compare_means(label = "p.signif", method = "t.test", ref.group = ".all.")
-        }
-      }
+      # Note: Statistical annotations require ggpubr; omit on Connect Cloud
       return(p)
     }
     
