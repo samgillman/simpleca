@@ -265,58 +265,56 @@ mod_metrics_explained_server <- function(id, rv) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
-    output$cell_selector_ui <- renderUI({
-      req(rv$metrics)
-      # Create a named list for the selectInput choices
-      # The values will be the unique Cell_ID, and the names will be what the user sees.
-      cell_choices <- rv$metrics$Cell_ID
-      names(cell_choices) <- paste(rv$metrics$Group, "-", rv$metrics$Cell)
-      
-      selectInput(ns("selected_cell"), "Select a Cell to Visualize:",
-                  choices = cell_choices,
-                  selected = cell_choices[1])
-    })
+    # --- Unified Plotting Theme ---
     
-    # Clone the cell selector for the FWHM tab to avoid UI conflicts
-    output$cell_selector_ui_fwhm <- renderUI({
-      req(rv$metrics)
-      cell_choices <- rv$metrics$Cell_ID
-      names(cell_choices) <- paste(rv$metrics$Group, "-", rv$metrics$Cell)
-      
-      selectInput(ns("selected_cell_fwhm"), "Select a Cell to Visualize:",
-                  choices = cell_choices,
-                  selected = cell_choices[1])
-    })
+    explanation_theme <- function() {
+      theme_classic(base_size = 14) +
+      theme(
+        plot.title = element_text(face = "bold", hjust = 0.5, size = 16),
+        axis.title = element_text(face = "bold", size = 12),
+        axis.text = element_text(size = 10),
+        legend.position = "none"
+      )
+    }
+    
+    # --- Cell Selectors ---
+
+    # A single helper to create cell selectors to reduce code duplication
+    create_cell_selector <- function(input_id) {
+      renderUI({
+        req(rv$metrics)
+        cell_choices <- rv$metrics$Cell_ID
+        names(cell_choices) <- paste(rv$metrics$Group, "-", rv$metrics$Cell)
+        selectInput(ns(input_id), "Select a Cell to Visualize:", choices = cell_choices, selected = cell_choices[1])
+      })
+    }
+
+    output$cell_selector_ui <- create_cell_selector("selected_cell")
+    output$cell_selector_ui_fwhm <- create_cell_selector("selected_cell_fwhm")
+    output$cell_selector_ui_amp <- create_cell_selector("selected_cell_amp")
+    output$cell_selector_ui_snr <- create_cell_selector("selected_cell_snr")
+    output$cell_selector_ui_rise <- create_cell_selector("selected_cell_rise")
+    output$cell_selector_ui_ttp <- create_cell_selector("selected_cell_ttp")
+    output$cell_selector_ui_auc <- create_cell_selector("selected_cell_auc")
+    output$cell_selector_ui_ca <- create_cell_selector("selected_cell_ca")
+
+    # --- Reactive Data Fetcher ---
     
     selected_cell_data <- reactive({
       req(rv$long, rv$metrics, rv$raw_traces, rv$baselines)
       
-      # Determine which metric explanation is active and get the corresponding selected cell
-      cell_id <- if (input$metric_to_explain == "peak_dff0") {
-        req(input$selected_cell)
-        input$selected_cell
-      } else if (input$metric_to_explain == 'response_amplitude') {
-        req(input$selected_cell_amp)
-        input$selected_cell_amp
-      } else if (input$metric_to_explain == 'snr') {
-        req(input$selected_cell_snr)
-        input$selected_cell_snr
-      } else if (input$metric_to_explain == 'rise_time') {
-        req(input$selected_cell_rise)
-        input$selected_cell_rise
-      } else if (input$metric_to_explain == 'time_to_percent_peak') {
-        req(input$selected_cell_ttp)
-        input$selected_cell_ttp
-      } else if (input$metric_to_explain == 'auc') {
-        req(input$selected_cell_auc)
-        input$selected_cell_auc
-      } else if (input$metric_to_explain == 'ca_entry_rate') {
-        req(input$selected_cell_ca)
-        input$selected_cell_ca
-      } else { # 'fwhm'
-        req(input$selected_cell_fwhm)
-        input$selected_cell_fwhm
-      }
+      # Get the currently selected cell_id based on the visible tab
+      cell_id <- switch(input$metric_to_explain,
+        "peak_dff0" = input$selected_cell,
+        "fwhm" = input$selected_cell_fwhm,
+        "response_amplitude" = input$selected_cell_amp,
+        "snr" = input$selected_cell_snr,
+        "rise_time" = input$selected_cell_rise,
+        "time_to_percent_peak" = input$selected_cell_ttp,
+        "auc" = input$selected_cell_auc,
+        "ca_entry_rate" = input$selected_cell_ca
+      )
+      req(cell_id)
       
       cell_metric <- dplyr::filter(rv$metrics, Cell_ID == cell_id)
       req(nrow(cell_metric) == 1)
@@ -329,13 +327,8 @@ mod_metrics_explained_server <- function(id, rv) {
       processed_trace <- dplyr::filter(rv$long, Cell_ID == cell_id)
       raw_trace <- rv$raw_traces[[group_name]][, c("Time", cell_name), with = FALSE]
       names(raw_trace) <- c("Time", "Fluorescence")
-      
       f0 <- rv$baselines[[group_name]][[cell_name]]
-      
-      # Find the time of the peak from the processed trace
       peak_time_processed <- processed_trace$Time[which.max(processed_trace$dFF0)]
-      
-      # Find the raw fluorescence value (F) at that same time point
       peak_f_raw <- raw_trace$Fluorescence[which.min(abs(raw_trace$Time - peak_time_processed))]
       
       list(
@@ -347,25 +340,70 @@ mod_metrics_explained_server <- function(id, rv) {
       )
     })
     
+    # --- Calculation UI Outputs ---
+    
     output$peak_calculation_ui <- renderUI({
       req(selected_cell_data())
       data <- selected_cell_data()
-      
-      f_val <- round(data$peak_f, 2)
-      f0_val <- round(data$f0, 2)
-      peak_dff0_val <- round(data$metric$Peak_dFF0, 2)
-      
-      withMathJax(
-        helpText(
-          sprintf("$$ \\text{Peak } \\Delta F/F_0 = \\frac{%.2f - %.2f}{%.2f} = %.2f $$",
-                  f_val, f0_val, f0_val, peak_dff0_val)
-        )
-      )
+      withMathJax(helpText(sprintf("$$ \\text{Peak } \\Delta F/F_0 = \\frac{%.2f - %.2f}{%.2f} = %.3f $$",
+                                  data$peak_f, data$f0, data$f0, data$metric$Peak_dFF0)))
+    })
+
+    output$amp_calculation_ui <- renderUI({
+      req(selected_cell_data())
+      data <- selected_cell_data()
+      withMathJax(helpText(sprintf("$$ \\text{Amplitude} = %.3f - 0 = %.3f $$", 
+                                  data$metric$Peak_dFF0, data$metric$Response_Amplitude)))
+    })
+
+    output$snr_calculation_ui <- renderUI({
+      req(selected_cell_data())
+      data <- selected_cell_data()
+      withMathJax(helpText(sprintf("$$ \\text{SNR} = \\frac{%.3f}{%.3f} = %.3f $$", 
+                                  data$metric$Response_Amplitude, data$metric$Baseline_SD, data$metric$SNR)))
     })
     
+    output$rise_time_calculation_ui <- renderUI({
+      req(selected_cell_data())
+      data <- selected_cell_data()
+      withMathJax(helpText(sprintf("$$ \\text{Rise Time} = t_{90\\%%} - t_{10\\%%} = %.2f \\text{ s} $$", data$metric$Rise_Time)))
+    })
+
+    output$ttp_calculation_ui <- renderUI({
+      req(selected_cell_data())
+      data <- selected_cell_data()
+      withMathJax(tagList(
+           helpText(sprintf("$$ t_{25\\%%} = %.2f \\text{ s} $$", data$metric$Time_to_25_Peak)),
+           helpText(sprintf("$$ t_{50\\%%} = %.2f \\text{ s} $$", data$metric$Time_to_50_Peak)),
+           helpText(sprintf("$$ t_{75\\%%} = %.2f \\text{ s} $$", data$metric$Time_to_75_Peak))
+      ))
+    })
+
+    output$fwhm_calculation_ui <- renderUI({
+      req(fwhm_times(), selected_cell_data())
+      times <- fwhm_times()
+      metric <- selected_cell_data()$metric
+      withMathJax(helpText(sprintf("$$ \\text{FWHM} = %.2f - %.2f = %.2f \\text{ s} $$",
+                                  times$t_right, times$t_left, metric$FWHM)))
+    })
+
+    output$auc_calculation_ui <- renderUI({
+      req(selected_cell_data())
+      data <- selected_cell_data()
+      withMathJax(helpText(sprintf("$$ \\text{AUC} = %.2f $$", data$metric$AUC)))
+    })
+
+    output$ca_calculation_ui <- renderUI({
+      req(selected_cell_data())
+      data <- selected_cell_data()
+      withMathJax(helpText(sprintf("$$ \\text{Rate} = \\frac{0.8 \\times %.3f}{%.2f} = %.3f $$", 
+                                  data$metric$Response_Amplitude, data$metric$Rise_Time, data$metric$Calcium_Entry_Rate)))
+    })
+
+    # --- Plot Outputs ---
+
     output$peak_plot <- renderPlot({
       req(selected_cell_data())
-      
       data <- selected_cell_data()
       trace <- data$processed_trace
       metric <- data$metric
@@ -373,77 +411,57 @@ mod_metrics_explained_server <- function(id, rv) {
       
       req(nrow(trace) > 0, nrow(metric) == 1)
       
-      p <- ggplot(trace, aes(x = Time, y = dFF0))
-      
-      # Add baseline highlight if applicable
-      if (identical(rv$baseline_method, "frame_range") && !is.null(rv$baseline_frames)) {
-        start_frame <- rv$baseline_frames[1]
-        end_frame <- rv$baseline_frames[2]
-        
-        baseline_start_time <- trace$Time[min(start_frame, nrow(trace))]
-        baseline_end_time <- trace$Time[min(end_frame, nrow(trace))]
-        
-        # Add a subtle shaded region for the baseline
-        p <- p + geom_rect(
-          aes(xmin = baseline_start_time, xmax = baseline_end_time, ymin = -Inf, ymax = Inf),
-          fill = "grey95", alpha = 1
-        )
-        # Add a simple F0 label inside the region
-        p <- p + annotate("text", 
-                          x = mean(c(baseline_start_time, baseline_end_time)), 
-                          y = max(trace$dFF0, na.rm = TRUE) * 0.15,
-                          label = "F₀", color = "black", fontface = "bold", size = 5)
-      }
-      
-      p <- p +
-        # Dashed vertical line for the peak
-        geom_segment(
-          aes(x = peak_time, xend = peak_time, y = 0, yend = metric$Peak_dFF0),
-          color = "red", linetype = "dashed", alpha = 0.7
-        ) +
+      p <- ggplot(trace, aes(x = Time, y = dFF0)) +
+        explanation_theme() +
         geom_line(color = "gray50", linewidth = 1) +
-        # Point marker for the peak
-        geom_point(data = data.frame(Time = peak_time, dFF0 = metric$Peak_dFF0),
-                   aes(x = Time, y = dFF0),
-                   color = "red", size = 4, shape = 18) +
-        # Text label for the peak value
-        geom_text(data = data.frame(Time = peak_time, dFF0 = metric$Peak_dFF0),
-                  aes(x = Time, y = dFF0, label = round(dFF0, 2)),
-                  vjust = -1.5, color = "red", size = 4) +
-        # Text label for the peak line itself
-        annotate("text", x = peak_time, y = metric$Peak_dFF0 / 2, 
-                 label = "Peak ΔF/F₀", color = "red", angle = 90, 
-                 vjust = -0.5, fontface = "bold", size = 4) +
-        labs(
-          title = paste("Signal Trace for Cell", gsub("[^0-9]", "", metric$Cell)),
-          x = "Time (s)",
-          y = expression(Delta*F/F[0])
-        ) +
-        theme_classic(base_size = 14) +
-        theme(plot.title = element_text(face = "bold"))
+        # Add baseline highlight if applicable
+        if (identical(rv$baseline_method, "frame_range") && !is.null(rv$baseline_frames)) {
+          start_frame <- rv$baseline_frames[1]
+          end_frame <- rv$baseline_frames[2]
+          
+          baseline_start_time <- trace$Time[min(start_frame, nrow(trace))]
+          baseline_end_time <- trace$Time[min(end_frame, nrow(trace))]
+          
+          # Add a subtle shaded region for the baseline
+          p <- p + geom_rect(
+            aes(xmin = baseline_start_time, xmax = baseline_end_time, ymin = -Inf, ymax = Inf),
+            fill = "grey95", alpha = 1
+          )
+          # Add a simple F0 label inside the region
+          p <- p + annotate("text", 
+                            x = mean(c(baseline_start_time, baseline_end_time)), 
+                            y = max(trace$dFF0, na.rm = TRUE) * 0.15,
+                            label = "F₀", color = "black", fontface = "bold", size = 5)
+        }
+        
+        p <- p +
+          # Dashed vertical line for the peak
+          geom_segment(
+            aes(x = peak_time, xend = peak_time, y = 0, yend = metric$Peak_dFF0),
+            color = "red", linetype = "dashed", alpha = 0.7
+          ) +
+          geom_point(data = data.frame(Time = peak_time, dFF0 = metric$Peak_dFF0),
+                     aes(x = Time, y = dFF0),
+                     color = "red", size = 4, shape = 18) +
+          # Text label for the peak value
+          geom_text(data = data.frame(Time = peak_time, dFF0 = metric$Peak_dFF0),
+                    aes(x = Time, y = dFF0, label = round(dFF0, 2)),
+                    vjust = -1.5, color = "red", size = 4) +
+          # Text label for the peak line itself
+          annotate("text", x = peak_time, y = metric$Peak_dFF0 / 2, 
+                   label = "Peak ΔF/F₀", color = "red", angle = 90, 
+                   vjust = -0.5, fontface = "bold", size = 4) +
+          labs(
+            title = paste("Signal Trace for Cell", gsub("[^0-9]", "", metric$Cell)),
+            x = "Time (s)",
+            y = expression(Delta*F/F[0])
+          )
       
       print(p)
       
     }, res = 96)
     
     # --- Response Amplitude Logic ---
-
-    output$cell_selector_ui_amp <- renderUI({
-      req(rv$metrics)
-      cell_choices <- rv$metrics$Cell_ID
-      names(cell_choices) <- paste(rv$metrics$Group, "-", rv$metrics$Cell)
-      selectInput(ns("selected_cell_amp"), "Select a Cell to Visualize:", choices = cell_choices, selected = cell_choices[1])
-    })
-
-    output$amp_calculation_ui <- renderUI({
-      req(selected_cell_data())
-      data <- selected_cell_data()
-      withMathJax(
-        helpText(
-          sprintf("$$ \\text{Amplitude} = %.2f - 0 = %.2f $$", data$metric$Peak_dFF0, data$metric$Response_Amplitude)
-        )
-      )
-    })
 
     output$amp_plot <- renderPlot({
         req(selected_cell_data())
@@ -452,6 +470,7 @@ mod_metrics_explained_server <- function(id, rv) {
         metric <- data$metric
 
         p <- ggplot(trace, aes(x = Time, y = dFF0)) +
+            explanation_theme() +
             geom_line(color = "gray50", linewidth = 1) +
             # Highlight baseline region
             geom_rect(aes(xmin = min(Time), xmax = max(Time), ymin = -Inf, ymax = 0), fill = "grey95", alpha = 0.5) +
@@ -461,30 +480,11 @@ mod_metrics_explained_server <- function(id, rv) {
                          arrow = arrow(length = unit(0.3, "cm"), ends = "both"), color = "purple", linewidth = 1.2) +
             annotate("text", x = metric$Time_to_Peak, y = metric$Peak_dFF0 / 2, label = " Response\n Amplitude",
                      color = "purple", hjust = -0.1, fontface = "bold", size = 5) +
-            labs(title = paste("Response Amplitude for Cell", gsub("[^0-9]", "", metric$Cell)), x = "Time (s)", y = expression(Delta*F/F[0])) +
-            theme_classic(base_size = 14) +
-            theme(plot.title = element_text(face = "bold"))
+            labs(title = paste("Response Amplitude for Cell", gsub("[^0-9]", "", metric$Cell)), x = "Time (s)", y = expression(Delta*F/F[0]))
         print(p)
     }, res = 96)
 
     # --- SNR Logic ---
-
-    output$cell_selector_ui_snr <- renderUI({
-      req(rv$metrics)
-      cell_choices <- rv$metrics$Cell_ID
-      names(cell_choices) <- paste(rv$metrics$Group, "-", rv$metrics$Cell)
-      selectInput(ns("selected_cell_snr"), "Select a Cell to Visualize:", choices = cell_choices, selected = cell_choices[1])
-    })
-    
-    output$snr_calculation_ui <- renderUI({
-      req(selected_cell_data())
-      data <- selected_cell_data()
-      withMathJax(
-        helpText(
-          sprintf("$$ \\text{SNR} = \\frac{%.2f}{%.3f} = %.2f $$", data$metric$Response_Amplitude, data$metric$Baseline_SD, data$metric$SNR)
-        )
-      )
-    })
 
     output$snr_plot <- renderPlot({
         req(selected_cell_data())
@@ -495,6 +495,7 @@ mod_metrics_explained_server <- function(id, rv) {
         baseline_end_time <- trace$Time[min(rv$baseline_frames[2], nrow(trace))]
 
         p <- ggplot(trace, aes(x = Time, y = dFF0)) +
+            explanation_theme() +
             # Highlight baseline noise (SD)
             geom_rect(aes(xmin = min(Time), xmax = baseline_end_time, 
                           ymin = -metric$Baseline_SD, ymax = metric$Baseline_SD), 
@@ -504,33 +505,11 @@ mod_metrics_explained_server <- function(id, rv) {
             # Point for signal peak
             geom_point(aes(x = metric$Time_to_Peak, y = metric$Peak_dFF0), color = "blue", size = 4, shape = 18) +
             annotate("text", x = metric$Time_to_Peak, y = metric$Peak_dFF0, label = " Signal\n (Amplitude)", hjust = -0.1, vjust = 0.5, color = "blue", fontface = "bold") +
-            labs(title = paste("Signal vs. Noise for Cell", gsub("[^0-9]", "", metric$Cell)), x = "Time (s)", y = expression(Delta*F/F[0])) +
-            theme_classic(base_size = 14) +
-            theme(plot.title = element_text(face = "bold"))
+            labs(title = paste("Signal vs. Noise for Cell", gsub("[^0-9]", "", metric$Cell)), x = "Time (s)", y = expression(Delta*F/F[0]))
         print(p)
     }, res = 96)
 
     # --- Rise Time Logic ---
-
-    output$cell_selector_ui_rise <- renderUI({
-      req(rv$metrics)
-      cell_choices <- rv$metrics$Cell_ID
-      names(cell_choices) <- paste(rv$metrics$Group, "-", rv$metrics$Cell)
-      selectInput(ns("selected_cell_rise"), "Select a Cell to Visualize:", choices = cell_choices, selected = cell_choices[1])
-    })
-
-    output$rise_time_calculation_ui <- renderUI({
-      req(selected_cell_data())
-      data <- selected_cell_data()
-      # We need to find the actual times for 10% and 90% to display them
-      # This requires a bit more calculation than just using the final metric
-      # For now, we'll just show the final value. A more detailed implementation would find t10 and t90.
-      withMathJax(
-        helpText(
-          sprintf("$$ \\text{Rise Time} = t_{90\\%%} - t_{10\\%%} = %.2f \\text{ s} $$", data$metric$Rise_Time)
-        )
-      )
-    })
 
     output$rise_time_plot <- renderPlot({
         req(selected_cell_data())
@@ -538,15 +517,20 @@ mod_metrics_explained_server <- function(id, rv) {
         trace <- data$processed_trace
         metric <- data$metric
         
-        # Find 10% and 90% levels
+        # Re-calculate t10 and t90 for visualization consistency
+        rising_phase <- trace[1:which.max(trace$dFF0), ]
         p10 <- 0.10 * metric$Response_Amplitude
         p90 <- 0.90 * metric$Response_Amplitude
+        t10_idx <- which(rising_phase$dFF0 >= p10)[1]
+        t90_idx <- which(rising_phase$dFF0 >= p90)[1]
         
-        # Find crossing times (simplified)
-        time10 <- trace$Time[which(trace$dFF0 >= p10)[1]]
-        time90 <- trace$Time[which(trace$dFF0 >= p90)[1]]
+        if(is.na(t10_idx) || is.na(t90_idx)) return(NULL) # Guard against errors
+
+        time10 <- rising_phase$Time[t10_idx]
+        time90 <- rising_phase$Time[t90_idx]
 
         p <- ggplot(trace, aes(x = Time, y = dFF0)) +
+            explanation_theme() +
             geom_line(color = "gray50", linewidth = 1) +
             # Highlight 10% and 90% levels
             geom_hline(yintercept = c(p10, p90), color = "darkorange", linetype = "dashed") +
@@ -557,32 +541,11 @@ mod_metrics_explained_server <- function(id, rv) {
                          arrow = arrow(length = unit(0.3, "cm"), ends = "both"), color = "firebrick", linewidth = 1.2) +
             annotate("text", x = mean(c(time10, time90)), y = p90, label = paste("Rise Time =", round(metric$Rise_Time, 2), "s"),
                      color = "firebrick", vjust = -1, fontface = "bold", size = 5) +
-            labs(title = paste("Rise Time for Cell", gsub("[^0-9]", "", metric$Cell)), x = "Time (s)", y = expression(Delta*F/F[0])) +
-            theme_classic(base_size = 14) +
-            theme(plot.title = element_text(face = "bold"))
+            labs(title = paste("Rise Time for Cell", gsub("[^0-9]", "", metric$Cell)), x = "Time (s)", y = expression(Delta*F/F[0]))
         print(p)
     }, res = 96)
 
     # --- Time to Percent Peak Logic ---
-
-    output$cell_selector_ui_ttp <- renderUI({
-      req(rv$metrics)
-      cell_choices <- rv$metrics$Cell_ID
-      names(cell_choices) <- paste(rv$metrics$Group, "-", rv$metrics$Cell)
-      selectInput(ns("selected_cell_ttp"), "Select a Cell to Visualize:", choices = cell_choices, selected = cell_choices[1])
-    })
-
-    output$ttp_calculation_ui <- renderUI({
-      req(selected_cell_data())
-      data <- selected_cell_data()
-      withMathJax(
-        tagList(
-           helpText(sprintf("$$ t_{25\\%%} = %.2f \\text{ s} $$", data$metric$Time_to_25_Peak)),
-           helpText(sprintf("$$ t_{50\\%%} = %.2f \\text{ s} $$", data$metric$Time_to_50_Peak)),
-           helpText(sprintf("$$ t_{75\\%%} = %.2f \\text{ s} $$", data$metric$Time_to_75_Peak))
-        )
-      )
-    })
 
     output$ttp_plot <- renderPlot({
       req(selected_cell_data())
@@ -595,6 +558,7 @@ mod_metrics_explained_server <- function(id, rv) {
       p75 <- 0.75 * metric$Peak_dFF0
 
       p <- ggplot(trace, aes(x = Time, y = dFF0)) +
+        explanation_theme() +
         geom_line(color = "gray50", linewidth = 1) +
         # 25% lines
         geom_hline(yintercept = p25, color = "seagreen", linetype = "dotted") +
@@ -608,92 +572,10 @@ mod_metrics_explained_server <- function(id, rv) {
         geom_hline(yintercept = p75, color = "firebrick", linetype = "dotted") +
         geom_segment(aes(x = metric$Time_to_75_Peak, xend = metric$Time_to_75_Peak, y=0, yend=p75), color = "firebrick", linetype = "dashed") +
         annotate("text", x = metric$Time_to_75_Peak, y = p75, label = paste("t_75% =", round(metric$Time_to_75_Peak,2)), vjust=-0.5, color="firebrick") +
-        labs(title = paste("Time to % Peak for Cell", gsub("[^0-9]", "", metric$Cell)), x = "Time (s)", y = expression(Delta*F/F[0])) +
-        theme_classic(base_size = 14) +
-        theme(plot.title = element_text(face = "bold"))
+        labs(title = paste("Time to % Peak for Cell", gsub("[^0-9]", "", metric$Cell)), x = "Time (s)", y = expression(Delta*F/F[0]))
       print(p)
     }, res = 96)
 
-    # --- AUC Logic ---
-    
-    output$cell_selector_ui_auc <- renderUI({
-      req(rv$metrics)
-      cell_choices <- rv$metrics$Cell_ID
-      names(cell_choices) <- paste(rv$metrics$Group, "-", rv$metrics$Cell)
-      selectInput(ns("selected_cell_auc"), "Select a Cell to Visualize:", choices = cell_choices, selected = cell_choices[1])
-    })
-
-    output$auc_calculation_ui <- renderUI({
-      req(selected_cell_data())
-      data <- selected_cell_data()
-      withMathJax(
-        helpText(
-          sprintf("$$ \\text{AUC} = %.2f $$", data$metric$AUC)
-        )
-      )
-    })
-
-    output$auc_plot <- renderPlot({
-      req(selected_cell_data())
-      data <- selected_cell_data()
-      trace <- data$processed_trace
-      metric <- data$metric
-      
-      p <- ggplot(trace, aes(x = Time, y = dFF0)) +
-        geom_ribbon(aes(ymin = 0, ymax = dFF0), fill = "darkseagreen", alpha = 0.7) +
-        geom_line(color = "gray50", linewidth = 1) +
-        annotate("text", x = mean(range(trace$Time)), y = max(trace$dFF0)/2, 
-                 label = paste("AUC =", round(metric$AUC, 2)),
-                 color = "black", fontface = "bold", size = 6) +
-        labs(title = paste("Area Under Curve for Cell", gsub("[^0-9]", "", metric$Cell)), x = "Time (s)", y = expression(Delta*F/F[0])) +
-        theme_classic(base_size = 14) +
-        theme(plot.title = element_text(face = "bold"))
-      print(p)
-    }, res = 96)
-
-    # --- Calcium Entry Rate Logic ---
-    
-    output$cell_selector_ui_ca <- renderUI({
-      req(rv$metrics)
-      cell_choices <- rv$metrics$Cell_ID
-      names(cell_choices) <- paste(rv$metrics$Group, "-", rv$metrics$Cell)
-      selectInput(ns("selected_cell_ca"), "Select a Cell to Visualize:", choices = cell_choices, selected = cell_choices[1])
-    })
-
-    output$ca_calculation_ui <- renderUI({
-      req(selected_cell_data())
-      data <- selected_cell_data()
-      withMathJax(
-        helpText(
-          sprintf("$$ \\text{Rate} = \\frac{0.8 \\times %.2f}{%.2f} = %.2f $$", data$metric$Response_Amplitude, data$metric$Rise_Time, data$metric$Calcium_Entry_Rate)
-        )
-      )
-    })
-
-    output$ca_plot <- renderPlot({
-      req(selected_cell_data())
-      data <- selected_cell_data()
-      trace <- data$processed_trace
-      metric <- data$metric
-      
-      p10 <- 0.10 * metric$Response_Amplitude
-      p90 <- 0.90 * metric$Response_Amplitude
-      time10 <- trace$Time[which(trace$dFF0 >= p10)[1]]
-      time90 <- trace$Time[which(trace$dFF0 >= p90)[1]]
-
-      p <- ggplot(trace, aes(x = Time, y = dFF0)) +
-        geom_line(color = "gray50", linewidth = 1) +
-        # Line representing the slope
-        geom_segment(aes(x = time10, y = p10, xend = time90, yend = p90), color = "dodgerblue", linewidth = 1.5) +
-        annotate("text", x = mean(c(time10, time90)), y = mean(c(p10, p90)),
-                 label = paste("Slope =", round(metric$Calcium_Entry_Rate, 2)),
-                 color = "dodgerblue", fontface = "bold", size = 5, angle=30, vjust=-1) +
-        labs(title = paste("Calcium Entry Rate for Cell", gsub("[^0-9]", "", metric$Cell)), x = "Time (s)", y = expression(Delta*F/F[0])) +
-        theme_classic(base_size = 14) +
-        theme(plot.title = element_text(face = "bold"))
-      print(p)
-    }, res = 96)
-    
     # --- FWHM Plot and Calculation Logic ---
     
     fwhm_times <- reactive({
@@ -741,19 +623,6 @@ mod_metrics_explained_server <- function(id, rv) {
       )
     })
     
-    output$fwhm_calculation_ui <- renderUI({
-      req(fwhm_times(), selected_cell_data())
-      times <- fwhm_times()
-      metric <- selected_cell_data()$metric
-      
-      withMathJax(
-        helpText(
-          sprintf("$$ \\text{FWHM} = %.2f - %.2f = %.2f \\text{ s} $$",
-                  times$t_right, times$t_left, metric$FWHM)
-        )
-      )
-    })
-    
     output$fwhm_plot <- renderPlot({
       req(selected_cell_data(), fwhm_times())
       
@@ -763,7 +632,7 @@ mod_metrics_explained_server <- function(id, rv) {
       times <- fwhm_times()
       
       p <- ggplot(trace, aes(x = Time, y = dFF0)) +
-        geom_line(color = "gray50", linewidth = 1) +
+        explanation_theme() +
         
         # Horizontal line at 50% max
         geom_hline(yintercept = times$half_max_y, color = "dodgerblue", linetype = "dashed") +
@@ -809,9 +678,7 @@ mod_metrics_explained_server <- function(id, rv) {
           title = paste("FWHM Explained for Cell", gsub("[^0-9]", "", metric$Cell)),
           x = "Time (s)",
           y = expression(Delta*F/F[0])
-        ) +
-        theme_classic(base_size = 14) +
-        theme(plot.title = element_text(face = "bold"))
+        )
       
       print(p)
     }, res = 96)
