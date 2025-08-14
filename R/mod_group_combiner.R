@@ -13,11 +13,10 @@ mod_group_combiner_ui <- function(id) {
     
     # Action buttons at the bottom
     fluidRow(
-      column(4, actionButton(ns("add_group_btn"), "Add New Group", 
+      column(6, actionButton(ns("add_group_btn"), "Add New Group", 
                              icon = icon("plus-circle"), class = "btn-primary")),
-      column(4, actionButton(ns("combine_btn"), "Process All Individual Files & Go to Comparison", 
-                             icon = icon("cogs"), class = "btn-success")),
-      column(4, uiOutput(ns("download_all_ui")))
+      column(6, actionButton(ns("combine_btn"), "Process All Individual Files & Go to Comparison", 
+                             icon = icon("cogs"), class = "btn-success"))
     )
   )
 }
@@ -76,7 +75,10 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
           
           if (nrow(rv$groups[[group_name]]$files) > 0) {
             DTOutput(ns(paste0("table_", group_name)))
-          }
+          },
+          
+          # Placeholder for the group-specific download button
+          uiOutput(ns(paste0("download_group_ui_", group_name)))
         )
       })
     })
@@ -111,6 +113,49 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
             # Action buttons removed for simplicity, can be re-added if needed
             datatable(df[, c("FileName", "GanglionID", "AnimalID")], escape = FALSE, selection = 'none', rownames = FALSE, options = list(dom = 't', paging = FALSE))
         })
+        
+        # --- Group-specific Download Button UI ---
+        output[[paste0("download_group_ui_", group_name)]] <- renderUI({
+          # This button appears after processing if this group has data
+          if (!is.null(rv_group$combined_data) && group_name %in% rv_group$combined_data$time_course$GroupName) {
+            downloadButton(ns(paste0("download_group_", group_name)), 
+                           paste("Download Combined Data for", group_name), 
+                           class = "btn-info", icon = icon("download"))
+          }
+        })
+
+        # --- Group-specific Download Handler ---
+        output[[paste0("download_group_", group_name)]] <- downloadHandler(
+            filename = function() { paste0("combined_data_", group_name, "_", Sys.Date(), ".zip") },
+            content = function(file) {
+                req(rv_group$combined_data)
+
+                # Filter the main wide data frame for columns belonging to this group
+                group_cols_pattern <- paste0("^", group_name, "_")
+                group_cols <- grep(group_cols_pattern, names(rv_group$combined_data$wide_time_course), value = TRUE)
+                
+                group_wide_df <- rv_group$combined_data$wide_time_course %>%
+                    dplyr::select(Time, all_of(group_cols))
+
+                # Filter metrics for this group
+                group_metrics <- rv_group$combined_data$metrics %>%
+                    dplyr::filter(GroupName == group_name)
+
+                tmpdir <- tempdir()
+                on.exit(unlink(tmpdir, recursive = TRUE))
+
+                timecourse_path <- file.path(tmpdir, "TimeCourse.csv")
+                metrics_path <- file.path(tmpdir, "Metrics.csv")
+
+                write.csv(group_wide_df, timecourse_path, row.names = FALSE)
+                write.csv(group_metrics, metrics_path, row.names = FALSE)
+
+                old_wd <- getwd()
+                setwd(tmpdir)
+                on.exit(setwd(old_wd), add = TRUE)
+                utils::zip(zipfile = file, files = c("TimeCourse.csv", "Metrics.csv"))
+            }
+        )
       })
     })
     
@@ -187,11 +232,11 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
             values_to = "dFF0",
             values_drop_na = TRUE
         ) %>%
-        tidyr::separate(Combined_ID, into = c("GroupName", "GanglionID", "OriginalCell"), sep = "_", extra = "merge") %>%
+        tidyr::separate(Combined_ID, into = c("GroupName", "GanglionID", "OriginalCell"), sep = "_", extra = "merge", remove = FALSE) %>%
         dplyr::mutate(
             Cell_ID = paste(GanglionID, OriginalCell, sep = "_"),
-            # Attempt to extract AnimalID from GanglionID string
-            AnimalID = stringr::str_extract(GanglionID, "\\d{2}_\\d{2}_\\d{2}") 
+            # Correctly extract AnimalID from GanglionID string (e.g., ..._06_10_25_...)
+            AnimalID = stringr::str_extract(GanglionID, "(\\d{2}_\\d{2}_\\d{2})|(\\d{2}-\\d{2}-\\d{4})")
         )
 
         # --- Calculate Metrics ---
@@ -210,6 +255,17 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
           wide_time_course = as.data.table(combined_wide_df) 
         )
         
+        # Manually trigger the rendering of download buttons
+        for (name in names(rv$groups)) {
+            output[[paste0("download_group_ui_", name)]] <- renderUI({
+                if (name %in% final_time_course_long$GroupName) {
+                    downloadButton(ns(paste0("download_group_", name)), 
+                                   paste("Download Combined Data for", name), 
+                                   class = "btn-info", icon = icon("download"))
+                }
+            })
+        }
+        
         showNotification("All groups processed successfully.", type = "message")
         updateTabsetPanel(session = parent_session, inputId = "app_tabs", selected = "group_timecourse")
         
@@ -218,24 +274,5 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
       })
     })
     
-    # --- Global Download All Groups UI ---
-    output$download_all_ui <- renderUI({
-      # The button should appear once the global combined data is ready
-      if (!is.null(rv_group$combined_data)) {
-        downloadButton(ns("download_all"), "Download Combined CSV", 
-                       class = "btn-info", icon = icon("download"))
-      }
-    })
-    
-    # --- Global Download All Groups Handler ---
-    output$download_all <- downloadHandler(
-      filename = function() { paste0("combined_data_", Sys.Date(), ".csv") },
-      content = function(file) {
-        req(rv_group$combined_data, rv_group$combined_data$wide_time_course)
-        
-        # Use the pre-combined wide-format data frame
-        write.csv(rv_group$combined_data$wide_time_course, file, row.names = FALSE)
-      }
-    )
   })
 }
