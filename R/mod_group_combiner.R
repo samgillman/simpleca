@@ -220,9 +220,9 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
     
     # --- Global Download All Groups UI ---
     output$download_all_ui <- renderUI({
-      has_combined_data <- any(sapply(rv$groups, function(g) !is.null(g$combined_data)))
-      if (has_combined_data) {
-        downloadButton(ns("download_all"), "Download All Groups Combined Data", 
+      # The button should appear once the global combined data is ready
+      if (!is.null(rv_group$combined_data)) {
+        downloadButton(ns("download_all"), "Download Combined CSV", 
                        class = "btn-info", icon = icon("download"))
       }
     })
