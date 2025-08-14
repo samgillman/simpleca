@@ -73,7 +73,9 @@ mod_heatmap_server <- function(id, rv) {
           axis.title = element_text(size = input$hm_axis_title_size),
           axis.text = element_text(size = input$hm_axis_text_size),
           legend.text = element_text(size = input$hm_legend_text_size),
-          legend.title = element_text(size = max(6, input$hm_legend_text_size + 2))
+          legend.title = element_text(size = max(6, input$hm_legend_text_size + 2)),
+          strip.background = element_blank(),
+          strip.text = element_blank()
         )
     })
     
