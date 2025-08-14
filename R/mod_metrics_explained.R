@@ -405,205 +405,168 @@ mod_metrics_explained_server <- function(id, rv) {
     output$peak_plot <- renderPlot({
       req(selected_cell_data())
       data <- selected_cell_data()
-      trace <- data$processed_trace
-      metric <- data$metric
-      peak_time <- data$peak_time
-      
-      p <- ggplot(trace, aes(x = Time, y = dFF0)) +
+      p <- ggplot(data$processed_trace, aes(x = Time, y = dFF0)) +
         geom_line(color = "gray50", linewidth = 1)
-
       if (identical(rv$baseline_method, "frame_range") && !is.null(rv$baseline_frames)) {
-        start_frame <- rv$baseline_frames[1]
-        end_frame <- rv$baseline_frames[2]
-        baseline_start_time <- trace$Time[min(start_frame, nrow(trace))]
-        baseline_end_time <- trace$Time[min(end_frame, nrow(trace))]
-        p <- p + annotate("rect", xmin = baseline_start_time, xmax = baseline_end_time, ymin = -Inf, ymax = Inf, fill = "grey95", alpha = 0.5) +
-               annotate("text", x = mean(c(baseline_start_time, baseline_end_time)), y = max(trace$dFF0, na.rm = TRUE) * 0.15,
-                        label = "F₀", color = "black", fontface = "bold", size = 5)
+        b_start <- data$processed_trace$Time[min(rv$baseline_frames[1], nrow(data$processed_trace))]
+        b_end <- data$processed_trace$Time[min(rv$baseline_frames[2], nrow(data$processed_trace))]
+        p <- p + annotate("rect", xmin = b_start, xmax = b_end, ymin = -Inf, ymax = Inf, fill = "grey95", alpha = 0.5)
       }
-      
-      p <- p +
-        geom_segment(data = metric, aes(x = Time_to_Peak, xend = Time_to_Peak, y = 0, yend = Peak_dFF0),
-                     color = "red", linetype = "dashed", alpha = 0.7) +
-        geom_point(data = metric, aes(x = Time_to_Peak, y = Peak_dFF0), color = "red", size = 4, shape = 18) +
-        geom_text(data = metric, aes(x = Time_to_Peak, y = Peak_dFF0, label = round(Peak_dFF0, 3)),
-                  vjust = -1.5, color = "red", size = 4) +
-        annotate("text", x = peak_time, y = metric$Peak_dFF0 / 2, label = "Peak ΔF/F₀", color = "red", angle = 90, 
-                 vjust = -0.5, fontface = "bold", size = 4) +
-        labs(title = paste("Signal Trace for Cell", gsub("[^0-9]", "", metric$Cell)),
-             x = "Time (s)", y = expression(Delta*F/F[0])) +
+      p + geom_segment(data = data$metric, aes(x = Time_to_Peak, xend = Time_to_Peak, y = 0, yend = Peak_dFF0), color = "red", linetype = "dashed") +
+        geom_point(data = data$metric, aes(x = Time_to_Peak, y = Peak_dFF0), color = "red", size = 4) +
+        geom_text(data = data$metric, aes(x = Time_to_Peak, y = Peak_dFF0, label = round(Peak_dFF0, 3)), vjust = -1.5, color = "red") +
+        labs(title = paste("Peak dF/F0 for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme()
-      
-      print(p)
     }, res = 96)
     
     output$amp_plot <- renderPlot({
-        req(selected_cell_data())
-        data <- selected_cell_data()
-        trace <- data$processed_trace
-        metric <- data$metric
-
-        p <- ggplot(trace, aes(x = Time, y = dFF0)) +
-            geom_line(color = "gray50", linewidth = 1) +
-            annotate("rect", xmin = min(trace$Time), xmax = max(trace$Time), ymin = -Inf, ymax = 0, fill = "grey95", alpha = 0.5) +
-            annotate("text", x = min(trace$Time), y = 0, label = "Baseline (F₀)", hjust = 0, vjust = -0.5, color = "black", fontface = "italic") +
-            geom_segment(data = metric, aes(x = Time_to_Peak, xend = Time_to_Peak, y = 0, yend = Peak_dFF0),
-                         arrow = arrow(length = unit(0.3, "cm"), ends = "both"), color = "purple", linewidth = 1.2) +
-            annotate("text", x = metric$Time_to_Peak, y = metric$Peak_dFF0 / 2, label = " Response\n Amplitude",
-                     color = "purple", hjust = -0.1, fontface = "bold", size = 5) +
-            labs(title = paste("Response Amplitude for Cell", gsub("[^0-9]", "", metric$Cell)), x = "Time (s)", y = expression(Delta*F/F[0])) +
-            explanation_theme()
-        print(p)
+      req(selected_cell_data())
+      data <- selected_cell_data()
+      ggplot(data$processed_trace, aes(x = Time, y = dFF0)) +
+        geom_line(color = "gray50", linewidth = 1) +
+        annotate("rect", xmin = min(data$processed_trace$Time), xmax = max(data$processed_trace$Time), ymin = -Inf, ymax = 0, fill = "grey95", alpha = 0.5) +
+        geom_segment(data = data$metric, aes(x = Time_to_Peak, xend = Time_to_Peak, y = 0, yend = Peak_dFF0),
+                     arrow = arrow(length = unit(0.3, "cm"), ends = "both"), color = "purple", linewidth = 1.2) +
+        annotate("text", x = data$metric$Time_to_Peak, y = data$metric$Peak_dFF0 / 2, label = " Amplitude", color = "purple", hjust = -0.1, fontface = "bold") +
+        labs(title = paste("Response Amplitude for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
+        explanation_theme()
     }, res = 96)
 
     output$snr_plot <- renderPlot({
-        req(selected_cell_data())
-        data <- selected_cell_data()
-        trace <- data$processed_trace
-        metric <- data$metric
-        
-        baseline_end_time <- trace$Time[min(rv$baseline_frames[2], nrow(trace))]
-
-        p <- ggplot(trace, aes(x = Time, y = dFF0)) +
-            geom_line(color = "gray50", linewidth = 1) +
-            annotate("rect", xmin = min(trace$Time), xmax = baseline_end_time, ymin = -metric$Baseline_SD, ymax = metric$Baseline_SD, 
-                     fill = "firebrick", alpha = 0.3) +
-            annotate("text", x = min(trace$Time), y = 0, label = "Baseline Noise (±SD)", hjust = 0, vjust = -1, color = "firebrick", fontface = "bold") +
-            geom_point(data = metric, aes(x = Time_to_Peak, y = Peak_dFF0), color = "blue", size = 4, shape = 18) +
-            annotate("text", x = metric$Time_to_Peak, y = metric$Peak_dFF0, label = " Signal\n (Amplitude)", hjust = -0.1, vjust = 0.5, color = "blue", fontface = "bold") +
-            labs(title = paste("Signal vs. Noise for Cell", gsub("[^0-9]", "", metric$Cell)), x = "Time (s)", y = expression(Delta*F/F[0])) +
-            explanation_theme()
-        print(p)
+      req(selected_cell_data())
+      data <- selected_cell_data()
+      b_end_time <- data$processed_trace$Time[min(rv$baseline_frames[2], nrow(data$processed_trace))]
+      ggplot(data$processed_trace, aes(x = Time, y = dFF0)) +
+        geom_line(color = "gray50", linewidth = 1) +
+        annotate("rect", xmin = min(data$processed_trace$Time), xmax = b_end_time, ymin = -data$metric$Baseline_SD, ymax = data$metric$Baseline_SD, fill = "firebrick", alpha = 0.3) +
+        annotate("text", x = min(data$processed_trace$Time), y = 0, label = "Baseline Noise (SD)", hjust = 0, vjust = -1, color = "firebrick", fontface = "bold") +
+        geom_point(data = data$metric, aes(x = Time_to_Peak, y = Peak_dFF0), color = "blue", size = 4) +
+        annotate("text", x = data$metric$Time_to_Peak, y = data$metric$Peak_dFF0, label = " Signal", hjust = -0.1, color = "blue", fontface = "bold") +
+        labs(title = paste("Signal vs. Noise for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
+        explanation_theme()
     }, res = 96)
 
     output$rise_time_plot <- renderPlot({
-        req(selected_cell_data())
-        data <- selected_cell_data()
-        trace <- data$processed_trace
-        metric <- data$metric
-        
-        p10 <- 0.10 * metric$Response_Amplitude
-        p90 <- 0.90 * metric$Response_Amplitude
-        t10_val <- metric$Time_to_Peak - metric$Rise_Time # Approximate for viz
-        t90_val <- metric$Time_to_Peak
-
-        p <- ggplot(trace, aes(x = Time, y = dFF0)) +
-            geom_line(color = "gray50", linewidth = 1) +
-            geom_hline(yintercept = c(p10, p90), color = "darkorange", linetype = "dashed") +
-            annotate("text", x = min(trace$Time), y = p10, label = "10% Amp", hjust = 0, vjust = -0.5, color = "darkorange", fontface = "bold") +
-            annotate("text", x = min(trace$Time), y = p90, label = "90% Amp", hjust = 0, vjust = -0.5, color = "darkorange", fontface = "bold") +
-            geom_segment(aes(x = t10_val, xend = t90_val, y = p90, yend = p90),
-                         arrow = arrow(length = unit(0.3, "cm"), ends = "both"), color = "firebrick", linewidth = 1.2, inherit.aes = FALSE) +
-            annotate("text", x = mean(c(t10_val, t90_val)), y = p90, label = paste("Rise Time =", round(metric$Rise_Time, 2), "s"),
-                     color = "firebrick", vjust = -1, fontface = "bold", size = 5) +
-            labs(title = paste("Rise Time for Cell", gsub("[^0-9]", "", metric$Cell)), x = "Time (s)", y = expression(Delta*F/F[0])) +
-            explanation_theme()
-        print(p)
+      req(selected_cell_data())
+      data <- selected_cell_data()
+      p10 <- 0.10 * data$metric$Response_Amplitude
+      p90 <- 0.90 * data$metric$Response_Amplitude
+      t10 <- data$metric$Time_to_Peak - data$metric$Rise_Time # Approx for viz
+      t90 <- data$metric$Time_to_Peak
+      ggplot(data$processed_trace, aes(x = Time, y = dFF0)) +
+        geom_line(color = "gray50", linewidth = 1) +
+        geom_hline(yintercept = c(p10, p90), color = "darkorange", linetype = "dashed") +
+        geom_segment(aes(x = t10, xend = t90, y = p90, yend = p90), arrow = arrow(length = unit(0.3, "cm"), ends = "both"), color = "firebrick", linewidth = 1.2) +
+        annotate("text", x = mean(c(t10, t90)), y = p90, label = paste("Rise Time =", round(data$metric$Rise_Time, 2), "s"), color = "firebrick", vjust = -1, fontface = "bold") +
+        labs(title = paste("Rise Time for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
+        explanation_theme()
     }, res = 96)
 
     output$ttp_plot <- renderPlot({
       req(selected_cell_data())
       data <- selected_cell_data()
+      p25 <- 0.25 * data$metric$Peak_dFF0
+      p50 <- 0.50 * data$metric$Peak_dFF0
+      p75 <- 0.75 * data$metric$Peak_dFF0
+      ggplot(data$processed_trace, aes(x = Time, y = dFF0)) +
+        geom_line(color = "gray50", linewidth = 1) +
+        geom_hline(yintercept = p25, color = "seagreen", linetype = "dotted") +
+        geom_segment(data = data$metric, aes(x = Time_to_25_Peak, xend = Time_to_25_Peak, y=0, yend=p25), color = "seagreen", linetype = "dashed") +
+        geom_hline(yintercept = p50, color = "goldenrod", linetype = "dotted") +
+        geom_segment(data = data$metric, aes(x = Time_to_50_Peak, xend = Time_to_50_Peak, y=0, yend=p50), color = "goldenrod", linetype = "dashed") +
+        geom_hline(yintercept = p75, color = "firebrick", linetype = "dotted") +
+        geom_segment(data = data$metric, aes(x = Time_to_75_Peak, xend = Time_to_75_Peak, y=0, yend=p75), color = "firebrick", linetype = "dashed") +
+        labs(title = paste("Time to % Peak for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
+        explanation_theme()
+    }, res = 96)
+    
+    # --- FWHM Plot and Calculation Logic ---
+    
+    fwhm_times <- reactive({
+      req(selected_cell_data())
+      data <- selected_cell_data()
       trace <- data$processed_trace
       metric <- data$metric
       
-      p25 <- 0.25 * metric$Peak_dFF0
-      p50 <- 0.50 * metric$Peak_dFF0
-      p75 <- 0.75 * metric$Peak_dFF0
-
-      p <- ggplot(trace, aes(x = Time, y = dFF0)) +
-        geom_line(color = "gray50", linewidth = 1) +
-        geom_hline(yintercept = p25, color = "seagreen", linetype = "dotted") +
-        geom_segment(data = metric, aes(x = Time_to_25_Peak, xend = Time_to_25_Peak, y=0, yend=p25), color = "seagreen", linetype = "dashed") +
-        annotate("text", x = metric$Time_to_25_Peak, y = p25, label = paste("t_25% =", round(metric$Time_to_25_Peak,2)), vjust=-0.5, color="seagreen") +
-        geom_hline(yintercept = p50, color = "goldenrod", linetype = "dotted") +
-        geom_segment(data = metric, aes(x = Time_to_50_Peak, xend = metric$Time_to_50_Peak, y=0, yend=p50), color = "goldenrod", linetype = "dashed") +
-        annotate("text", x = metric$Time_to_50_Peak, y = p50, label = paste("t_50% =", round(metric$Time_to_50_Peak,2)), vjust=-0.5, color="goldenrod") +
-        geom_hline(yintercept = p75, color = "firebrick", linetype = "dotted") +
-        geom_segment(data = metric, aes(x = Time_to_75_Peak, xend = Time_to_75_Peak, y=0, yend=p75), color = "firebrick", linetype = "dashed") +
-        annotate("text", x = metric$Time_to_75_Peak, y = p75, label = paste("t_75% =", round(metric$Time_to_75_Peak,2)), vjust=-0.5, color="firebrick") +
-        labs(title = paste("Time to % Peak for Cell", gsub("[^0-9]", "", metric$Cell)), x = "Time (s)", y = expression(Delta*F/F[0])) +
-        explanation_theme()
-      print(p)
-    }, res = 96)
+      req(nrow(trace) > 0, !is.na(metric$FWHM))
+      
+      peak_val <- metric$Peak_dFF0
+      half_max <- peak_val / 2
+      
+      above <- trace$dFF0 >= half_max
+      crossings <- which(diff(above) != 0)
+      
+      peak_idx <- which.max(trace$dFF0)
+      left_crossings <- crossings[crossings < peak_idx]
+      idx_left <- if (length(left_crossings) > 0) max(left_crossings) + 1 else NA
+      
+      right_crossings <- crossings[crossings >= peak_idx]
+      idx_right <- if (length(right_crossings) > 0) min(right_crossings) + 1 else NA
+      
+      req(!is.na(idx_left))
+      
+      y1_l <- trace$dFF0[idx_left - 1]; y2_l <- trace$dFF0[idx_left]
+      t1_l <- trace$Time[idx_left - 1]; t2_l <- trace$Time[idx_left]
+      time_left <- t1_l + (t2_l - t1_l) * (half_max - y1_l) / (y2_l - y1_l)
+      
+      is_sustained <- is.na(idx_right)
+      time_right <- if (is_sustained) {
+        max(trace$Time)
+      } else {
+        y1_r <- trace$dFF0[idx_right - 1]; y2_r <- trace$dFF0[idx_right]
+        t1_r <- trace$Time[idx_right - 1]; t2_r <- trace$Time[idx_right]
+        t1_r + (t2_r - t1_r) * (half_max - y1_r) / (y2_r - y1_r)
+      }
+      
+      list(
+        t_left = time_left,
+        t_right = time_right,
+        half_max_y = half_max,
+        is_sustained = is_sustained
+      )
+    })
 
     output$fwhm_plot <- renderPlot({
       req(selected_cell_data(), fwhm_times())
       data <- selected_cell_data()
-      trace <- data$processed_trace
-      metric <- data$metric
       times <- fwhm_times()
-      
-      p <- ggplot(trace, aes(x = Time, y = dFF0)) +
+      ggplot(data$processed_trace, aes(x = Time, y = dFF0)) +
         geom_line(color = "gray50", linewidth = 1) +
         geom_hline(yintercept = times$half_max_y, color = "dodgerblue", linetype = "dashed") +
-        annotate("text", x = min(trace$Time), y = times$half_max_y, label = "50% of Peak", 
-                 color = "dodgerblue", vjust = -0.5, hjust = 0, fontface = "bold") +
-        geom_segment(aes(x = times$t_left, xend = times$t_left, y = 0, yend = times$half_max_y), 
-                     color = "dodgerblue", linetype = "dotted", inherit.aes=FALSE) +
-        (if (!times$is_sustained) {
-            geom_segment(aes(x = times$t_right, xend = times$t_right, y = 0, yend = times$half_max_y), 
-                         color = "dodgerblue", linetype = "dotted", inherit.aes=FALSE)
-        }) +
-        geom_segment(aes(x = times$t_left, xend = times$t_right, y = times$half_max_y, yend = times$half_max_y),
-                     arrow = arrow(length = unit(0.3, "cm"), ends = "both"), color = "firebrick", linewidth = 1, inherit.aes=FALSE) +
-        annotate("text", x = mean(c(times$t_left, times$t_right)), y = times$half_max_y, 
-                 label = paste("FWHM =", round(metric$FWHM, 2), "s"), 
-                 color = "firebrick", vjust = -1, fontface = "bold", size = 5) +
-        geom_segment(aes(x = times$t_left, xend = mean(c(times$t_left, times$t_right)), y = times$half_max_y * 0.8, yend = times$half_max_y * 0.8),
-                     arrow = arrow(length = unit(0.2, "cm"), ends = "both"), color = "darkorchid", linewidth = 0.8, inherit.aes=FALSE) +
-        annotate("text", x = mean(c(times$t_left, mean(c(times$t_left, times$t_right)))), y = times$half_max_y * 0.8, 
-                 label = paste("HWHM =", round(metric$Half_Width, 2), "s"), 
-                 color = "darkorchid", vjust = -1, fontface = "bold") +
-        (if (times$is_sustained) {
-            annotate("text", x = max(trace$Time), y = 0, 
-                     label = "* Measured to end of trace (sustained response)",
-                     hjust = 1, vjust = -0.5, color = "gray40", style = "italic")
-        }) +
-        labs(title = paste("FWHM Explained for Cell", gsub("[^0-9]", "", metric$Cell)),
-             x = "Time (s)", y = expression(Delta*F/F[0])) +
+        geom_segment(aes(x = times$t_left, xend = times$t_left, y = 0, yend = times$half_max_y), color = "dodgerblue", linetype = "dotted", inherit.aes = FALSE) +
+        (if (!times$is_sustained) geom_segment(aes(x = times$t_right, xend = times$t_right, y = 0, yend = times$half_max_y), color = "dodgerblue", linetype = "dotted", inherit.aes = FALSE)) +
+        geom_segment(aes(x = times$t_left, xend = times$t_right, y = times$half_max_y, yend = times$half_max_y), arrow = arrow(length = unit(0.3, "cm"), ends = "both"), color = "firebrick", linewidth = 1, inherit.aes = FALSE) +
+        annotate("text", x = mean(c(times$t_left, times$t_right)), y = times$half_max_y, label = paste("FWHM =", round(data$metric$FWHM, 2), "s"), color = "firebrick", vjust = -1, fontface = "bold") +
+        labs(title = paste("FWHM Explained for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme()
-      
-      print(p)
     }, res = 96)
     
     output$auc_plot <- renderPlot({
       req(selected_cell_data())
       data <- selected_cell_data()
-      trace <- data$processed_trace
-      metric <- data$metric
-      
-      p <- ggplot(trace, aes(x = Time, y = dFF0)) +
+      ggplot(data$processed_trace, aes(x = Time, y = dFF0)) +
         geom_ribbon(aes(ymin = 0, ymax = dFF0), fill = "darkseagreen", alpha = 0.7) +
         geom_line(color = "gray50", linewidth = 1) +
-        annotate("text", x = mean(range(trace$Time)), y = max(trace$dFF0, na.rm=TRUE)/2, 
-                 label = paste("AUC =", round(metric$AUC, 2)),
-                 color = "black", fontface = "bold", size = 6) +
-        labs(title = paste("Area Under Curve for Cell", gsub("[^0-9]", "", metric$Cell)), x = "Time (s)", y = expression(Delta*F/F[0])) +
+        annotate("text", x = mean(range(data$processed_trace$Time)), y = max(data$processed_trace$dFF0, na.rm=TRUE)/2, 
+                 label = paste("AUC =", round(data$metric$AUC, 2)), color = "black", fontface = "bold", size = 6) +
+        labs(title = paste("Area Under Curve for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme()
-      print(p)
     }, res = 96)
 
     output$ca_plot <- renderPlot({
       req(selected_cell_data())
       data <- selected_cell_data()
-      trace <- data$processed_trace
-      metric <- data$metric
-      
-      p10 <- 0.10 * metric$Response_Amplitude
-      p90 <- 0.90 * metric$Response_Amplitude
-      t10_val <- metric$Time_to_Peak - metric$Rise_Time # Approximate for viz
-      t90_val <- metric$Time_to_Peak
-
-      p <- ggplot(trace, aes(x = Time, y = dFF0)) +
+      t10 <- data$metric$Time_to_Peak - data$metric$Rise_Time # Approx for viz
+      t90 <- data$metric$Time_to_Peak
+      ggplot(data$processed_trace, aes(x = Time, y = dFF0)) +
         geom_line(color = "gray50", linewidth = 1) +
-        geom_segment(aes(x = t10_val, y = p10, xend = t90_val, yend = p90), color = "dodgerblue", linewidth = 1.5, inherit.aes=FALSE) +
-        annotate("text", x = mean(c(t10_val, t90_val)), y = mean(c(p10, p90)),
-                 label = paste("Slope =", round(metric$Calcium_Entry_Rate, 3)),
-                 color = "dodgerblue", fontface = "bold", size = 5, angle=30, vjust=-1) +
-        labs(title = paste("Calcium Entry Rate for Cell", gsub("[^0-9]", "", metric$Cell)), x = "Time (s)", y = expression(Delta*F/F[0])) +
+        geom_segment(aes(x = t10, y = 0.1 * data$metric$Response_Amplitude, xend = t90, yend = 0.9 * data$metric$Response_Amplitude), 
+                     color = "dodgerblue", linewidth = 1.5, inherit.aes = FALSE) +
+        annotate("text", x = mean(c(t10, t90)), y = mean(c(0.1, 0.9)) * data$metric$Response_Amplitude,
+                 label = paste("Rate =", round(data$metric$Calcium_Entry_Rate, 3)),
+                 color = "dodgerblue", fontface = "bold", size = 5, angle = 30, vjust = -1) +
+        labs(title = paste("Calcium Entry Rate for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme()
-      print(p)
     }, res = 96)
     
   })
