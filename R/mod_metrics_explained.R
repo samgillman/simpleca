@@ -453,24 +453,22 @@ mod_metrics_explained_server <- function(id, rv) {
       p10_val <- 0.10 * metric$Response_Amplitude
       p90_val <- 0.90 * metric$Response_Amplitude
       
-      # Proportional offset to prevent label overlap
       y_offset <- (max(trace$dFF0, na.rm = TRUE) - min(trace$dFF0, na.rm = TRUE)) * 0.05
       label_y_pos <- p90_val + y_offset
+      label_x_pos <- min(trace$Time)
 
       ggplot(trace, aes(x = Time, y = dFF0)) +
         geom_line(color = "gray50", linewidth = 1) +
-        
-        # --- Horizontal Guides ---
         geom_segment(aes(x = 0, y = p10_val, xend = t10, yend = p10_val), color = "darkorange", linetype = "dotted") +
         geom_segment(aes(x = 0, y = p90_val, xend = t90, yend = p90_val), color = "darkorange", linetype = "dotted") +
-        
-        # --- Vertical Guides & Points ---
         geom_segment(aes(x = t10, y = 0, xend = t10, yend = p10_val), color = "darkorange", linetype = "dashed") +
         geom_point(aes(x = !!t10, y = !!p10_val), color = "darkorange", size = 4) +
         geom_segment(aes(x = t90, y = 0, xend = t90, yend = p90_val), color = "darkorange", linetype = "dashed") +
         geom_point(aes(x = !!t90, y = !!p90_val), color = "darkorange", size = 4) +
-
-        # --- Arrow and Label for the Rise Time duration (positioned cleanly above) ---
+        
+        annotate("text", x = label_x_pos, y = p10_val, label = "10%", color = "darkorange", fontface = "bold", hjust = -0.2) +
+        annotate("text", x = label_x_pos, y = p90_val, label = "90%", color = "darkorange", fontface = "bold", hjust = -0.2) +
+        
         geom_segment(aes(x = t10, xend = t90, y = label_y_pos, yend = label_y_pos), 
                      arrow = arrow(length = unit(0.25, "cm"), ends = "both"), color = "firebrick", linewidth = 1.2) +
         annotate("text", x = mean(c(t10, t90)), y = label_y_pos, 
@@ -484,18 +482,31 @@ mod_metrics_explained_server <- function(id, rv) {
     output$ttp_plot <- renderPlot({
       req(selected_cell_data())
       data <- selected_cell_data()
-      p25 <- 0.25 * data$metric$Peak_dFF0
-      p50 <- 0.50 * data$metric$Peak_dFF0
-      p75 <- 0.75 * data$metric$Peak_dFF0
-      ggplot(data$processed_trace, aes(x = Time, y = dFF0)) +
+      trace <- data$processed_trace
+      metric <- data$metric
+      
+      p25 <- 0.25 * metric$Peak_dFF0
+      p50 <- 0.50 * metric$Peak_dFF0
+      p75 <- 0.75 * metric$Peak_dFF0
+      
+      label_x_pos <- min(trace$Time)
+
+      ggplot(trace, aes(x = Time, y = dFF0)) +
         geom_line(color = "gray50", linewidth = 1) +
+        
         geom_hline(yintercept = p25, color = "seagreen", linetype = "dotted") +
-        geom_segment(data = data$metric, aes(x = Time_to_25_Peak, xend = Time_to_25_Peak, y=0, yend=p25), color = "seagreen", linetype = "dashed") +
+        geom_segment(data = metric, aes(x = Time_to_25_Peak, xend = Time_to_25_Peak, y=0, yend=p25), color = "seagreen", linetype = "dashed") +
+        annotate("text", x = label_x_pos, y = p25, label = "25%", color = "seagreen", fontface = "bold", hjust = -0.2) +
+        
         geom_hline(yintercept = p50, color = "goldenrod", linetype = "dotted") +
-        geom_segment(data = data$metric, aes(x = Time_to_50_Peak, xend = Time_to_50_Peak, y=0, yend=p50), color = "goldenrod", linetype = "dashed") +
+        geom_segment(data = metric, aes(x = Time_to_50_Peak, xend = Time_to_50_Peak, y=0, yend=p50), color = "goldenrod", linetype = "dashed") +
+        annotate("text", x = label_x_pos, y = p50, label = "50%", color = "goldenrod", fontface = "bold", hjust = -0.2) +
+        
         geom_hline(yintercept = p75, color = "firebrick", linetype = "dotted") +
-        geom_segment(data = data$metric, aes(x = Time_to_75_Peak, xend = Time_to_75_Peak, y=0, yend=p75), color = "firebrick", linetype = "dashed") +
-        labs(title = paste("Time to % Peak for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
+        geom_segment(data = metric, aes(x = Time_to_75_Peak, xend = Time_to_75_Peak, y=0, yend=p75), color = "firebrick", linetype = "dashed") +
+        annotate("text", x = label_x_pos, y = p75, label = "75%", color = "firebrick", fontface = "bold", hjust = -0.2) +
+        
+        labs(title = paste("Time to % Peak for Cell", metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme()
     }, res = 96)
     
