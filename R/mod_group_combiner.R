@@ -13,10 +13,11 @@ mod_group_combiner_ui <- function(id) {
     
     # Action buttons at the bottom
     fluidRow(
-      column(6, actionButton(ns("add_group_btn"), "Add New Group", 
+      column(4, actionButton(ns("add_group_btn"), "Add New Group", 
                              icon = icon("plus-circle"), class = "btn-primary")),
-      column(6, actionButton(ns("combine_btn"), "Process All Individual Files & Go to Comparison", 
-                             icon = icon("cogs"), class = "btn-success"))
+      column(4, actionButton(ns("combine_btn"), "Process All Individual Files & Go to Comparison", 
+                             icon = icon("cogs"), class = "btn-success")),
+      column(4, uiOutput(ns("download_all_ui")))
     )
   )
 }
@@ -232,11 +233,48 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
         )
         
         showNotification("All groups processed. Navigating to comparison tab.", type = "message")
-        updateTabsetPanel(session = parent_session, inputId = "app_tabs", selected = "group_comparison")
+        updateTabsetPanel(session = parent_session, inputId = "app_tabs", selected = "group_timecourse")
         
       }, error = function(e) {
         showNotification(paste("Error during processing:", e$message), type = "error", duration = 10)
       })
     })
+    
+    # --- Global Download All Groups UI ---
+    output$download_all_ui <- renderUI({
+      has_combined_data <- any(sapply(rv$groups, function(g) !is.null(g$combined_data)))
+      if (has_combined_data) {
+        downloadButton(ns("download_all"), "Download All Groups Combined Data", 
+                       class = "btn-info", icon = icon("download"))
+      }
+    })
+    
+    # --- Global Download All Groups Handler ---
+    output$download_all <- downloadHandler(
+      filename = function() { paste0("all_groups_combined_data_", Sys.Date(), ".zip") },
+      content = function(file) {
+        groups_with_data <- rv$groups[sapply(rv$groups, function(g) !is.null(g$combined_data))]
+        req(length(groups_with_data) > 0)
+        
+        tmpdir <- tempdir()
+        all_files <- c()
+        
+        for (group_name in names(groups_with_data)) {
+          # Create CSV files for each group
+          time_csv <- file.path(tmpdir, paste0(group_name, "_TimeCourse.csv"))
+          metrics_csv <- file.path(tmpdir, paste0(group_name, "_Metrics.csv"))
+          
+          write.csv(groups_with_data[[group_name]]$combined_data$time_course, time_csv, row.names = FALSE)
+          write.csv(groups_with_data[[group_name]]$combined_data$metrics, metrics_csv, row.names = FALSE)
+          
+          all_files <- c(all_files, basename(time_csv), basename(metrics_csv))
+        }
+        
+        # Change to temp directory, create zip, then restore
+        old_wd <- getwd(); setwd(tmpdir)
+        on.exit(setwd(old_wd), add = TRUE)
+        utils::zip(zipfile = file, files = all_files)
+      }
+    )
   })
 }
