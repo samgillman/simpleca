@@ -564,20 +564,29 @@ mod_metrics_explained_server <- function(id, rv) {
       trace <- data$processed_trace
       metric <- data$metric
       
-      y_pos <- 0 - diff(range(trace$dFF0, na.rm = TRUE)) * 0.1
-
+      # Dynamically create clean space below the x-axis for the annotation
+      y_range <- diff(range(trace$dFF0, na.rm = TRUE))
+      plot_ymin <- min(0, min(trace$dFF0, na.rm = TRUE))
+      arrow_y_pos <- plot_ymin - y_range * 0.1
+      
       ggplot(trace, aes(x = Time, y = dFF0)) +
         geom_line(color = "gray50", linewidth = 1) +
         geom_segment(data = metric, aes(x = Time_to_Peak, xend = Time_to_Peak, y = 0, yend = Peak_dFF0), color = "red", linetype = "dashed") +
         geom_point(data = metric, aes(x = Time_to_Peak, y = Peak_dFF0), color = "red", size = 4) +
-        geom_segment(data = metric, aes(x = 0, xend = Time_to_Peak, y = y_pos, yend = y_pos),
+        
+        # --- Arrow and Label positioned in the clean space below the axis ---
+        geom_segment(data = metric, aes(x = 0, xend = Time_to_Peak, y = arrow_y_pos, yend = arrow_y_pos),
                      arrow = arrow(length = unit(0.25, "cm"), ends = "both"), color = "purple", linewidth = 1) +
-        annotate("text", x = metric$Time_to_Peak / 2, y = y_pos, 
+        annotate("text", x = metric$Time_to_Peak / 2, y = arrow_y_pos, 
                  label = paste("Time to Peak =", round(metric$Time_to_Peak, 2), "s"),
                  color = "purple", vjust = 1.5, fontface = "bold", size = 4.5) +
+
         labs(title = paste("Time to Peak for Cell", metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme() +
-        coord_cartesian(clip = "off")
+        coord_cartesian(
+            ylim = c(plot_ymin - y_range * 0.15, NA), # Add padding below
+            clip = "off"
+        )
     }, res = 96)
     
     # --- FWHM Plot and Calculation Logic ---
