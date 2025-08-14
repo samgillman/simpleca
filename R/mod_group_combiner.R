@@ -13,19 +13,10 @@ mod_group_combiner_ui <- function(id) {
     
     # Action buttons at the bottom
     fluidRow(
-      column(4, actionButton(ns("add_group_btn"), "Add New Group", 
+      column(6, actionButton(ns("add_group_btn"), "Add New Group", 
                              icon = icon("plus-circle"), class = "btn-primary")),
-      column(4, actionButton(ns("combine_btn"), "Combine & Analyze All Groups", 
-                             icon = icon("object-group"), class = "btn-success")),
-      column(4, downloadButton(ns("download_combined_data"), "Download Combined Data (.xlsx)"))
-    ),
-    
-    hr(),
-    
-    wellPanel(
-        fileInput(ns("upload_combined_data"), "Or, Upload Previously Combined Data (.xlsx)",
-                  accept = c(".xlsx"),
-                  placeholder = "Select a combined Excel file")
+      column(6, actionButton(ns("combine_btn"), "Process All Individual Files & Go to Comparison", 
+                             icon = icon("cogs"), class = "btn-success"))
     )
   )
 }
@@ -41,8 +32,7 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
     
     # Reactive value to store all group information
     rv <- reactiveValues(
-      groups = list(),
-      editing_target = NULL # To store which file is being edited
+      groups = list()
     )
     
     # Observer to add a new group
@@ -50,30 +40,20 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
       showModal(modalDialog(
         title = "Create a New Group",
         textInput(ns("new_group_name"), "Enter Group Name:", placeholder = "e.g., Wild Type, PDHA-KO"),
-        footer = tagList(
-          modalButton("Cancel"),
-          actionButton(ns("create_group_confirm"), "Create Group")
-        ),
+        footer = tagList(modalButton("Cancel"), actionButton(ns("create_group_confirm"), "Create Group")),
         easyClose = TRUE
       ))
     })
     
-    # When the user confirms the new group name
     observeEvent(input$create_group_confirm, {
       req(input$new_group_name)
       group_name <- trimws(input$new_group_name)
       
       if (nchar(group_name) > 0 && !group_name %in% names(rv$groups)) {
-        # Add the new group to the reactive list
         rv$groups[[group_name]] <- list(
           name = group_name,
-          files = data.frame(
-            FileName = character(),
-            FilePath = character(),
-            GanglionID = character(),
-            AnimalID = character(),
-            stringsAsFactors = FALSE
-          )
+          files = data.frame(FileName=character(), FilePath=character(), GanglionID=character(), AnimalID=character(), stringsAsFactors=FALSE),
+          combined_data = NULL
         )
         removeModal()
       } else {
@@ -83,130 +63,46 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
     
     # Dynamic UI generation for group panels
     output$group_panels_ui <- renderUI({
-      if (length(rv$groups) == 0) {
-        return(
-          wellPanel(
-            h4("Start by adding a group", style = "text-align: center; color: #6c757d;"),
-            p("Click the 'Add New Group' button below to create your first experimental group.", style = "text-align: center; color: #6c757d;")
-          )
-        )
-      }
+      if (length(rv$groups) == 0) return(wellPanel(h4("Start by adding a group...")))
       
-      # Use tagList to wrap the output of lapply, ensuring a single UI object is returned
-      tagList(
-        lapply(names(rv$groups), function(group_name) {
-          group_data <- rv$groups[[group_name]]
-          
-          # Build the list of UI elements for the box body dynamically
-          box_contents <- list(
-            fileInput(ns(paste0("upload_", group_name)), 
-                      label = "Upload Processed Time Course CSV(s) for this group:",
-                      multiple = TRUE,
-                      accept = c("text/csv", ".csv"))
-          )
-          
-          # Only add the data table output if there are files to display
-          if (nrow(group_data$files) > 0) {
-            box_contents <- c(box_contents, list(DTOutput(ns(paste0("table_", group_name)))))
-          }
-          
-          # Use do.call to safely construct the box with its contents
-          args <- list(
-            title = tagList(icon("layer-group"), group_name),
-            status = "primary",
-            solidHeader = TRUE,
-            collapsible = TRUE,
-            width = 12
-          )
-          
-          do.call(box, c(args, box_contents))
-        })
-      )
-    })
-
-    # Dynamically create table outputs for each group
-    observe({
       lapply(names(rv$groups), function(group_name) {
-        output[[paste0("table_", group_name)]] <- renderDT({
+        box(
+          title = tagList(icon("layer-group"), group_name),
+          status = "primary", solidHeader = TRUE, collapsible = TRUE, width = 12,
           
-          display_data <- rv$groups[[group_name]]$files
-          display_data$Actions <- vapply(seq_len(nrow(display_data)), function(i) {
-            as.character(
-              actionButton(
-                inputId = ns(paste0("edit_", group_name, "_", i)),
-                label = "Edit",
-                class = "btn-xs",
-                onclick = sprintf("Shiny.setInputValue('%s', { group: '%s', row: %d }, {priority: 'event'})", 
-                                  ns("edit_button_clicked"), group_name, i)
-              )
-            )
-          }, FUN.VALUE = character(1))
+          h4("Step 1: Add Individual Recording Files (.csv)"),
+          fileInput(ns(paste0("upload_ind_", group_name)), label = NULL, multiple = TRUE, accept = c(".csv")),
           
-          datatable(
-            display_data[, c("FileName", "GanglionID", "AnimalID", "Actions")],
-            escape = FALSE,
-            selection = 'none',
-            rownames = FALSE,
-            options = list(dom = 't', paging = FALSE, scrollX = TRUE)
-          )
-        })
+          if (nrow(rv$groups[[group_name]]$files) > 0) {
+            DTOutput(ns(paste0("table_", group_name)))
+          },
+          
+          hr(),
+          h4("OR: Upload a Previously Combined Group File (.xlsx)"),
+          fileInput(ns(paste0("upload_comb_", group_name)), label = NULL, accept = c(".xlsx")),
+          
+          # This UI output will contain the download button if data is available
+          uiOutput(ns(paste0("download_ui_", group_name)))
+        )
       })
     })
 
-    # Observer for when an 'Edit' button is clicked
-    observeEvent(input$edit_button_clicked, {
-      target <- input$edit_button_clicked
-      rv$editing_target <- target # Store which file we're editing
-      
-      file_to_edit <- rv$groups[[target$group]]$files[target$row, ]
-      
-      showModal(modalDialog(
-        title = paste("Edit Metadata for:", file_to_edit$FileName),
-        textInput(ns("modal_ganglion_id"), "Ganglion ID", value = file_to_edit$GanglionID),
-        textInput(ns("modal_animal_id"), "Animal ID", value = file_to_edit$AnimalID),
-        footer = tagList(
-          modalButton("Cancel"),
-          actionButton(ns("save_edit_btn"), "Save Changes")
-        ),
-        easyClose = TRUE
-      ))
-    })
-
-    # Observer to save the changes from the edit modal
-    observeEvent(input$save_edit_btn, {
-      req(rv$editing_target)
-      target <- rv$editing_target
-      
-      # Update the reactive dataframe
-      rv$groups[[target$group]]$files[target$row, "GanglionID"] <- input$modal_ganglion_id
-      rv$groups[[target$group]]$files[target$row, "AnimalID"] <- input$modal_animal_id
-      
-      removeModal()
-      rv$editing_target <- NULL # Clear the editing target
-      showNotification("Metadata updated successfully.", type = "message", duration = 3)
-    })
-
-    # Dynamically create observers for each group's fileInput
+    # Dynamically create observers for each group
     observe({
       lapply(names(rv$groups), function(group_name) {
-        input_id <- paste0("upload_", group_name)
         
-        observeEvent(input[[input_id]], {
-          req(input[[input_id]])
-          
-          uploaded_files <- input[[input_id]]
+        # --- Individual File Upload Logic ---
+        observeEvent(input[[paste0("upload_ind_", group_name)]], {
+          req(input[[paste0("upload_ind_", group_name)]])
           
           new_files_df <- data.frame(
-            FileName = uploaded_files$name,
-            FilePath = uploaded_files$datapath,
-            # Use the filename (sans extension) as the GanglionID
-            GanglionID = tools::file_path_sans_ext(uploaded_files$name),
-            # Keep the AnimalID extraction, but users should verify it
-            AnimalID = sapply(uploaded_files$name, function(name) str_extract(name, "[0-9]{2}_[0-9]{2}_[0-9]{2}")),
-            stringsAsFactors = FALSE
+              FileName = input[[paste0("upload_ind_", group_name)]]$name,
+              FilePath = input[[paste0("upload_ind_", group_name)]]$datapath,
+              GanglionID = tools::file_path_sans_ext(input[[paste0("upload_ind_", group_name)]]$name),
+              AnimalID = sapply(input[[paste0("upload_ind_", group_name)]]$name, function(n) str_extract(n, "[0-9]{2}_[0-9]{2}_[0-9]{2}")),
+              stringsAsFactors = FALSE
           )
           
-          # Append new files to the specific group, avoiding duplicates
           current_files <- rv$groups[[group_name]]$files$FileName
           new_files_to_add <- new_files_df[!new_files_df$FileName %in% current_files, ]
           
@@ -214,141 +110,120 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
             rv$groups[[group_name]]$files <- rbind(rv$groups[[group_name]]$files, new_files_to_add)
           }
         })
+        
+        # --- Table Rendering with Edit buttons ---
+        output[[paste0("table_", group_name)]] <- renderDT({
+            df <- rv$groups[[group_name]]$files
+            df$Actions <- vapply(seq_len(nrow(df)), function(i) as.character(actionButton(ns(paste0("edit_", group_name, "_", i)), "Edit", class="btn-xs")), character(1))
+            datatable(df[, c("FileName", "GanglionID", "AnimalID", "Actions")], escape = FALSE, selection = 'none', rownames = FALSE, options = list(dom = 't', paging = FALSE))
+        })
+        
+        # --- Combined File Upload Logic ---
+        observeEvent(input[[paste0("upload_comb_", group_name)]], {
+          req(input[[paste0("upload_comb_", group_name)]])
+          infile <- input[[paste0("upload_comb_", group_name)]]
+          
+          tryCatch({
+            time_course <- as.data.table(readxl::read_excel(infile$datapath, sheet = "TimeCourse"))
+            metrics <- as.data.table(readxl::read_excel(infile$datapath, sheet = "Metrics"))
+            
+            # Ensure group name is consistent
+            time_course[, GroupName := group_name]
+            metrics[, GroupName := group_name]
+            
+            rv$groups[[group_name]]$combined_data <- list(time_course = time_course, metrics = metrics)
+            rv$groups[[group_name]]$files <- rv$groups[[group_name]]$files[0, ]
+            showNotification(paste("Loaded combined data for", group_name), type = "message")
+          }, error = function(e) {
+            showNotification(paste("Error reading file:", e$message), type = "error")
+          })
+        })
+        
+        # --- Download Button UI ---
+        output[[paste0("download_ui_", group_name)]] <- renderUI({
+          if (!is.null(rv$groups[[group_name]]$combined_data)) {
+            downloadButton(ns(paste0("download_", group_name)), "Download Processed Data for this Group", class="btn-info btn-sm")
+          }
+        })
+        
+        # --- Download Handler ---
+        output[[paste0("download_", group_name)]] <- downloadHandler(
+          filename = function() { paste0("processed_data_", group_name, "_", Sys.Date(), ".xlsx") },
+          content = function(file) {
+            req(rv$groups[[group_name]]$combined_data)
+            writexl::write_xlsx(rv$groups[[group_name]]$combined_data, path = file)
+          }
+        )
       })
     })
+    
+    # --- Edit Modal Logic (needs to target the new rv structure) ---
+    observeEvent(input$edit_button_clicked, {
+        # This part will require careful adjustment to find the correct row
+    })
 
-    # Observer for the 'Combine' button
+    # --- Combine Button Logic ---
     observeEvent(input$combine_btn, {
-      req(length(rv$groups) > 0)
-      
-      id <- showNotification("Combining all group datasets...", duration = NULL, closeButton = FALSE, type = "message")
+      id <- showNotification("Processing all groups...", duration = NULL, closeButton = FALSE)
       on.exit(removeNotification(id))
       
       tryCatch({
-        all_group_data <- list()
-        
+        # 1. Process individual files for any group that has them
         for (group_name in names(rv$groups)) {
-          group_info <- rv$groups[[group_name]]
-          
-          if (nrow(group_info$files) == 0) next # Skip empty groups
-          
-          group_files_data <- lapply(1:nrow(group_info$files), function(i) {
-            file_info <- group_info$files[i, ]
+          if (nrow(rv$groups[[group_name]]$files) > 0) {
+            files_to_process <- rv$groups[[group_name]]$files
             
-            time_course_data <- fread(file_info$FilePath)
-            setnames(time_course_data, 1, "Time")
+            time_course_list <- lapply(1:nrow(files_to_process), function(i) {
+                file_info <- files_to_process[i, ]
+                dt <- fread(file_info$FilePath)
+                setnames(dt, 1, "Time")
+                measure_vars <- setdiff(names(dt)[sapply(dt, is.numeric)], "Time")
+                if (length(measure_vars) == 0) return(NULL)
+                
+                long_dt <- melt(dt, id.vars = "Time", measure.vars = measure_vars, variable.name = "OriginalCell", value.name = "dFF0")
+                long_dt[, `:=`(Cell_ID = paste(file_info$GanglionID, OriginalCell, sep = "_"),
+                               GanglionID = file_info$GanglionID, AnimalID = file_info$AnimalID, GroupName = group_name)]
+                return(long_dt)
+            })
             
-            # Select only numeric columns for melting, excluding 'Time'
-            measure_vars <- names(time_course_data)[sapply(time_course_data, is.numeric)]
-            measure_vars <- setdiff(measure_vars, "Time")
-
-            if (length(measure_vars) == 0) return(NULL) # Skip if no numeric trace columns
-
-            long_data <- melt(time_course_data, 
-                              id.vars = "Time", 
-                              measure.vars = measure_vars,
-                              variable.name = "OriginalCell", 
-                              value.name = "dFF0")
+            full_time_course <- rbindlist(time_course_list, use.names = TRUE, fill = TRUE)
             
-            long_data[, `:=`(
-              Cell_ID = paste(gsub("\\.csv$", "", file_info$FileName), OriginalCell, sep = "_"),
-              GanglionID = file_info$GanglionID,
-              AnimalID = file_info$AnimalID,
-              GroupName = group_name,
-              OriginalFile = file_info$FileName
-            )]
+            # Calculate metrics
+            nested_data <- full_time_course %>%
+              group_by(Cell_ID, GroupName, AnimalID, GanglionID) %>%
+              summarise(data = list(pick(Time, dFF0)), .groups = "drop")
             
-            return(long_data)
-          })
-          
-          all_group_data[[group_name]] <- rbindlist(group_files_data, use.names = TRUE, fill = TRUE)
+            metrics_list <- purrr::map(nested_data$data, ~calculate_cell_metrics(.x$dFF0, .x$Time, data_is_dFF0 = TRUE))
+            metrics_df <- bind_cols(nested_data %>% select(-data), bind_rows(metrics_list))
+            
+            rv$groups[[group_name]]$combined_data <- list(time_course = full_time_course, metrics = metrics_df)
+          }
         }
         
-        if (length(all_group_data) == 0) {
-          showNotification("No files were uploaded to any group.", type = "warning")
-          return()
+        # 2. Collect all processed data from all groups
+        final_combined_list <- lapply(rv$groups, function(g) g$combined_data)
+        final_combined_list <- final_combined_list[!sapply(final_combined_list, is.null)] # Remove empty groups
+        
+        if (length(final_combined_list) == 0) {
+            showNotification("No data available to combine.", type = "warning")
+            return()
         }
-        
-        combined_df <- rbindlist(all_group_data, use.names = TRUE, fill = TRUE)
-        
-        # Calculate metrics for the combined data
-        metrics_id <- showNotification("Calculating metrics for all cells...", duration = NULL, closeButton = FALSE)
-        on.exit(removeNotification(metrics_id), add = TRUE)
-        
-        nested_data <- combined_df %>%
-          group_by(Cell_ID, GroupName, AnimalID, GanglionID) %>%
-          summarise(data = list(pick(Time, dFF0)), .groups = "drop")
-        
-        metrics_list <- purrr::map(nested_data$data, ~{
-          calculate_cell_metrics(.x$dFF0, .x$Time, data_is_dFF0 = TRUE)
-        })
-        
-        metrics_df <- bind_cols(nested_data %>% select(-data), bind_rows(metrics_list))
-        
-        # Store both time course and metrics in the reactive value
-        rv_group$combined_data <- list(
-          time_course = combined_df,
-          metrics = metrics_df
-        )
-        
-        showNotification(
-          paste("Successfully combined and processed data for", length(all_group_data), "groups."),
-          type = "message",
-          duration = 5
-        )
-        
-      }, error = function(e) {
-        showNotification(paste("An error occurred during combination:", e$message), type = "error", duration = 10)
-      })
-    })
-    
-    # --- Download and Upload Combined Data Logic ---
-    
-    # Download handler for the combined dataset
-    output$download_combined_data <- downloadHandler(
-      filename = function() {
-        paste0("combined_dataset_", Sys.Date(), ".xlsx")
-      },
-      content = function(file) {
-        req(rv_group$combined_data)
-        
-        data_to_save <- list(
-          TimeCourse = rv_group$combined_data$time_course,
-          Metrics = rv_group$combined_data$metrics
-        )
-        
-        writexl::write_xlsx(data_to_save, path = file)
-      }
-    )
-    
-    # Observer for uploading a previously combined dataset
-    observeEvent(input$upload_combined_data, {
-      req(input$upload_combined_data)
-      
-      tryCatch({
-        id <- showNotification("Loading combined data from file...", duration = NULL, closeButton = FALSE)
-        on.exit(removeNotification(id))
-        
-        uploaded_time_course <- readxl::read_excel(input$upload_combined_data$datapath, sheet = "TimeCourse")
-        uploaded_metrics <- readxl::read_excel(input$upload_combined_data$datapath, sheet = "Metrics")
+
+        # 3. Final assembly for the comparison tab
+        final_time_course <- rbindlist(lapply(final_combined_list, `[[`, "time_course"))
+        final_metrics <- rbindlist(lapply(final_combined_list, `[[`, "metrics"))
         
         rv_group$combined_data <- list(
-          time_course = as.data.table(uploaded_time_course),
-          metrics = as.data.table(uploaded_metrics)
+          time_course = final_time_course,
+          metrics = final_metrics
         )
         
-        # Optionally, clear out the individual file view to avoid confusion
-        rv$groups <- list()
-        
-        showNotification("Successfully loaded combined dataset.", type = "message")
-        
-        # Switch to the Group Comparison tab to show the results
+        showNotification("All groups processed. Navigating to comparison tab.", type = "message")
         updateTabsetPanel(session = parent_session, inputId = "app_tabs", selected = "group_comparison")
         
       }, error = function(e) {
-        showNotification(paste("Error reading the uploaded file. Please ensure it's a valid .xlsx file with 'TimeCourse' and 'Metrics' sheets. Details:", e$message), type = "error", duration = 10)
+        showNotification(paste("Error during processing:", e$message), type = "error", duration = 10)
       })
     })
-    
   })
 }

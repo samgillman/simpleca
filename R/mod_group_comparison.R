@@ -9,404 +9,188 @@ mod_group_comparison_ui <- function(id) {
   
   tabItem(tabName = "group_comparison",
     sidebarLayout(
+      # --- Sidebar Panel for Controls ---
       sidebarPanel(
-        h4("Plot Settings"),
-        
-        # UI to select which groups to plot
-        selectInput(ns("groups_to_plot"), 
-                    label = "Select Groups to Display:",
-                    choices = NULL, # Will be updated dynamically
-                    multiple = TRUE),
-        
+        width = 3,
+        h4("Analysis Controls"),
+        selectInput(ns("metric_to_plot"), "Select Metric to Analyze:", choices = NULL),
         hr(),
-        
-        # Placeholder for future analysis options
-        h5("Analysis Options (Coming Soon)"),
-        
-        width = 3
+        uiOutput(ns("group_selector_ui")),
+        hr(),
+        h4("Plot Options"),
+        checkboxInput(ns("show_jitter"), "Show Individual Data Points", value = TRUE),
+        checkboxInput(ns("show_individual_traces"), "Show Individual Traces on Time Course", value = FALSE)
       ),
       
+      # --- Main Panel for Outputs ---
       mainPanel(
+        width = 9,
         tabsetPanel(
           id = ns("group_tabs"),
           
-          # --- Tab 1: Time Course Plot ---
           tabPanel("Time Course",
-                   h4("Average Time Course Plot (Mean ± SEM)"),
-                   plotOutput(ns("avg_time_course_plot"), height = "500px")
+            fluidRow(
+              box(
+                title = "Average Time Course Plot (Mean ± SEM)",
+                status = "primary", solidHeader = TRUE, width = 12,
+                plotOutput(ns("avg_time_course_plot"), height = "600px")
+              )
+            )
           ),
           
-          # --- Tab 2: Metric Comparison Plots ---
           tabPanel("Metric Plots",
-                   fluidRow(
-                     box(
-                       width = 12, status = "primary",
-                       selectInput(ns("metric_to_plot"), "Select Metric to Plot:", choices = NULL)
-                     )
-                   ),
-                   fluidRow(
-                     box(
-                       title = "Group Comparison by Cell", status = "info", solidHeader = TRUE, width = 12, collapsible = TRUE,
-                       p("Each point represents a single cell. The box plot shows the distribution for all cells within each experimental group."),
-                       plotOutput(ns("cell_metric_plot"))
-                     ),
-                     box(
-                       title = "Group Comparison by Ganglion", status = "warning", solidHeader = TRUE, width = 12, collapsible = TRUE,
-                       p("Each point represents the average value of all cells within a single ganglion. The box plot shows the distribution of these ganglion averages for each group."),
-                       plotOutput(ns("ganglion_metric_plot")),
-                       hr(),
-                       h4("Statistical Comparison"),
-                       verbatimTextOutput(ns("ganglion_stats_output"))
-                     ),
-                     box(
-                       title = "Group Comparison by Animal", status = "success", solidHeader = TRUE, width = 12, collapsible = TRUE,
-                       p("Each point represents the average value of all cells within a single animal. The box plot shows the distribution of these animal averages for each group."),
-                       plotOutput(ns("animal_metric_plot")),
-                       hr(),
-                       h4("Statistical Comparison"),
-                       verbatimTextOutput(ns("animal_stats_output"))
-                     )
-                   )
+            fluidRow(
+              box(
+                title = "Group Comparison by Animal", status = "success", solidHeader = TRUE, width = 12, collapsible = TRUE,
+                p("Each point is the average for one animal. P-values are from a t-test or ANOVA on these averages."),
+                plotOutput(ns("animal_metric_plot"))
+              )
+            ),
+            fluidRow(
+              box(
+                title = "Group Comparison by Ganglion", status = "warning", solidHeader = TRUE, width = 12, collapsible = TRUE,
+                p("Each point is the average for one ganglion. P-values are calculated from these averages."),
+                plotOutput(ns("ganglion_metric_plot"))
+              )
+            ),
+            fluidRow(
+              box(
+                title = "Group Comparison by Cell", status = "info", solidHeader = TRUE, width = 12, collapsible = TRUE,
+                p("Each point is one cell. This plot shows the overall distribution but is not used for hierarchical stats."),
+                plotOutput(ns("cell_metric_plot"))
+              )
+            )
           ),
           
-          # --- Tab 3: Summary Tables ---
           tabPanel("Summary Tables",
-                   p("These tables provide the underlying data for the plots. You can download the data from any table using the 'CSV' button."),
-                   br(),
-                   
-                   box(
-                     title = "Group-Level Summary Statistics",
-                     status = "info", solidHeader = TRUE, width = 12, collapsible = TRUE,
-                     p("This table shows the overall mean, standard error (SEM), and count (N) for each metric, summarized by group based on individual cell data."),
-                     DT::DTOutput(ns("group_summary_stats_table"))
-                   ),
-                   
-                   # Table for Animal-Level Data
-                   box(
-                     title = "Animal-Level Summary",
-                     status = "success", solidHeader = TRUE, width = 12, collapsible = TRUE,
-                     p("This table shows the average metric value for each animal, corresponding to the 'Group Comparison by Animal' plot. Each row is one animal."),
-                     DT::DTOutput(ns("animal_summary_table"))
-                   ),
-                   
-                   # Table for Ganglion-Level Data
-                   box(
-                     title = "Ganglion-Level Summary",
-                     status = "warning", solidHeader = TRUE, width = 12, collapsible = TRUE,
-                     p("This table shows the average metric value for each ganglion, corresponding to the 'Group Comparison by Ganglion' plot. Each row is one ganglion."),
-                     DT::DTOutput(ns("ganglion_summary_table"))
-                   ),
-                   
-                   # Table for Raw Cell-Level Data
-                   box(
-                     title = "Individual Cell Metrics (Raw Data)",
-                     status = "primary", solidHeader = TRUE, width = 12, collapsible = TRUE, collapsed = TRUE,
-                     p("This table contains all the calculated metrics for every individual cell, corresponding to the 'Group Comparison by Cell' plot. Each row is one cell."),
-                     DT::DTOutput(ns("all_metrics_table"))
-                   )
+            p("Download data for any table using the 'CSV' button."), br(),
+            tabsetPanel(
+              tabPanel("Group Level", DT::DTOutput(ns("group_summary_stats_table"))),
+              tabPanel("Animal Level", DT::DTOutput(ns("animal_summary_table"))),
+              tabPanel("Ganglion Level", DT::DTOutput(ns("ganglion_summary_table"))),
+              tabPanel("Cell Level (Raw)", DT::DTOutput(ns("all_metrics_table")))
+            )
           )
-        ),
-        width = 9
+        )
       )
-    ) # end sidebarLayout
-  ) # end tabItem
+    )
+  )
 }
-
 
 #' Server for the Group Comparison module
 #'
 #' @param id A character string specifying the module's ID.
-#' @param rv_group A reactive values object containing the combined group data.
+#' @param rv_group A reactive values object containing the combined data.
 mod_group_comparison_server <- function(id, rv_group) {
   moduleServer(id, function(input, output, session) {
-    ns <- session$ns
     
-    # Observer to update group selection choices
-    observe({
-      req(rv_group$combined_data)
-      
-      group_names <- unique(rv_group$combined_data$GroupName)
-      
-      updateSelectInput(session, "groups_to_plot", 
-                        choices = group_names,
-                        selected = group_names) # Select all by default
-    })
+    # --- Data Reactives ---
+    all_metrics <- reactive(req(rv_group$combined_data, rv_group$combined_data$metrics))
     
-    # Reactive to calculate average time course data
-    avg_time_course <- reactive({
-      req(rv_group$combined_data, rv_group$combined_data$time_course)
-      
-      rv_group$combined_data$time_course %>%
-        group_by(GroupName, Time) %>%
-        summarise(
-          Mean_dFF0 = mean(dFF0, na.rm = TRUE),
-          SEM = sd(dFF0, na.rm = TRUE) / sqrt(n()),
-          .groups = 'drop'
-        )
-    })
-    
-    # Render the average time course plot
-    output$avg_time_course_plot <- renderPlot({
-      req(avg_time_course())
-      
-      p <- ggplot(avg_time_course(), aes(x = Time, y = Mean_dFF0, color = GroupName, fill = GroupName)) +
-        geom_line(linewidth = 1) +
-        geom_ribbon(aes(ymin = Mean_dFF0 - SEM, ymax = Mean_dFF0 + SEM), 
-                    alpha = 0.2, linetype = "dashed") +
-        labs(
-          title = "Average Time Course per Group",
-          subtitle = "Showing Mean ± SEM",
-          x = "Time (s)",
-          y = expression(paste("Average ", Delta, "F/F"[0])),
-          color = "Group",
-          fill = "Group"
-        ) +
-        theme_minimal(base_size = 15) +
-        theme(
-          plot.title = element_text(hjust = 0.5, face = "bold"),
-          plot.subtitle = element_text(hjust = 0.5),
-          legend.position = "bottom"
-        )
-      
-      # Optionally add individual traces
-      if (isTruthy(input$show_individual_traces)) {
-        req(rv_group$combined_data$time_course)
-        p <- p + geom_line(
-          data = rv_group$combined_data$time_course,
-          aes(x = Time, y = dFF0, group = Cell_ID),
-          alpha = 0.15,
-          linewidth = 0.5,
-          inherit.aes = FALSE # Important to prevent aesthetic overwriting
-        )
-      }
-      
-      p
-    })
-    
-    # Reactive for all metrics from the combined data
-    all_metrics <- reactive({
-      req(rv_group$combined_data, rv_group$combined_data$metrics)
-      rv_group$combined_data$metrics
-    })
-    
-    # Reactive for animal-level average metrics
-    animal_summary <- reactive({
+    output$group_selector_ui <- renderUI({
       req(all_metrics())
-      all_metrics() %>%
+      group_names <- unique(all_metrics()$GroupName)
+      checkboxGroupInput(session$ns("groups_to_display"), "Filter Groups:", choices = group_names, selected = group_names)
+    })
+    
+    filtered_metrics <- reactive({
+      req(all_metrics(), input$groups_to_display)
+      all_metrics() %>% filter(GroupName %in% input$groups_to_display)
+    })
+    
+    animal_summary <- reactive({
+      req(filtered_metrics())
+      filtered_metrics() %>%
         group_by(AnimalID, GroupName) %>%
-        summarise(across(where(is.numeric), ~mean(.x, na.rm = TRUE)), .groups = 'drop') %>%
+        summarise(across(where(is.numeric), mean, na.rm = TRUE), .groups = 'drop') %>%
         relocate(GroupName, AnimalID)
     })
     
-    # Reactive for ganglion-level average metrics
     ganglion_summary <- reactive({
-      req(all_metrics())
-      all_metrics() %>%
+      req(filtered_metrics())
+      filtered_metrics() %>%
         group_by(GanglionID, GroupName) %>%
-        summarise(across(where(is.numeric), ~mean(.x, na.rm = TRUE)), .groups = 'drop') %>%
+        summarise(across(where(is.numeric), mean, na.rm = TRUE), .groups = 'drop') %>%
         relocate(GroupName, GanglionID)
     })
     
-    # Reactive to calculate overall summary stats for each group
-    group_summary_stats <- reactive({
-      req(all_metrics())
-      
-      all_metrics() %>%
-        # Select only the numeric metric columns and the grouping variable
-        select(where(is.numeric), GroupName) %>%
-        # Pivot to a long format for easier summarization
-        pivot_longer(
-          cols = -GroupName,
-          names_to = "Metric",
-          values_to = "Value"
-        ) %>%
-        # Group by the experimental group and the metric name
-        group_by(GroupName, Metric) %>%
-        # Calculate summary stats
-        summarise(
-          Mean = mean(Value, na.rm = TRUE),
-          SEM = sd(Value, na.rm = TRUE) / sqrt(n()),
-          N = n(),
-          .groups = 'drop'
-        )
-    })
-    
-    # --- Metric Comparison Plots ---
-
-    # Observer to update the metric choices for the plot dropdown
     observe({
-        req(all_metrics())
-        
-        metric_choices <- names(all_metrics())[sapply(all_metrics(), is.numeric)]
-        names(metric_choices) <- gsub("_", " ", metric_choices)
-        
-        updateSelectInput(session, "metric_to_plot", choices = metric_choices)
+      req(all_metrics())
+      numeric_cols <- names(all_metrics())[sapply(all_metrics(), is.numeric)]
+      updateSelectInput(session, "metric_to_plot", choices = setdiff(numeric_cols, c("AnimalID", "GanglionID")))
     })
     
-    # Generic plotting function for metric comparisons
-    create_metric_plot <- function(data, metric, group_var, title, x_label) {
-        req(data, metric, group_var, title, x_label)
-        
-        ggplot(data, aes(x = .data[[group_var]], y = .data[[metric]], fill = .data[[group_var]])) +
-            geom_boxplot(alpha = 0.6, outlier.shape = NA) +
-            geom_jitter(width = 0.15, alpha = 0.7, size = 2) +
-            labs(title = title, x = x_label, y = gsub("_", " ", metric)) +
-            theme_minimal(base_size = 15) +
-            theme(legend.position = "none",
-                  axis.text.x = element_text(angle = 45, hjust = 1))
-    }
-
-    # Render plot for cell-level metric comparison
-    output$cell_metric_plot <- renderPlot({
-        req(all_metrics(), input$metric_to_plot)
-        create_metric_plot(
-            data = all_metrics(),
-            metric = input$metric_to_plot,
-            group_var = "GroupName",
-            title = paste("Metric:", gsub("_", " ", input$metric_to_plot), "by Cell"),
-            x_label = "Experimental Group"
-        )
-    })
-
-    # Render plot for ganglion-level metric comparison
-    output$ganglion_metric_plot <- renderPlot({
-        req(all_metrics(), input$metric_to_plot)
-        
-        ganglion_avg <- all_metrics() %>%
-            group_by(GanglionID, GroupName) %>%
-            summarise(across(where(is.numeric), ~mean(.x, na.rm = TRUE)), .groups = 'drop')
-        
-        create_metric_plot(
-            data = ganglion_avg,
-            metric = input$metric_to_plot,
-            group_var = "GroupName",
-            title = paste("Metric:", gsub("_", " ", input$metric_to_plot), "by Ganglion"),
-            x_label = "Experimental Group"
-        )
-    })
-
-    # Render plot for animal-level metric comparison
-    output$animal_metric_plot <- renderPlot({
-        req(all_metrics(), input$metric_to_plot)
-        
-        animal_avg <- all_metrics() %>%
-            group_by(AnimalID, GroupName) %>%
-            summarise(across(where(is.numeric), ~mean(.x, na.rm = TRUE)), .groups = 'drop')
-            
-        create_metric_plot(
-            data = animal_avg,
-            metric = input$metric_to_plot,
-            group_var = "GroupName",
-            title = paste("Metric:", gsub("_", " ", input$metric_to_plot), "by Animal"),
-            x_label = "Experimental Group"
-        )
-    })
-    
-    # --- Statistical Analysis Logic ---
-    
-    # Generic function to run stats and format the output for display
-    run_and_format_stats <- function(data, metric, group_var = "GroupName") {
-      req(data, metric, group_var)
+    # --- Plotting ---
+    create_metric_plot <- function(data, metric, group_var, title) {
+      req(data, metric, title, group_var %in% names(data), metric %in% names(data))
+      num_groups <- n_distinct(data[[group_var]])
+      method <- if (num_groups == 2) "t.test" else "anova"
       
-      # Ensure there are at least two groups and the metric exists and has variance
-      if (!metric %in% names(data) || n_distinct(data[[group_var]]) < 2 || sd(data[[metric]], na.rm = TRUE) == 0) {
-        return("Statistical comparison requires at least two groups with variability.")
+      p <- ggplot(data, aes(x = .data[[group_var]], y = .data[[metric]], fill = .data[[group_var]])) +
+        geom_boxplot(alpha = 0.6, outlier.shape = NA) +
+        labs(title = title, x = "Experimental Group", y = gsub("_", " ", metric)) +
+        theme_minimal(base_size = 15) +
+        theme(legend.position = "none", plot.title = element_text(hjust = 0.5))
+      
+      if (isTruthy(input$show_jitter)) {
+        p <- p + geom_jitter(width = 0.15, alpha = 0.7, size = 2.5)
       }
       
-      formula <- as.formula(paste0("`", metric, "` ~ `", group_var, "`"))
-      num_groups <- n_distinct(data[[group_var]])
-      
-      tryCatch({
-        if (num_groups == 2) {
-          # Perform Welch's t-test for two groups
-          test_result <- t.test(formula, data = data)
-          title <- "Welch's Two Sample t-test"
-          output_summary <- capture.output(print(test_result))
-        } else {
-          # Perform ANOVA for more than two groups
-          aov_result <- aov(formula, data = data)
-          test_summary <- summary(aov_result)
-          title <- "Analysis of Variance (ANOVA)"
-          output_summary <- capture.output(print(test_summary))
-          
-          # Add Tukey HSD post-hoc test
-          tukey_result <- TukeyHSD(aov_result)
-          output_summary <- c(output_summary, "", "Tukey Honest Significant Differences (Post-Hoc Test):", capture.output(print(tukey_result)))
+      if (num_groups >= 2 && nrow(data) > num_groups && title != "by Cell (No Stats)") {
+        p <- p + ggpubr::stat_compare_means(method = method, label.y.npc = 0.9)
+        if (num_groups > 2) {
+          p <- p + ggpubr::stat_compare_means(label = "p.signif", method = "t.test", ref.group = ".all.")
         }
+      }
+      return(p)
+    }
+    
+    output$animal_metric_plot <- renderPlot(create_metric_plot(animal_summary(), input$metric_to_plot, "GroupName", "by Animal"))
+    output$ganglion_metric_plot <- renderPlot(create_metric_plot(ganglion_summary(), input$metric_to_plot, "GroupName", "by Ganglion"))
+    output$cell_metric_plot <- renderPlot(create_metric_plot(filtered_metrics(), input$metric_to_plot, "GroupName", "by Cell (No Stats)"))
+    
+    output$avg_time_course_plot <- renderPlot({
+      req(rv_group$combined_data$time_course, input$groups_to_display)
+      plot_data <- rv_group$combined_data$time_course %>% filter(GroupName %in% input$groups_to_display)
+      avg_data <- plot_data %>%
+        group_by(GroupName, Time) %>%
+        summarise(Mean_dFF0 = mean(dFF0, na.rm = TRUE), SEM = sd(dFF0, na.rm = TRUE) / sqrt(n()), .groups = 'drop')
+      
+      p <- ggplot(avg_data, aes(x = Time, y = Mean_dFF0, color = GroupName, fill = GroupName)) +
+        geom_line(linewidth = 1.2) +
+        geom_ribbon(aes(ymin = Mean_dFF0 - SEM, ymax = Mean_dFF0 + SEM), alpha = 0.2, linetype = "dotted") +
+        labs(x = "Time (s)", y = expression(paste(Delta, "F/F"[0])), color = "Group", fill = "Group") +
+        theme_minimal(base_size = 15) + theme(legend.position = "bottom")
         
-        return(paste(c(title, "---", output_summary), collapse = "\n"))
-        
-      }, error = function(e) {
-        return(paste("An error occurred during statistical analysis:", e$message))
+      if (isTruthy(input$show_individual_traces)) {
+        p <- p + geom_line(data = plot_data, aes(group = Cell_ID), alpha = 0.1, inherit.aes = FALSE)
+      }
+      p
+    })
+    
+    # --- Tables ---
+    render_dt <- function(data) {
+      DT::renderDT({
+        req(data)
+        datatable(data, extensions = 'Buttons',
+                  options = list(pageLength = 10, scrollX = TRUE, dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel')),
+                  filter = 'top', rownames = FALSE) %>%
+          formatRound(columns = where(is.numeric), digits = 3)
       })
     }
     
-    # Reactive for ganglion-level statistics
-    ganglion_stats <- reactive({
-      req(ganglion_summary(), input$metric_to_plot)
-      run_and_format_stats(ganglion_summary(), input$metric_to_plot)
+    output$group_summary_stats_table <- render_dt({
+      req(filtered_metrics())
+      filtered_metrics() %>%
+        select(where(is.numeric), GroupName) %>%
+        pivot_longer(cols = -GroupName, names_to = "Metric", values_to = "Value") %>%
+        group_by(GroupName, Metric) %>%
+        summarise(Mean = mean(Value, na.rm = TRUE), SEM = sd(Value, na.rm = TRUE) / sqrt(n()), N = n(), .groups = 'drop')
     })
     
-    # Reactive for animal-level statistics
-    animal_stats <- reactive({
-      req(animal_summary(), input$metric_to_plot)
-      run_and_format_stats(animal_summary(), input$metric_to_plot)
-    })
-    
-    # Render the statistical outputs
-    output$ganglion_stats_output <- renderText({
-      ganglion_stats()
-    })
-    
-    output$animal_stats_output <- renderText({
-      animal_stats()
-    })
-    
-    # --- Table Logic ---
-    
-    # Render the new group-level summary stats table
-    output$group_summary_stats_table <- DT::renderDT({
-      req(group_summary_stats())
-      DT::datatable(group_summary_stats(),
-                options = list(pageLength = 15, scrollX = TRUE, dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel')),
-                extensions = 'Buttons',
-                filter = 'top',
-                rownames = FALSE) %>%
-        DT::formatRound(columns = c("Mean", "SEM"), digits = 4)
-    })
-    
-    # Render table for all individual cell metrics
-    output$all_metrics_table <- DT::renderDT({
-      req(all_metrics())
-      DT::datatable(all_metrics(),
-                options = list(pageLength = 10, scrollX = TRUE, dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel')),
-                extensions = 'Buttons',
-                filter = 'top',
-                rownames = FALSE) %>%
-        DT::formatRound(columns = which(sapply(all_metrics(), is.numeric)), digits = 3)
-    })
-    
-    # Render table for animal-level summary
-    output$animal_summary_table <- DT::renderDT({
-      req(animal_summary())
-      DT::datatable(animal_summary(),
-                options = list(pageLength = 10, scrollX = TRUE, dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel')),
-                extensions = 'Buttons',
-                filter = 'top',
-                rownames = FALSE) %>%
-        DT::formatRound(columns = which(sapply(animal_summary(), is.numeric)), digits = 3)
-    })
-    
-    # Render table for ganglion-level summary
-    output$ganglion_summary_table <- DT::renderDT({
-      req(ganglion_summary())
-      DT::datatable(ganglion_summary(),
-                options = list(pageLength = 10, scrollX = TRUE, dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel')),
-                extensions = 'Buttons',
-                filter = 'top',
-                rownames = FALSE) %>%
-        DT::formatRound(columns = which(sapply(ganglion_summary(), is.numeric)), digits = 3)
-    })
+    output$animal_summary_table <- render_dt(animal_summary())
+    output$ganglion_summary_table <- render_dt(ganglion_summary())
+    output$all_metrics_table <- render_dt(filtered_metrics())
     
   })
 }

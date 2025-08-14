@@ -1,33 +1,19 @@
 #!/usr/bin/env Rscript
 
-# ============================ Packages ============================
-suppressPackageStartupMessages({
-  library(shiny)
-  library(shinydashboard)
-  library(shinyjs)
-  library(shinyWidgets)
-  library(shinycssloaders)
-  library(DT)
-  library(ggplot2)
-  library(dplyr)
-  library(tidyr)
-  library(data.table)
-  library(readxl)
-  library(purrr)
-  library(RColorBrewer)
-  library(scales)
-  library(colourpicker)
-  library(zoo)
-  library(shinyvalidate)
-  library(knitr)
-  library(kableExtra)
-  library(plotly)
-  library(bslib)
-  library(gt)
-  library(webshot2)
-  library(stringr)
-  library(tidyr)
-})
+# =============================== Load Libraries ===============================
+library(shiny)
+library(shinydashboard)
+library(shinyjs)
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(purrr)
+library(stringr)
+library(tools)
+library(readxl)
+library(writexl)
+library(ggpubr)
+library(DT)
 
 # ============================ Source Modules and Helpers =============================
 source("R/utils.R") # Ensure helper functions are available globally
