@@ -330,11 +330,61 @@ mod_metrics_explained_server <- function(id, rv) {
       ))
     })
 
-    output$fwhm_calculation_ui <- renderUI({
+    fwhm_times <- reactive({
       req(selected_cell_data())
       data <- selected_cell_data()
-      withMathJax(helpText(sprintf("$$ \\text{FWHM} = %.2f - %.2f = %.2f \\text{ s} $$",
-                                  data$metric$FWHM, data$metric$Half_Width, data$metric$FWHM)))
+      trace <- data$processed_trace
+      metric <- data$metric
+      req(nrow(trace) > 0, !is.na(metric$FWHM))
+      
+      peak_val <- metric$Peak_dFF0
+      half_max <- peak_val / 2
+      above <- trace$dFF0 >= half_max
+      crossings <- which(diff(above) != 0)
+      peak_idx <- which.max(trace$dFF0)
+      
+      left_crossings <- crossings[crossings < peak_idx]
+      idx_left <- if (length(left_crossings) > 0) max(left_crossings) + 1 else NA
+      
+      right_crossings <- crossings[crossings >= peak_idx]
+      idx_right <- if (length(right_crossings) > 0) min(right_crossings) + 1 else NA
+      
+      req(!is.na(idx_left))
+      
+      y1_l <- trace$dFF0[idx_left - 1]; y2_l <- trace$dFF0[idx_left]
+      t1_l <- trace$Time[idx_left - 1]; t2_l <- trace$Time[idx_left]
+      time_left <- t1_l + (t2_l - t1_l) * (half_max - y1_l) / (y2_l - y1_l)
+      
+      is_sustained <- is.na(idx_right)
+      time_right <- if (is_sustained) {
+        max(trace$Time)
+      } else {
+        y1_r <- trace$dFF0[idx_right - 1]; y2_r <- trace$dFF0[idx_right]
+        t1_r <- trace$Time[idx_right - 1]; t2_r <- trace$Time[idx_right]
+        t1_r + (t2_r - t1_r) * (half_max - y1_r) / (y2_r - y1_r)
+      }
+      
+      list(t_left = time_left, t_right = time_right, half_max_y = half_max, is_sustained = is_sustained)
+    })
+    
+    output$fwhm_calculation_ui <- renderUI({
+      req(fwhm_times(), selected_cell_data())
+      times <- fwhm_times()
+      metric <- selected_cell_data()$metric
+      
+      tagList(
+        withMathJax(
+          p("FWHM is the difference between the time the signal crosses 50% on the way down (t_right) and on the way up (t_left):"),
+          helpText(sprintf("$$ \\text{FWHM} = t_{right} - t_{left} = %.2f - %.2f = %.2f \\text{ s} $$",
+                           times$t_right, times$t_left, metric$FWHM))
+        ),
+        br(),
+        withMathJax(
+          p("Half-Width is half of the FWHM:"),
+          helpText(sprintf("$$ \\text{Half-Width} = \\frac{\\text{FWHM}}{2} = \\frac{%.2f}{2} = %.2f \\text{ s} $$",
+                           metric$FWHM, metric$Half_Width))
+        )
+      )
     })
 
     output$auc_calculation_ui <- renderUI({
@@ -402,6 +452,10 @@ mod_metrics_explained_server <- function(id, rv) {
 
       p10_val <- 0.10 * metric$Response_Amplitude
       p90_val <- 0.90 * metric$Response_Amplitude
+      
+      # Proportional offset to prevent label overlap
+      y_offset <- (max(trace$dFF0, na.rm = TRUE) - min(trace$dFF0, na.rm = TRUE)) * 0.05
+      label_y_pos <- p90_val + y_offset
 
       ggplot(trace, aes(x = Time, y = dFF0)) +
         geom_line(color = "gray50", linewidth = 1) +
@@ -416,12 +470,12 @@ mod_metrics_explained_server <- function(id, rv) {
         geom_segment(aes(x = t90, y = 0, xend = t90, yend = p90_val), color = "darkorange", linetype = "dashed") +
         geom_point(aes(x = !!t90, y = !!p90_val), color = "darkorange", size = 4) +
 
-        # --- Arrow and Label for the Rise Time duration ---
-        geom_segment(aes(x = t10, xend = t90, y = p90_val + 0.02, yend = p90_val + 0.02), 
-                     arrow = arrow(length = unit(0.3, "cm"), ends = "both"), color = "firebrick", linewidth = 1.2) +
-        annotate("text", x = mean(c(t10, t90)), y = p90_val + 0.02, 
+        # --- Arrow and Label for the Rise Time duration (positioned cleanly above) ---
+        geom_segment(aes(x = t10, xend = t90, y = label_y_pos, yend = label_y_pos), 
+                     arrow = arrow(length = unit(0.25, "cm"), ends = "both"), color = "firebrick", linewidth = 1.2) +
+        annotate("text", x = mean(c(t10, t90)), y = label_y_pos, 
                  label = paste("Rise Time =", round(metric$Rise_Time, 2), "s"),
-                 color = "firebrick", vjust = -1.2, fontface = "bold", size = 5) +
+                 color = "firebrick", vjust = -0.8, fontface = "bold", size = 4.5) +
                  
         labs(title = paste("Rise Time (10-90%) for Cell", metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme()
@@ -446,43 +500,6 @@ mod_metrics_explained_server <- function(id, rv) {
     }, res = 96)
     
     # --- FWHM Plot and Calculation Logic ---
-    
-    fwhm_times <- reactive({
-      req(selected_cell_data())
-      data <- selected_cell_data()
-      trace <- data$processed_trace
-      metric <- data$metric
-      req(nrow(trace) > 0, !is.na(metric$FWHM))
-      
-      peak_val <- metric$Peak_dFF0
-      half_max <- peak_val / 2
-      above <- trace$dFF0 >= half_max
-      crossings <- which(diff(above) != 0)
-      peak_idx <- which.max(trace$dFF0)
-      
-      left_crossings <- crossings[crossings < peak_idx]
-      idx_left <- if (length(left_crossings) > 0) max(left_crossings) + 1 else NA
-      
-      right_crossings <- crossings[crossings >= peak_idx]
-      idx_right <- if (length(right_crossings) > 0) min(right_crossings) + 1 else NA
-      
-      req(!is.na(idx_left))
-      
-      y1_l <- trace$dFF0[idx_left - 1]; y2_l <- trace$dFF0[idx_left]
-      t1_l <- trace$Time[idx_left - 1]; t2_l <- trace$Time[idx_left]
-      time_left <- t1_l + (t2_l - t1_l) * (half_max - y1_l) / (y2_l - y1_l)
-      
-      is_sustained <- is.na(idx_right)
-      time_right <- if (is_sustained) {
-        max(trace$Time)
-      } else {
-        y1_r <- trace$dFF0[idx_right - 1]; y2_r <- trace$dFF0[idx_right]
-        t1_r <- trace$Time[idx_right - 1]; t2_r <- trace$Time[idx_right]
-        t1_r + (t2_r - t1_r) * (half_max - y1_r) / (y2_r - y1_r)
-      }
-      
-      list(t_left = time_left, t_right = time_right, half_max_y = half_max, is_sustained = is_sustained)
-    })
     
     output$fwhm_plot <- renderPlot({
       req(selected_cell_data(), fwhm_times())
@@ -560,10 +577,6 @@ mod_metrics_explained_server <- function(id, rv) {
       p10_val <- 0.10 * metric$Response_Amplitude
       p90_val <- 0.90 * metric$Response_Amplitude
       
-      # Position the rate label cleanly
-      label_angle <- (atan((p90_val - p10_val) / (t90 - t10)) * 180 / pi)
-      label_y_offset <- (max(trace$dFF0) - min(trace$dFF0)) * 0.05
-      
       ggplot(data$processed_trace, aes(x = Time, y = dFF0)) +
         geom_line(color = "gray50", linewidth = 1) +
         geom_segment(aes(x = t10, y = p10_val, xend = t90, yend = p10_val), linetype = "dotted", color = "gray50") +
@@ -571,9 +584,11 @@ mod_metrics_explained_server <- function(id, rv) {
         geom_point(aes(x=!!t10, y=!!p10_val), color="dodgerblue", size=4) +
         geom_point(aes(x=!!t90, y=!!p90_val), color="dodgerblue", size=4) +
         geom_segment(aes(x = t10, y = p10_val, xend = t90, yend = p90_val), color = "dodgerblue", linewidth = 1.5) +
-        annotate("text", x = mean(c(t10, t90)), y = mean(c(p10_val, p90_val)) + label_y_offset,
+        
+        # --- Clean, Horizontal Rate Label ---
+        annotate("text", x = mean(c(t10, t90)), y = p10_val,
                  label = paste("Rate =", round(data$metric$Calcium_Entry_Rate, 3)),
-                 color = "dodgerblue", fontface = "bold", size = 5, angle = label_angle, vjust = -0.5) +
+                 color = "dodgerblue", fontface = "bold", size = 5, vjust = -1) +
 
         labs(title = paste("Calcium Entry Rate for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme()
