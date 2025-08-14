@@ -15,7 +15,10 @@ mod_heatmap_ui <- function(id) {
                 textInput(ns("hm_y_label"),"Y label","Cell"),
                 sliderInput(ns("hm_title_size"),"Title size", 10, 28, 16, 1),
                 sliderInput(ns("hm_axis_title_size"),"Axis title size", 8, 28, 14, 1),
-                sliderInput(ns("hm_axis_text_size"),"Axis text size", 8, 28, 12, 1)
+                sliderInput(ns("hm_axis_text_size"),"Axis text size", 8, 28, 12, 1),
+                selectInput(ns("hm_font"), "Font", 
+                            choices = c("Arial", "Helvetica", "Times", "Courier"), 
+                            selected = "Arial")
             ),
             box(title = "Heatmap", status = "warning", solidHeader = TRUE, width = 8,
                 withSpinner(plotOutput(ns("heatmap_plot"), height = "760px"), type = 4),
@@ -73,12 +76,13 @@ mod_heatmap_server <- function(id, rv) {
           plot.title = element_text(
             size = input$hm_title_size, 
             face = "bold",
-            hjust = if (isTRUE(input$hm_center_title)) 0.5 else 0
+            hjust = if (isTRUE(input$hm_center_title)) 0.5 else 0,
+            family = input$hm_font
           ),
-          axis.title = element_text(size = input$hm_axis_title_size),
-          axis.text = element_text(size = input$hm_axis_text_size),
-          legend.text = element_text(size = input$hm_legend_text_size),
-          legend.title = element_text(size = max(6, input$hm_legend_text_size + 2)),
+          axis.title = element_text(size = input$hm_axis_title_size, family = input$hm_font),
+          axis.text = element_text(size = input$hm_axis_text_size, family = input$hm_font),
+          legend.text = element_text(size = input$hm_legend_text_size, family = input$hm_font),
+          legend.title = element_text(size = max(6, input$hm_legend_text_size + 2), family = input$hm_font),
           strip.background = element_blank(),
           strip.text = element_blank()
         )
