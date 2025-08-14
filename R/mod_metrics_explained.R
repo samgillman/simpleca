@@ -420,19 +420,23 @@ mod_metrics_explained_server <- function(id, rv) {
     output$snr_plot <- renderPlot({
       req(selected_cell_data())
       data <- selected_cell_data()
-      b_end_time <- data$processed_trace$Time[min(rv$baseline_frames[2], nrow(data$processed_trace))]
+      trace <- data$processed_trace
+      metric <- data$metric
       
-      # Position for the "Signal" label to avoid overlap
-      y_range <- diff(range(data$processed_trace$dFF0, na.rm = TRUE))
-      signal_label_y <- data$metric$Peak_dFF0 + y_range * 0.05
+      b_end_time <- trace$Time[min(rv$baseline_frames[2], nrow(trace))]
       
-      ggplot(data$processed_trace, aes(x = Time, y = dFF0)) +
+      # Dynamically position labels to prevent overlap
+      y_range <- diff(range(trace$dFF0, na.rm = TRUE))
+      signal_label_y <- metric$Peak_dFF0 + y_range * 0.1
+      noise_label_y <- metric$Baseline_SD + y_range * 0.05
+      
+      ggplot(trace, aes(x = Time, y = dFF0)) +
         geom_line(color = "gray50", linewidth = 1) +
-        annotate("rect", xmin = min(data$processed_trace$Time), xmax = b_end_time, ymin = -data$metric$Baseline_SD, ymax = data$metric$Baseline_SD, fill = "firebrick", alpha = 0.3) +
-        annotate("text", x = min(data$processed_trace$Time), y = 0, label = "Baseline Noise (SD)", hjust = 0, vjust = -1, color = "firebrick", fontface = "bold") +
-        geom_point(data = data$metric, aes(x = Time_to_Peak, y = Peak_dFF0), color = "blue", size = 4) +
-        annotate("text", x = data$metric$Time_to_Peak, y = signal_label_y, label = "Signal", hjust = 0.5, color = "blue", fontface = "bold") +
-        labs(title = paste("Signal vs. Noise for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
+        annotate("rect", xmin = min(trace$Time), xmax = b_end_time, ymin = -metric$Baseline_SD, ymax = metric$Baseline_SD, fill = "firebrick", alpha = 0.2) +
+        annotate("text", x = min(trace$Time) + (b_end_time - min(trace$Time))/2, y = noise_label_y, label = "Baseline Noise (SD)", vjust = -0.5, color = "firebrick", fontface = "bold") +
+        geom_point(data = metric, aes(x = Time_to_Peak, y = Peak_dFF0), color = "blue", size = 4) +
+        annotate("text", x = metric$Time_to_Peak, y = signal_label_y, label = "Signal", hjust = 0.5, color = "blue", fontface = "bold") +
+        labs(title = paste("Signal-to-Noise Ratio (SNR) for Cell", metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme()
     }, res = 96)
 
@@ -567,7 +571,7 @@ mod_metrics_explained_server <- function(id, rv) {
         geom_line(color = "gray50", linewidth = 1) +
         annotate("text", x = mean(range(data$processed_trace$Time)), y = max(data$processed_trace$dFF0, na.rm=TRUE)/2, 
                  label = paste("AUC =", round(data$metric$AUC, 2)), color = "black", fontface = "bold", size = 6) +
-        labs(title = paste("Area Under Curve for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
+        labs(title = paste("Area Under Curve (AUC) for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme()
     }, res = 96)
 
