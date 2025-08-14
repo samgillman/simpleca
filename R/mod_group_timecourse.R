@@ -214,9 +214,17 @@ mod_group_timecourse_server <- function(id, rv_group) {
       p
     }
 
-    output$gt_plot <- renderPlot({ build_group_timecourse() })
+    output$gt_plot <- renderPlot({
+      validate(need(rv_group$combined_data, "No group data available. Please use Combine & Annotate tab first."))
+      validate(need(rv_group$combined_data$time_course, "No time course data available."))
+      validate(need(nrow(rv_group$combined_data$time_course) > 0, "Time course data is empty."))
+      build_group_timecourse()
+    })
 
     output$gt_plotly <- plotly::renderPlotly({
+      validate(need(rv_group$combined_data, "No group data available. Please use Combine & Annotate tab first."))
+      validate(need(rv_group$combined_data$time_course, "No time course data available."))
+      validate(need(nrow(rv_group$combined_data$time_course) > 0, "Time course data is empty."))
       p <- build_group_timecourse()
       plotly::ggplotly(p, tooltip = c("x","y","colour")) |>
         plotly::layout(legend = list(orientation = if (identical(input$gt_legend_pos, "none")) "h" else NULL))
