@@ -102,37 +102,59 @@ calculate_cell_metrics <- function(cell_data, time_vec, baseline_frames = c(1, 2
   time_to_peak <- t[peak_idx]
   response_amplitude <- peak_value - baseline
   
-  # Find time to percent of peak (25, 50, 75)
+  # Time to % Peak and Rise Time (Robust version)
   tt25 <- tt50 <- tt75 <- rise_time <- ca_entry <- NA_real_
   if (response_amplitude > 1e-3) {
-    # Helper to find first time threshold is crossed after baseline period
-    find_threshold_crossing <- function(signal, threshold, start_after = end_frame) {
-      for (i in (start_after + 1):length(signal)) if (!is.na(signal[i]) && signal[i] >= threshold) return(i)
-      NA_integer_
-    }
-    
+    # Define thresholds
+    p10 <- baseline + 0.10 * response_amplitude
     p25 <- baseline + 0.25 * response_amplitude
     p50 <- baseline + 0.50 * response_amplitude
     p75 <- baseline + 0.75 * response_amplitude
-    i25 <- find_threshold_crossing(working_signal, p25)
-    i50 <- find_threshold_crossing(working_signal, p50)
-    i75 <- find_threshold_crossing(working_signal, p75)
-    tt25 <- if (!is.na(i25)) t[i25] else NA_real_
-    tt50 <- if (!is.na(i50)) t[i50] else NA_real_
-    tt75 <- if (!is.na(i75)) t[i75] else NA_real_
+    p90 <- baseline + 0.90 * response_amplitude
+
+    # Find the main rising phase of the signal (from baseline up to the peak)
+    rising_phase_indices <- seq_len(peak_idx)
+    rising_signal <- working_signal[rising_phase_indices]
+    rising_time <- t[rising_phase_indices]
+
+    # Helper to find the first time a threshold is crossed *after the baseline period*
+    find_rising_crossing_time <- function(signal, time_vec, threshold, start_index) {
+      # Find first index where signal is >= threshold, starting the search AFTER the baseline
+      search_space <- seq(from = start_index, to = length(signal))
+      first_idx <- NA
+      for (i in search_space) {
+        if (!is.na(signal[i]) && signal[i] >= threshold) {
+          first_idx <- i
+          break
+        }
+      }
+      
+      if (is.na(first_idx) || first_idx == 1) return(NA_real_)
+      
+      # Linear interpolation for better accuracy
+      y1 <- signal[first_idx - 1]; y2 <- signal[first_idx]
+      t1 <- time_vec[first_idx - 1]; t2 <- time_vec[first_idx]
+      
+      if (y2 == y1) return(t1) # Avoid division by zero
+      return(t1 + (t2 - t1) * (threshold - y1) / (y2 - y1))
+    }
+
+    tt25 <- find_rising_crossing_time(rising_signal, rising_time, p25, end_frame + 1)
+    tt50 <- find_rising_crossing_time(rising_signal, rising_time, p50, end_frame + 1)
+    tt75 <- find_rising_crossing_time(rising_signal, rising_time, p75, end_frame + 1)
     
-    # Rise Time (10-90%)
-    r10 <- baseline + 0.1 * response_amplitude
-    r90 <- baseline + 0.9 * response_amplitude
-    i10 <- find_threshold_crossing(working_signal, r10)
-    i90 <- find_threshold_crossing(working_signal, r90)
-    if (!is.na(i10) && !is.na(i90) && i90 > i10) {
-      rise_time <- t[i90] - t[i10]
+    # Calculate Rise Time
+    t10 <- find_rising_crossing_time(rising_signal, rising_time, p10, end_frame + 1)
+    t90 <- find_rising_crossing_time(rising_signal, rising_time, p90, end_frame + 1)
+    
+    if (!is.na(t10) && !is.na(t90) && t90 > t10) {
+      rise_time <- t90 - t10
       if (rise_time > 0) ca_entry <- (0.8 * response_amplitude) / rise_time
     }
   }
   
   auc <- if (length(t) > 1) {
+    # Calculate AUC only on the positive part of the signal
     dt_vals <- diff(t); heights <- (working_signal[-1] + working_signal[-length(working_signal)]) / 2
     sum(dt_vals * heights, na.rm = TRUE)
   } else NA_real_
