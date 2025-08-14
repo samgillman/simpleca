@@ -129,11 +129,23 @@ mod_group_timecourse_server <- function(id, rv_group) {
       tc <- tc %>% dplyr::filter(is.finite(Time), is.finite(dFF0))
       validate(need(nrow(tc) > 0, "No group time course data. Use Combine & Annotate first."))
 
+      # Debug: Check data structure
+      cat("TC columns:", paste(names(tc), collapse = ", "), "\n")
+      cat("TC nrow:", nrow(tc), "\n")
+      cat("GroupName unique:", paste(unique(tc$GroupName), collapse = ", "), "\n")
+      cat("Time range:", min(tc$Time, na.rm = TRUE), "to", max(tc$Time, na.rm = TRUE), "\n")
+      cat("dFF0 range:", min(tc$dFF0, na.rm = TRUE), "to", max(tc$dFF0, na.rm = TRUE), "\n")
+      
       # Summary per group/time
       summary <- tc %>%
         dplyr::group_by(GroupName, Time) %>%
         dplyr::summarise(mean_dFF0 = mean(dFF0, na.rm = TRUE),
                          sem_dFF0 = stats::sd(dFF0, na.rm = TRUE) / sqrt(dplyr::n()), .groups = 'drop')
+      
+      cat("Summary nrow:", nrow(summary), "\n")
+      if (nrow(summary) > 0) {
+        cat("Summary GroupName unique:", paste(unique(summary$GroupName), collapse = ", "), "\n")
+      }
 
       p <- ggplot2::ggplot()
       if (isTRUE(input$gt_show_traces) && nrow(tc) > 0) {
