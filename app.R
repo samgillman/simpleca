@@ -61,7 +61,8 @@ ui <- dashboardPage(
       # --- Menu Item 2: Group Analysis (Collapsible) ---
       menuItem("Group Analysis", tabName = "group_analysis", icon = icon("users"),
         menuSubItem("Combine & Annotate", tabName = "group_combiner", icon = icon("object-group")),
-        menuSubItem("Group Time Course", tabName = "group_timecourse", icon = icon("chart-line"))
+        menuSubItem("Group Time Course", tabName = "group_timecourse", icon = icon("chart-line")),
+        menuSubItem("Group Comparisons", tabName = "group_comparison", icon = icon("chart-bar"))
       ),
       
       # --- Menu Item 3: Help ---

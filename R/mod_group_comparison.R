@@ -19,7 +19,47 @@ mod_group_comparison_ui <- function(id) {
         hr(),
         h4("Plot Options"),
         checkboxInput(ns("show_jitter"), "Show Individual Data Points", value = TRUE),
-        checkboxInput(ns("show_individual_traces"), "Show Individual Traces on Time Course", value = FALSE)
+        checkboxInput(ns("show_stats"), "Show Statistical Comparisons", value = TRUE),
+        checkboxInput(ns("show_individual_traces"), "Show Individual Traces on Time Course", value = FALSE),
+        hr(),
+        h4("Statistical Options"),
+        selectInput(ns("stat_method"), "Statistical Test:", 
+                   choices = c("Automatic" = "auto", "T-test" = "t.test", "ANOVA" = "anova"), 
+                   selected = "auto"),
+        numericInput(ns("alpha_level"), "Significance Level (α):", value = 0.05, min = 0.001, max = 0.1, step = 0.001),
+        hr(),
+        actionButton(ns("toggle_advanced"), "⚙️ Advanced Plot Options", style = "background-color: #3c8dbc; color: white;"),
+        conditionalPanel(
+          condition = paste0("input['", ns("toggle_advanced"), "'] % 2 == 1"),
+          wellPanel(
+            style = "background-color: #f8f9fa; margin-top: 15px;",
+            h5("Plot Appearance", style = "font-weight: bold;"),
+            fluidRow(
+              column(6, selectInput(ns("plot_theme"), "Theme:", 
+                                   choices = c("Minimal" = "minimal", "Classic" = "classic", "Light" = "light", "Dark" = "dark"), 
+                                   selected = "minimal")),
+              column(6, selectInput(ns("color_palette"), "Color Palette:", 
+                                   choices = c("Default" = "default", "Set1" = "Set1", "Dark2" = "Dark2", "Pastel1" = "Pastel1", "Custom" = "custom"), 
+                                   selected = "default"))
+            ),
+            conditionalPanel(
+              condition = paste0("input['", ns("color_palette"), "'] == 'custom'"),
+              colourInput(ns("custom_color"), "Custom Color:", value = "#3498db")
+            ),
+            fluidRow(
+              column(6, numericInput(ns("base_size"), "Base Font Size:", value = 15, min = 8, max = 24, step = 1)),
+              column(6, numericInput(ns("point_size"), "Point Size:", value = 2.5, min = 0.5, max = 5, step = 0.1))
+            ),
+            fluidRow(
+              column(6, numericInput(ns("alpha_box"), "Box Transparency:", value = 0.6, min = 0.1, max = 1, step = 0.1)),
+              column(6, numericInput(ns("jitter_width"), "Jitter Width:", value = 0.15, min = 0.05, max = 0.4, step = 0.05))
+            ),
+            h5("Plot Labels", style = "font-weight: bold; margin-top: 15px;"),
+            textInput(ns("custom_title"), "Custom Title (leave blank for auto):", value = ""),
+            textInput(ns("custom_xlabel"), "Custom X-axis Label:", value = "Experimental Group"),
+            textInput(ns("custom_ylabel"), "Custom Y-axis Label (leave blank for auto):", value = "")
+          )
+        )
       ),
       
       # --- Main Panel for Outputs ---
@@ -114,24 +154,151 @@ mod_group_comparison_server <- function(id, rv_group) {
         relocate(GroupName, GanglionID)
     })
     
-    # --- Plotting ---
-    create_metric_plot <- function(data, metric, group_var, title) {
+    # --- Statistical Analysis Functions ---
+    perform_statistical_test <- function(data, metric, group_var) {
+      req(data, metric, group_var)
+      
+      groups <- unique(data[[group_var]])
+      n_groups <- length(groups)
+      
+      if (n_groups < 2) return(NULL)
+      
+      # Select test method
+      test_method <- if (input$stat_method == "auto") {
+        if (n_groups == 2) "t.test" else "anova"
+      } else {
+        input$stat_method
+      }
+      
+      tryCatch({
+        if (test_method == "t.test" && n_groups == 2) {
+          group1_data <- data[data[[group_var]] == groups[1], metric]
+          group2_data <- data[data[[group_var]] == groups[2], metric]
+          test_result <- t.test(group1_data, group2_data)
+          list(
+            method = "T-test",
+            p_value = test_result$p.value,
+            significant = test_result$p.value < input$alpha_level,
+            test_statistic = test_result$statistic,
+            comparison = paste(groups[1], "vs", groups[2])
+          )
+        } else if (test_method == "anova" || n_groups > 2) {
+          formula_str <- paste(metric, "~", group_var)
+          aov_result <- aov(as.formula(formula_str), data = data)
+          summary_aov <- summary(aov_result)
+          p_val <- summary_aov[[1]][["Pr(>F)"]][1]
+          
+          result <- list(
+            method = "ANOVA",
+            p_value = p_val,
+            significant = p_val < input$alpha_level,
+            f_statistic = summary_aov[[1]][["F value"]][1],
+            comparison = paste("All groups:", paste(groups, collapse = ", "))
+          )
+          
+          # Add post-hoc if significant
+          if (result$significant && n_groups > 2) {
+            tukey_result <- TukeyHSD(aov_result)
+            result$posthoc <- tukey_result
+          }
+          
+          return(result)
+        }
+      }, error = function(e) {
+        list(method = "Error", p_value = NA, significant = FALSE, error = e$message)
+      })
+    }
+    
+    # --- Enhanced Plotting with Statistics and Customization ---
+    create_metric_plot <- function(data, metric, group_var, title, show_stats = TRUE) {
       req(data, metric, title)
       req(ncol(data) > 0, nrow(data) > 0)
       
       gx <- rlang::sym(group_var)
       gy <- rlang::sym(metric)
-      full_title <- paste("Metric:", gsub("_", " ", metric), title)
       
-      p <- ggplot2::ggplot(data, ggplot2::aes(x = !!gx, y = !!gy, fill = !!gx)) +
-        ggplot2::geom_boxplot(alpha = 0.6, outlier.shape = NA) +
-        ggplot2::labs(title = full_title, x = "Experimental Group", y = gsub("_", " ", metric)) +
-        ggplot2::theme_minimal(base_size = 15) +
-        ggplot2::theme(legend.position = "none", plot.title = ggplot2::element_text(hjust = 0.5))
-      
-      if (isTruthy(input$show_jitter)) {
-        p <- p + ggplot2::geom_jitter(width = 0.15, alpha = 0.7, size = 2.5)
+      # Dynamic title and labels
+      plot_title <- if (!is.null(input$custom_title) && nzchar(input$custom_title)) {
+        input$custom_title
+      } else {
+        paste("Metric:", gsub("_", " ", metric), title)
       }
+      
+      x_label <- if (!is.null(input$custom_xlabel) && nzchar(input$custom_xlabel)) {
+        input$custom_xlabel
+      } else {
+        "Experimental Group"
+      }
+      
+      y_label <- if (!is.null(input$custom_ylabel) && nzchar(input$custom_ylabel)) {
+        input$custom_ylabel
+      } else {
+        gsub("_", " ", metric)
+      }
+      
+      # Base plot
+      p <- ggplot2::ggplot(data, ggplot2::aes(x = !!gx, y = !!gy, fill = !!gx))
+      
+      # Add boxplot with customization
+      alpha_val <- if (!is.null(input$alpha_box)) input$alpha_box else 0.6
+      p <- p + ggplot2::geom_boxplot(alpha = alpha_val, outlier.shape = NA)
+      
+      # Add jitter if enabled
+      if (isTruthy(input$show_jitter)) {
+        jitter_width <- if (!is.null(input$jitter_width)) input$jitter_width else 0.15
+        point_size <- if (!is.null(input$point_size)) input$point_size else 2.5
+        p <- p + ggplot2::geom_jitter(width = jitter_width, alpha = 0.7, size = point_size)
+      }
+      
+      # Apply theme
+      base_size <- if (!is.null(input$base_size)) input$base_size else 15
+      theme_choice <- if (!is.null(input$plot_theme)) input$plot_theme else "minimal"
+      
+      base_theme <- switch(theme_choice,
+                          "minimal" = ggplot2::theme_minimal(base_size = base_size),
+                          "classic" = ggplot2::theme_classic(base_size = base_size),
+                          "light" = ggplot2::theme_light(base_size = base_size),
+                          "dark" = ggplot2::theme_dark(base_size = base_size),
+                          ggplot2::theme_minimal(base_size = base_size))
+      
+      p <- p + base_theme +
+        ggplot2::theme(legend.position = "none", plot.title = ggplot2::element_text(hjust = 0.5)) +
+        ggplot2::labs(title = plot_title, x = x_label, y = y_label)
+      
+      # Apply color palette
+      if (!is.null(input$color_palette) && input$color_palette != "default") {
+        if (input$color_palette == "custom" && !is.null(input$custom_color)) {
+          n_groups <- length(unique(data[[group_var]]))
+          colors <- rep(input$custom_color, n_groups)
+          p <- p + ggplot2::scale_fill_manual(values = colors)
+        } else {
+          p <- p + ggplot2::scale_fill_brewer(type = "qual", palette = input$color_palette)
+        }
+      }
+      
+      # Add statistical annotations
+      if (show_stats && isTruthy(input$show_stats)) {
+        stat_result <- perform_statistical_test(data, metric, group_var)
+        if (!is.null(stat_result) && !is.na(stat_result$p_value)) {
+          # Add p-value annotation
+          p_text <- if (stat_result$p_value < 0.001) {
+            "p < 0.001"
+          } else {
+            paste("p =", round(stat_result$p_value, 3))
+          }
+          
+          significance <- if (stat_result$significant) "***" else "ns"
+          annotation_text <- paste(stat_result$method, ":", p_text, significance)
+          
+          # Get y position for annotation
+          y_max <- max(data[[metric]], na.rm = TRUE)
+          y_pos <- y_max * 1.1
+          
+          p <- p + ggplot2::annotate("text", x = Inf, y = y_pos, label = annotation_text,
+                                   hjust = 1.1, vjust = 0, size = 4, color = if (stat_result$significant) "red" else "black")
+        }
+      }
+      
       return(p)
     }
 
@@ -151,21 +318,21 @@ mod_group_comparison_server <- function(id, rv_group) {
       req(input$metric_to_plot)
       df <- animal_summary()
       validate(need(nrow(df) > 0, "No animal-level data. Combine/upload groups first."))
-      create_metric_plot(df, input$metric_to_plot, "GroupName", "by Animal")
+      create_metric_plot(df, input$metric_to_plot, "GroupName", "by Animal", show_stats = TRUE)
     })
 
     output$ganglion_metric_plot <- renderPlot({
       req(input$metric_to_plot)
       df <- ganglion_summary()
       validate(need(nrow(df) > 0, "No ganglion-level data. Combine/upload groups first."))
-      create_metric_plot(df, input$metric_to_plot, "GroupName", "by Ganglion")
+      create_metric_plot(df, input$metric_to_plot, "GroupName", "by Ganglion", show_stats = TRUE)
     })
 
     output$cell_metric_plot <- renderPlot({
       req(input$metric_to_plot)
       df <- filtered_metrics()
       validate(need(nrow(df) > 0, "No cell-level data. Combine/upload groups first."))
-      create_metric_plot(df, input$metric_to_plot, "GroupName", "by Cell (No Stats)")
+      create_metric_plot(df, input$metric_to_plot, "GroupName", "by Cell (No Stats)", show_stats = FALSE)
     })
 
     output$avg_time_course_plot <- renderPlot({

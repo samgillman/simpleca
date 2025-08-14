@@ -125,8 +125,32 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
           infile <- input[[paste0("upload_comb_", group_name)]]
           
           tryCatch({
-            time_course <- as.data.table(readxl::read_excel(infile$datapath, sheet = "TimeCourse"))
-            metrics <- as.data.table(readxl::read_excel(infile$datapath, sheet = "Metrics"))
+            file_ext <- tools::file_ext(infile$name)
+            
+            if (file_ext == "zip") {
+              # Handle ZIP files (our download format)
+              tmpdir <- tempdir()
+              utils::unzip(infile$datapath, exdir = tmpdir)
+              
+              # Look for TimeCourse.csv and Metrics.csv
+              time_csv <- file.path(tmpdir, "TimeCourse.csv")
+              metrics_csv <- file.path(tmpdir, "Metrics.csv")
+              
+              if (file.exists(time_csv) && file.exists(metrics_csv)) {
+                time_course <- as.data.table(data.table::fread(time_csv))
+                metrics <- as.data.table(data.table::fread(metrics_csv))
+              } else {
+                stop("ZIP file does not contain TimeCourse.csv and Metrics.csv")
+              }
+              
+            } else if (file_ext %in% c("xlsx", "xls")) {
+              # Handle Excel files
+              time_course <- as.data.table(readxl::read_excel(infile$datapath, sheet = "TimeCourse"))
+              metrics <- as.data.table(readxl::read_excel(infile$datapath, sheet = "Metrics"))
+              
+            } else {
+              stop("Unsupported file format. Please upload Excel (.xlsx) or ZIP files.")
+            }
             
             # Ensure group name is consistent
             time_course[, GroupName := group_name]
@@ -149,38 +173,20 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
         
         # --- Download Handler ---
         output[[paste0("download_", group_name)]] <- downloadHandler(
-          filename = function() { paste0("processed_data_", group_name, "_", Sys.Date(), ".xlsx") },
+          filename = function() { paste0("processed_data_", group_name, "_", Sys.Date(), ".zip") },
           content = function(file) {
             req(rv$groups[[group_name]]$combined_data)
-            # Create Excel file with proper sheet names using writexl fallback approach
-            tryCatch({
-              # Try to use writexl if available
-              if (requireNamespace("writexl", quietly = TRUE)) {
-                writexl::write_xlsx(
-                  list(
-                    TimeCourse = rv$groups[[group_name]]$combined_data$time_course,
-                    Metrics = rv$groups[[group_name]]$combined_data$metrics
-                  ),
-                  path = file
-                )
-              } else {
-                stop("writexl not available")
-              }
-            }, error = function(e) {
-              # Fallback: create a simple tab-separated file that Excel can read
-              # Write TimeCourse sheet
-              tc_data <- rv$groups[[group_name]]$combined_data$time_course
-              metrics_data <- rv$groups[[group_name]]$combined_data$metrics
-              
-              # Create a simple text-based Excel-like format
-              con <- file(file, "w")
-              writeLines("TimeCourse", con)
-              write.table(tc_data, con, sep = "\t", row.names = FALSE, quote = FALSE)
-              writeLines("", con)
-              writeLines("Metrics", con)
-              write.table(metrics_data, con, sep = "\t", row.names = FALSE, quote = FALSE)
-              close(con)
-            })
+            # Create ZIP with CSV files (reliable approach)
+            tmpdir <- tempdir()
+            time_csv <- file.path(tmpdir, "TimeCourse.csv")
+            metrics_csv <- file.path(tmpdir, "Metrics.csv")
+            
+            write.csv(rv$groups[[group_name]]$combined_data$time_course, time_csv, row.names = FALSE)
+            write.csv(rv$groups[[group_name]]$combined_data$metrics, metrics_csv, row.names = FALSE)
+            
+            old_wd <- getwd(); setwd(tmpdir)
+            on.exit(setwd(old_wd), add = TRUE)
+            utils::zip(zipfile = file, files = c("TimeCourse.csv", "Metrics.csv"))
           }
         )
       })
@@ -280,37 +286,14 @@ mod_group_combiner_server <- function(id, rv_group, parent_session) {
         all_files <- c()
         
         for (group_name in names(groups_with_data)) {
-          # Create Excel files for each group
-          excel_file <- file.path(tmpdir, paste0(group_name, "_combined_data.xlsx"))
+          # Create separate ZIP for each group with CSV files
+          group_time_csv <- file.path(tmpdir, paste0(group_name, "_TimeCourse.csv"))
+          group_metrics_csv <- file.path(tmpdir, paste0(group_name, "_Metrics.csv"))
           
-          tryCatch({
-            # Try to use writexl if available
-            if (requireNamespace("writexl", quietly = TRUE)) {
-              writexl::write_xlsx(
-                list(
-                  TimeCourse = groups_with_data[[group_name]]$combined_data$time_course,
-                  Metrics = groups_with_data[[group_name]]$combined_data$metrics
-                ),
-                path = excel_file
-              )
-            } else {
-              stop("writexl not available")
-            }
-          }, error = function(e) {
-            # Fallback: create tab-separated file with .xlsx extension
-            tc_data <- groups_with_data[[group_name]]$combined_data$time_course
-            metrics_data <- groups_with_data[[group_name]]$combined_data$metrics
-            
-            con <- file(excel_file, "w")
-            writeLines("TimeCourse", con)
-            write.table(tc_data, con, sep = "\t", row.names = FALSE, quote = FALSE)
-            writeLines("", con)
-            writeLines("Metrics", con)
-            write.table(metrics_data, con, sep = "\t", row.names = FALSE, quote = FALSE)
-            close(con)
-          })
+          write.csv(groups_with_data[[group_name]]$combined_data$time_course, group_time_csv, row.names = FALSE)
+          write.csv(groups_with_data[[group_name]]$combined_data$metrics, group_metrics_csv, row.names = FALSE)
           
-          all_files <- c(all_files, basename(excel_file))
+          all_files <- c(all_files, basename(group_time_csv), basename(group_metrics_csv))
         }
         
         # Change to temp directory, create zip, then restore
