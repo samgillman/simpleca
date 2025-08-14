@@ -169,8 +169,15 @@ mod_group_comparison_server <- function(id, rv_group) {
     })
 
     output$avg_time_course_plot <- renderPlot({
-      req(rv_group$combined_data$time_course, input$groups_to_display)
-      plot_data <- rv_group$combined_data$time_course %>% dplyr::filter(GroupName %in% input$groups_to_display)
+      req(rv_group$combined_data$time_course)
+      tc <- rv_group$combined_data$time_course
+      # Default to all groups if none selected
+      sel_groups <- if (is.null(input$groups_to_display) || length(input$groups_to_display) == 0) {
+        unique(tc$GroupName)
+      } else {
+        input$groups_to_display
+      }
+      plot_data <- tc %>% dplyr::filter(GroupName %in% sel_groups)
       validate(need(nrow(plot_data) > 0, "No time course data. Combine/upload groups first."))
       avg_data <- plot_data %>%
         dplyr::group_by(GroupName, Time) %>%
