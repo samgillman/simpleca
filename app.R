@@ -63,6 +63,7 @@ ui <- dashboardPage(
     )
   ),
   body = dashboardBody(
+    withMathJax(),
     useShinyjs(),
     tags$head(tags$style(HTML("
     /* Custom CSS */

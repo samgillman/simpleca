@@ -45,6 +45,34 @@ coerce_numeric_dt <- function(dt) {
   dt
 }
 
+#' Helper to find the first time a threshold is crossed in a signal
+#' This function uses linear interpolation for accuracy and can be constrained
+#' to search within a specific window of the signal.
+#' @param signal The numeric vector representing the signal.
+#' @param time_vec The corresponding numeric vector for time.
+#' @param threshold The numeric threshold value to find.
+#' @param search_start_idx The starting index for the search window.
+#' @param search_end_idx The ending index for the search window.
+#' @return The interpolated time of the first crossing, or NA if not found.
+find_rising_crossing_time <- function(signal, time_vec, threshold, search_start_idx, search_end_idx) {
+  # Define the part of the signal to search within
+  search_indices <- seq(from = search_start_idx, to = search_end_idx)
+  
+  # Find first index in our search window where signal is >= threshold
+  first_idx_in_window <- which(signal[search_indices] >= threshold)[1]
+  
+  if (is.na(first_idx_in_window)) return(NA_real_)
+  
+  first_idx <- search_indices[first_idx_in_window]
+  
+  if (first_idx == 1) return(time_vec[1])
+  
+  y1 <- signal[first_idx - 1]; y2 <- signal[first_idx]
+  t1 <- time_vec[first_idx - 1]; t2 <- time_vec[first_idx]
+  
+  if (y2 == y1) return(t1)
+  return(t1 + (t2 - t1) * (threshold - y1) / (y2 - y1))
+}
 
 #' Function to calculate various metrics for a single cell's time course data
 #'
@@ -111,31 +139,6 @@ calculate_cell_metrics <- function(cell_data, time_vec, baseline_frames = c(1, 2
     p50 <- baseline + 0.50 * response_amplitude
     p75 <- baseline + 0.75 * response_amplitude
     p90 <- baseline + 0.90 * response_amplitude
-
-    # Helper to find the first time a threshold is crossed *after the baseline period*
-    find_rising_crossing_time <- function(signal, time_vec, threshold, search_start_idx, search_end_idx) {
-      # Define the part of the signal to search within
-      search_indices <- seq(from = search_start_idx, to = search_end_idx)
-      
-      # Find first index in our search window where signal is >= threshold
-      first_idx_in_window <- which(signal[search_indices] >= threshold)[1]
-      
-      # If no crossing, return NA
-      if (is.na(first_idx_in_window)) return(NA_real_)
-      
-      # Convert back to the original signal's index
-      first_idx <- search_indices[first_idx_in_window]
-      
-      # We need the point before the crossing for interpolation, if it's the very first point, we can't interpolate
-      if (first_idx == 1) return(time_vec[1])
-      
-      # Linear interpolation for better accuracy
-      y1 <- signal[first_idx - 1]; y2 <- signal[first_idx]
-      t1 <- time_vec[first_idx - 1]; t2 <- time_vec[first_idx]
-      
-      if (y2 == y1) return(t1) # Avoid division by zero
-      return(t1 + (t2 - t1) * (threshold - y1) / (y2 - y1))
-    }
 
     # Search for crossings only between the end of the baseline and the peak
     search_start_idx <- min(end_frame + 1, peak_idx)

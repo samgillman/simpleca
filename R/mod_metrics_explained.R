@@ -265,21 +265,14 @@ mod_metrics_explained_server <- function(id, rv) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
-    # --- Unified Plotting Theme ---
-    
     explanation_theme <- function() {
       theme_classic(base_size = 14) +
-      theme(
-        plot.title = element_text(face = "bold", hjust = 0.5, size = 16),
-        axis.title = element_text(face = "bold", size = 12),
-        axis.text = element_text(size = 10),
-        legend.position = "none"
-      )
+      theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 16),
+            axis.title = element_text(face = "bold", size = 12),
+            axis.text = element_text(size = 10),
+            legend.position = "none")
     }
     
-    # --- Cell Selectors ---
-
-    # A single helper to create cell selectors to reduce code duplication
     create_cell_selector <- function(input_id) {
       renderUI({
         req(rv$metrics)
@@ -298,8 +291,6 @@ mod_metrics_explained_server <- function(id, rv) {
     output$cell_selector_ui_auc <- create_cell_selector("selected_cell_auc")
     output$cell_selector_ui_ca <- create_cell_selector("selected_cell_ca")
 
-    # --- Reactive Data Fetcher ---
-    
     selected_cell_data <- reactive({
       req(rv$long, rv$metrics, rv$raw_traces, rv$baselines)
       
@@ -339,8 +330,6 @@ mod_metrics_explained_server <- function(id, rv) {
         peak_f = peak_f_raw
       )
     })
-    
-    # --- Calculation UI Outputs ---
     
     output$peak_calculation_ui <- renderUI({
       req(selected_cell_data())
@@ -399,8 +388,6 @@ mod_metrics_explained_server <- function(id, rv) {
       withMathJax(helpText(sprintf("$$ \\text{Rate} = \\frac{0.8 \\times %.3f}{%.2f} = %.3f $$", 
                                   data$metric$Response_Amplitude, data$metric$Rise_Time, data$metric$Calcium_Entry_Rate)))
     })
-
-    # --- Plot Outputs ---
 
     output$peak_plot <- renderPlot({
       req(selected_cell_data())
@@ -506,16 +493,14 @@ mod_metrics_explained_server <- function(id, rv) {
       data <- selected_cell_data()
       trace <- data$processed_trace
       metric <- data$metric
-      
       req(nrow(trace) > 0, !is.na(metric$FWHM))
       
       peak_val <- metric$Peak_dFF0
       half_max <- peak_val / 2
-      
       above <- trace$dFF0 >= half_max
       crossings <- which(diff(above) != 0)
-      
       peak_idx <- which.max(trace$dFF0)
+      
       left_crossings <- crossings[crossings < peak_idx]
       idx_left <- if (length(left_crossings) > 0) max(left_crossings) + 1 else NA
       
@@ -537,12 +522,7 @@ mod_metrics_explained_server <- function(id, rv) {
         t1_r + (t2_r - t1_r) * (half_max - y1_r) / (y2_r - y1_r)
       }
       
-      list(
-        t_left = time_left,
-        t_right = time_right,
-        half_max_y = half_max,
-        is_sustained = is_sustained
-      )
+      list(t_left = time_left, t_right = time_right, half_max_y = half_max, is_sustained = is_sustained)
     })
 
     output$fwhm_plot <- renderPlot({
