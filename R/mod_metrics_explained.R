@@ -643,16 +643,9 @@ mod_metrics_explained_server <- function(id, rv) {
       data <- selected_cell_data()
       trace <- data$processed_trace
       
-      # Position label in a clean area (top 80% of the y-range)
-      y_range <- range(trace$dFF0, na.rm = TRUE)
-      label_y_pos <- y_range[1] + 0.8 * (y_range[2] - y_range[1])
-      
       ggplot(trace, aes(x = Time, y = dFF0)) +
         geom_ribbon(aes(ymin = 0, ymax = dFF0), fill = "darkseagreen", alpha = 0.7) +
         geom_line(color = "gray50", linewidth = 1) +
-        annotate("text", x = mean(range(trace$Time)), y = label_y_pos, 
-                 label = paste("AUC =", round(data$metric$AUC, 2)), 
-                 color = "black", fontface = "bold", size = 5) +
         labs(title = paste("Area Under Curve (AUC) for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme() + 
         coord_cartesian(clip = "off")
