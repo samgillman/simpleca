@@ -620,11 +620,11 @@ mod_metrics_explained_server <- function(id, rv) {
         geom_text(data = annotation_df, aes(x = x_mid, y = y_mid, label = fwhm_label), 
                   color = "firebrick", vjust = -1.2, fontface = "bold", size = 4.5) +
                   
-        # --- Half-Width Line and Label ---
+        # --- Half-Width Line and Label (with corrected text position) ---
         geom_segment(data = annotation_df, aes(x = times$t_left, xend = times$t_left + data$metric$Half_Width, y = y_mid - hwhm_offset, yend = y_mid - hwhm_offset), 
                      arrow = arrow(length = unit(0.25, "cm"), ends = "both"), color = "darkorange", linewidth = 1) +
         geom_text(data = annotation_df, aes(x = x_hwhm_mid, y = y_mid - hwhm_offset, label = hwhm_label), 
-                  color = "darkorange", vjust = -1.2, fontface = "bold", size = 4.5) +
+                  color = "darkorange", vjust = 2, fontface = "bold", size = 4.5) + # Changed vjust to 2
 
         labs(title = paste("FWHM & Half-Width for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme() + coord_cartesian(clip = "off")

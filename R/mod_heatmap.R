@@ -10,6 +10,8 @@ mod_heatmap_ui <- function(id) {
                 sliderInput(ns("hm_legend_text_size"),"Legend text size", min = 6, max = 24, value = 10, step = 1),
                 tags$hr(),
                 textInput(ns("hm_title"),"Plot title","Population Heatmap"),
+                checkboxInput(ns("hm_center_title"), "Center title", TRUE),
+                selectInput(ns("hm_font"), "Font", choices=c("Arial","Helvetica","Times","Courier"), selected="Arial"),
                 textInput(ns("hm_x_label"),"X label","Time (s)"),
                 textInput(ns("hm_y_label"),"Y label","Cell"),
                 sliderInput(ns("hm_title_size"),"Title size", 10, 28, 16, 1),
@@ -69,11 +71,12 @@ mod_heatmap_server <- function(id, rv) {
         labs(title = input$hm_title, x = input$hm_x_label, y = input$hm_y_label) +
         theme_classic(base_size = 14) +
         theme(
-          plot.title = element_text(size = input$hm_title_size, face = "bold"),
-          axis.title = element_text(size = input$hm_axis_title_size),
-          axis.text = element_text(size = input$hm_axis_text_size),
-          legend.text = element_text(size = input$hm_legend_text_size),
-          legend.title = element_text(size = max(6, input$hm_legend_text_size + 2)),
+          plot.title = element_text(size = input$hm_title_size, face = "bold", family = input$hm_font, 
+                                    hjust = if(isTRUE(input$hm_center_title)) 0.5 else 0),
+          axis.title = element_text(size = input$hm_axis_title_size, family = input$hm_font),
+          axis.text = element_text(size = input$hm_axis_text_size, family = input$hm_font),
+          legend.text = element_text(size = input$hm_legend_text_size, family = input$hm_font),
+          legend.title = element_text(size = max(6, input$hm_legend_text_size + 2), family = input$hm_font),
           strip.background = element_blank(),
           strip.text = element_blank()
         )
