@@ -58,13 +58,6 @@ ui <- dashboardPage(
         menuSubItem("Export", tabName = "export", icon = icon("download"))
       ),
       
-      # --- Menu Item 2: Group Analysis (Collapsible) ---
-      menuItem("Group Analysis", tabName = "group_analysis", icon = icon("users"),
-        menuSubItem("Combine & Annotate", tabName = "group_combiner", icon = icon("object-group")),
-        menuSubItem("Group Time Course", tabName = "group_timecourse", icon = icon("chart-line")),
-        menuSubItem("Group Comparisons", tabName = "group_comparison", icon = icon("chart-bar"))
-      ),
-      
       # --- Menu Item 3: Help ---
       menuItem("Help", tabName = "help", icon = icon("circle-question"))
     )
@@ -92,12 +85,6 @@ ui <- dashboardPage(
       mod_heatmap_ui("heatmap"),
       mod_tables_ui("tables"),
       mod_export_ui("export"),
-      
-      # --- Group Analysis Panels ---
-      mod_group_combiner_ui("group_combiner"),
-      mod_group_timecourse_ui("group_timecourse"),
-      # Commenting out Group Comparisons temporarily
-      # mod_group_comparison_ui("group_comparison"),
       
       # --- Help Panel ---
       mod_help_ui("help")
@@ -139,21 +126,23 @@ server <- function(input, output, session) {
                     heatmap_plot_reactive = heatmap_plot_obj)
   
   # --- Group Analysis ---
-  rv_group <- reactiveValues(
-    combined_data = NULL # This will store the master combined dataset for group analysis
-  )
-  mod_group_combiner_server("group_combiner", rv_group, parent_session = session)
-  mod_group_timecourse_server("group_timecourse", rv_group)
-  mod_group_comparison_server("group_comparison", rv_group)
+  # The following block was removed as per the edit hint.
+  # rv_group <- reactiveValues(
+  #   combined_data = NULL # This will store the master combined dataset for group analysis
+  # )
+  # mod_group_combiner_server("group_combiner", rv_group, parent_session = session)
+  # mod_group_timecourse_server("group_timecourse", rv_group)
+  # mod_group_comparison_server("group_comparison", rv_group)
 
   # --- Observers to manage UI state ---
   
   # When data is combined, switch to the comparison tab
-  observeEvent(rv_group$combined_data, {
-    if(!is.null(rv_group$combined_data)) {
-      updateTabItems(session, "sidebar_tabs", selected = "group_timecourse")
-    }
-  })
+  # The following block was removed as per the edit hint.
+  # observeEvent(rv_group$combined_data, {
+  #   if(!is.null(rv_group$combined_data)) {
+  #     updateTabItems(session, "sidebar_tabs", selected = "group_timecourse")
+  #   }
+  # })
 
 }
 
