@@ -7,6 +7,17 @@ mod_heatmap_ui <- function(id) {
             box(title = "Controls", status = "warning", solidHeader = TRUE, width = 4,
                 selectInput(ns("hm_sort"),"Sort cells by", choices = c("Time to Peak"="tpeak","Peak Amplitude"="amp","Original"="orig"), selected="tpeak"),
                 selectInput(ns("hm_palette"),"Color palette", choices = c("plasma","viridis","magma","inferno","cividis"), selected = "plasma"),
+                tags$hr(),
+                
+                # --- Title and Labels ---
+                textInput(ns("hm_title"),"Plot title","Population Heatmap"),
+                checkboxInput(ns("hm_center_title"), "Center title", value = TRUE),
+                textInput(ns("hm_x_label"),"X label","Time (s)"),
+                textInput(ns("hm_y_label"),"Y label","Cell"),
+                tags$hr(),
+
+                # --- Typography & Sizing ---
+                h5("Typography & Sizing", style = "font-weight: bold;"),
                 sliderInput(ns("hm_title_size"),"Title size", 10, 28, 16, 1),
                 checkboxInput(ns("hm_bold_title"), "Bold title", value = TRUE),
                 sliderInput(ns("hm_axis_title_size"),"Axis title size", 8, 28, 14, 1),
