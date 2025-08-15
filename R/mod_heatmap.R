@@ -7,15 +7,14 @@ mod_heatmap_ui <- function(id) {
             box(title = "Controls", status = "warning", solidHeader = TRUE, width = 4,
                 selectInput(ns("hm_sort"),"Sort cells by", choices = c("Time to Peak"="tpeak","Peak Amplitude"="amp","Original"="orig"), selected="tpeak"),
                 selectInput(ns("hm_palette"),"Color palette", choices = c("plasma","viridis","magma","inferno","cividis"), selected = "plasma"),
-                sliderInput(ns("hm_legend_text_size"),"Legend text size", min = 6, max = 24, value = 10, step = 1),
-                tags$hr(),
-                textInput(ns("hm_title"),"Plot title","Population Heatmap"),
-                checkboxInput(ns("hm_center_title"), "Center title", value = TRUE),
-                textInput(ns("hm_x_label"),"X label","Time (s)"),
-                textInput(ns("hm_y_label"),"Y label","Cell"),
                 sliderInput(ns("hm_title_size"),"Title size", 10, 28, 16, 1),
+                checkboxInput(ns("hm_bold_title"), "Bold title", value = TRUE),
                 sliderInput(ns("hm_axis_title_size"),"Axis title size", 8, 28, 14, 1),
+                checkboxInput(ns("hm_bold_axis_title"), "Bold axis titles", value = TRUE),
                 sliderInput(ns("hm_axis_text_size"),"Axis text size", 8, 28, 12, 1),
+                checkboxInput(ns("hm_bold_axis_text"), "Bold axis text", value = FALSE),
+                sliderInput(ns("hm_legend_text_size"),"Legend text size", min = 6, max = 24, value = 10, step = 1),
+                checkboxInput(ns("hm_bold_legend_text"), "Bold legend text", value = FALSE),
                 selectInput(ns("hm_font"), "Font", 
                             choices = c("Arial", "Helvetica", "Times", "Courier"), 
                             selected = "Arial")
@@ -74,15 +73,31 @@ mod_heatmap_server <- function(id, rv) {
         theme_classic(base_size = 14) +
         theme(
           plot.title = element_text(
-            size = input$hm_title_size, 
-            face = "bold",
+            size = input$hm_title_size,
+            face = if (isTRUE(input$hm_bold_title)) "bold" else "plain",
             hjust = if (isTRUE(input$hm_center_title)) 0.5 else 0,
             family = input$hm_font
           ),
-          axis.title = element_text(size = input$hm_axis_title_size, family = input$hm_font),
-          axis.text = element_text(size = input$hm_axis_text_size, family = input$hm_font),
-          legend.text = element_text(size = input$hm_legend_text_size, family = input$hm_font),
-          legend.title = element_text(size = max(6, input$hm_legend_text_size + 2), family = input$hm_font),
+          axis.title = element_text(
+            size = input$hm_axis_title_size,
+            face = if (isTRUE(input$hm_bold_axis_title)) "bold" else "plain",
+            family = input$hm_font
+          ),
+          axis.text = element_text(
+            size = input$hm_axis_text_size,
+            face = if (isTRUE(input$hm_bold_axis_text)) "bold" else "plain",
+            family = input$hm_font
+          ),
+          legend.text = element_text(
+            size = input$hm_legend_text_size,
+            face = if (isTRUE(input$hm_bold_legend_text)) "bold" else "plain",
+            family = input$hm_font
+          ),
+          legend.title = element_text(
+            size = max(6, input$hm_legend_text_size + 2),
+            family = input$hm_font,
+            face = "bold" # Legend title is always bold
+          ),
           strip.background = element_blank(),
           strip.text = element_blank()
         )

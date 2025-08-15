@@ -57,8 +57,11 @@ mod_time_course_ui <- function(id) {
                                      column(width = 3,
                                             h5("Typography & Axes", style = "font-weight: bold; color: #333;"),
                                             sliderInput(ns("tc_title_size"),"Title size", 10, 28, 18, 1, width = "100%"),
-                                            sliderInput(ns("tc_axis_size"),"Axis text size", 8, 28, 12, 1, width = "100%"),
+                                            checkboxInput(ns("tc_bold_title"), "Bold title", value = TRUE),
                                             sliderInput(ns("tc_axis_title_size"),"Axis title size", 8, 28, 14, 1, width = "100%"),
+                                            checkboxInput(ns("tc_bold_axis_title"), "Bold axis titles", value = TRUE),
+                                            sliderInput(ns("tc_axis_size"),"Axis text size", 8, 28, 12, 1, width = "100%"),
+                                            checkboxInput(ns("tc_bold_axis_text"), "Bold axis text", value = FALSE),
                                             selectInput(ns("tc_font"),"Font", 
                                                         choices=c("Arial","Helvetica","Times","Courier"), 
                                                         selected="Arial"),
@@ -165,10 +168,23 @@ mod_time_course_server <- function(id, rv) {
       
       base_theme <- switch(input$tc_theme, classic=theme_classic(), minimal=theme_minimal(), light=theme_light(), dark=theme_dark())
       p <- p + base_theme + theme(
-        plot.title = element_text(hjust=0.5, size=input$tc_title_size, face="bold", family=input$tc_font),
+        plot.title = element_text(
+            hjust=0.5, 
+            size=input$tc_title_size, 
+            face=if(isTRUE(input$tc_bold_title)) "bold" else "plain", 
+            family=input$tc_font
+        ),
         plot.subtitle = element_text(hjust=0.5, size=max(8, input$tc_title_size - 4), family=input$tc_font),
-        axis.title = element_text(size=input$tc_axis_title_size, face="bold", family=input$tc_font),
-        axis.text = element_text(size=input$tc_axis_size, family=input$tc_font),
+        axis.title = element_text(
+            size=input$tc_axis_title_size, 
+            face=if(isTRUE(input$tc_bold_axis_title)) "bold" else "plain", 
+            family=input$tc_font
+        ),
+        axis.text = element_text(
+            size=input$tc_axis_size, 
+            face=if(isTRUE(input$tc_bold_axis_text)) "bold" else "plain", 
+            family=input$tc_font
+        ),
         legend.position = input$tc_legend_pos
       )
       if (isTRUE(input$tc_log_y)) p <- p + scale_y_log10()
