@@ -38,13 +38,26 @@ mod_preproc_server <- function(id, rv) {
       cols <- c("Peak_dFF0","AUC","FWHM", "Half_Width","Calcium_Entry_Rate",
                 "Time_to_Peak","Time_to_25_Peak","Time_to_50_Peak","Time_to_75_Peak","Rise_Time","SNR")
       present <- intersect(cols, names(rv$metrics))
+      
       sm <- lapply(present, function(cl) {
         vals <- rv$metrics[[cl]]
-        label <- if (cl == "Peak_dFF0") "Peak ΔF/F₀" else cl
+        label <- switch(cl,
+                        "Peak_dFF0" = "Peak ΔF/F₀",
+                        "Calcium_Entry_Rate" = "Ca²⁺ Entry Rate",
+                        "Time_to_Peak" = "Time to Peak (s)",
+                        "Time_to_25_Peak" = "Time to 25% Peak (s)",
+                        "Time_to_50_Peak" = "Time to 50% Peak (s)",
+                        "Time_to_75_Peak" = "Time to 75% Peak (s)",
+                        "Rise_Time" = "Rise Time (s)",
+                        "FWHM" = "FWHM (s)",
+                        "Half_Width" = "Half-Width (s)",
+                        "SNR" = "Signal-to-Noise Ratio (SNR)",
+                        cl) # Default case
         c(Metric = label, Mean = mean(vals, na.rm=TRUE),
           SEM = stats::sd(vals, na.rm=TRUE)/sqrt(sum(is.finite(vals))),
           n = sum(is.finite(vals)))
       })
+      
       df <- as.data.frame(do.call(rbind, sm), stringsAsFactors = FALSE)
       df$Mean <- as.numeric(df$Mean); df$SEM <- as.numeric(df$SEM); df$n <- as.integer(df$n)
       datatable(df, 
@@ -59,13 +72,26 @@ mod_preproc_server <- function(id, rv) {
       cols <- c("Peak_dFF0","AUC","FWHM", "Half_Width","Calcium_Entry_Rate",
                 "Time_to_Peak","Time_to_25_Peak","Time_to_50_Peak","Time_to_75_Peak","Rise_Time","SNR")
       present <- intersect(cols, names(rv$metrics))
+      
       sm <- lapply(present, function(cl) {
         vals <- rv$metrics[[cl]]
-        label <- if (cl == "Peak_dFF0") "Peak ΔF/F₀" else cl
+        label <- switch(cl,
+                        "Peak_dFF0" = "Peak ΔF/F₀",
+                        "Calcium_Entry_Rate" = "Ca²⁺ Entry Rate",
+                        "Time_to_Peak" = "Time to Peak (s)",
+                        "Time_to_25_Peak" = "Time to 25% Peak (s)",
+                        "Time_to_50_Peak" = "Time to 50% Peak (s)",
+                        "Time_to_75_Peak" = "Time to 75% Peak (s)",
+                        "Rise_Time" = "Rise Time (s)",
+                        "FWHM" = "FWHM (s)",
+                        "Half_Width" = "Half-Width (s)",
+                        "SNR" = "Signal-to-Noise Ratio (SNR)",
+                        cl) # Default case
         c(Metric = label, Mean = mean(vals, na.rm=TRUE),
           SEM = stats::sd(vals, na.rm=TRUE)/sqrt(sum(is.finite(vals))),
           n = sum(is.finite(vals)))
       })
+      
       df <- as.data.frame(do.call(rbind, sm), stringsAsFactors = FALSE)
       df$Mean <- as.numeric(df$Mean); df$SEM <- as.numeric(df$SEM); df$n <- as.integer(df$n)
       
