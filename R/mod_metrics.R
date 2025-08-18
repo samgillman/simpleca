@@ -69,7 +69,7 @@ mod_metrics_server <- function(id, rv) {
         geom_col(width = 0.85, alpha = 0.9, color = "black", linewidth = 0.2) +
         facet_wrap(~ Group, scales = "free_x", ncol = 1, strip.position = "top") +
         labs(x = "Cell number", y = y_lab, title = title_txt) + base +
-        scale_x_continuous(breaks = function(lims) seq(1, floor(lims[2]), by = 1)) +
+        scale_x_continuous(breaks = scales::pretty_breaks()) +
         theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = max(7, input$metric_size * 0.6)))
       
       cols <- rv$colors
