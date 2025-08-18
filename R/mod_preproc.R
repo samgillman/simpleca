@@ -49,7 +49,7 @@ mod_preproc_server <- function(id, rv) {
       df$Mean <- as.numeric(df$Mean); df$SEM <- as.numeric(df$SEM); df$n <- as.integer(df$n)
       datatable(df, 
                 extensions = "Buttons",
-                options=list(dom='Bfrtip', buttons = c('copy', 'csv', 'excel'), pageLength=20), 
+                options=list(dom='Btip', buttons = c('copy', 'csv', 'excel'), pageLength=20), 
                 rownames=FALSE) |>
         formatRound(c("Mean","SEM"), 4)
     })
