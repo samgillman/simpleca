@@ -46,19 +46,17 @@ ui <- dashboardPage(
   header = dashboardHeader(title = "Calcium Imaging Analysis"),
   sidebar = dashboardSidebar(
     sidebarMenu(id = "sidebar_tabs",
-      # --- Menu Item 1: Individual Analysis (Collapsible) ---
-      menuItem("Individual Analysis", tabName = "individual", icon = icon("user"), startExpanded = TRUE,
-        menuSubItem("Load Data", tabName = "load", icon = icon("database")),
-        menuSubItem("Processed Data", tabName = "preproc", icon = icon("sliders")),
-        menuSubItem("Time Course", tabName = "time", icon = icon("chart-line")),
-        menuSubItem("Metrics", tabName = "metrics", icon = icon("chart-bar")),
-        menuSubItem("Metric Explanations", tabName = "metrics_explained", icon = icon("lightbulb")),
-        menuSubItem("Heatmap", tabName = "heatmap", icon = icon("th")),
-        menuSubItem("Tables", tabName = "tables", icon = icon("table")),
-        menuSubItem("Export", tabName = "export", icon = icon("download"))
-      ),
+      # --- Individual Analysis Panels (now top-level) ---
+      menuItem("Load Data", tabName = "load", icon = icon("database")),
+      menuItem("Processed Data", tabName = "preproc", icon = icon("sliders")),
+      menuItem("Time Course", tabName = "time", icon = icon("chart-line")),
+      menuItem("Metrics", tabName = "metrics", icon = icon("chart-bar")),
+      menuItem("Metric Explanations", tabName = "metrics_explained", icon = icon("lightbulb")),
+      menuItem("Heatmap", tabName = "heatmap", icon = icon("th")),
+      menuItem("Tables", tabName = "tables", icon = icon("table")),
+      menuItem("Export", tabName = "export", icon = icon("download")),
       
-      # --- Menu Item 3: Help ---
+      # --- Help ---
       menuItem("Help", tabName = "help", icon = icon("circle-question"))
     )
   ),
