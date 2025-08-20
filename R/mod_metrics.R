@@ -37,7 +37,7 @@ mod_metrics_server <- function(id, rv) {
       validate(need(nrow(df) > 0, "No finite values for this metric."))
       
       base <- theme_classic(base_size=input$metric_size) +
-        theme(legend.position = "none",
+        theme(legend.position = "top",
               axis.title = element_text(size = input$metric_size, face = "bold"),
               axis.text = element_text(size = input$metric_size * 0.9))
       
@@ -47,14 +47,14 @@ mod_metrics_server <- function(id, rv) {
       df2 <- df
       if (isTRUE(input$metric_sort_cells)) {
         df2 <- df2 |>
-          dplyr::group_by(Group) |>
-          dplyr::arrange(.data[[metric]], .by_group = TRUE) |>
-          dplyr::mutate(Cell_Idx = dplyr::row_number()) |>
-          dplyr::ungroup()
-      } else df2$Cell_Idx <- seq_len(nrow(df2))
+          dplyr::arrange(.data[[metric]]) |>
+          dplyr::mutate(Cell_Idx = dplyr::row_number())
+      } else {
+        df2 <- df2 |>
+          dplyr::mutate(Cell_Idx = dplyr::row_number())
+      }
       
       stats_g <- df2 |>
-        dplyr::group_by(Group) |>
         dplyr::summarise(mean_val = mean(.data[[metric]], na.rm = TRUE),
                          sem_val = stats::sd(.data[[metric]], na.rm = TRUE)/sqrt(dplyr::n()),
                          n = dplyr::n(),
@@ -67,13 +67,12 @@ mod_metrics_server <- function(id, rv) {
       
       p <- ggplot(df2, aes(x = Cell_Idx, y = .data[[metric]], fill = Group)) +
         geom_col(width = 0.85, alpha = 0.9, color = "black", linewidth = 0.2) +
-        facet_wrap(~ Group, scales = "free_x", ncol = 1, strip.position = "top") +
         labs(x = "Cell number", y = y_lab, title = title_txt) + base +
         scale_x_continuous(breaks = scales::pretty_breaks()) +
         theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = max(7, input$metric_size * 0.6)))
       
       cols <- rv$colors
-      if (!is.null(cols)) p <- p + scale_fill_manual(values = cols)
+      if (!is.null(cols)) p <- p + scale_fill_manual(values = cols, name = "Group")
       
       p + geom_label(data = stats_g, aes(x = xpos, y = ypos, label = label),
                      inherit.aes = FALSE, size = lab_size_val,

@@ -302,14 +302,14 @@ metric_label <- function(metric) {
 #' @return A character string for the title.
 metric_title <- function(metric) {
   switch(metric,
-         Peak_dFF0 = "Peak ΔF/F₀",
-         Response_Amplitude = "Response Amplitude (ΔF/F₀)",
+         Peak_dFF0 = expression("Peak "*Delta*"F/F"[0]),
+         Response_Amplitude = expression("Response Amplitude ("*Delta*"F/F"[0]*")"),
          Rise_Time = "Rise Time (10-90%) (s)",
          FWHM = "FWHM (s)",
          Half_Width = "Half Width (HWHM, s)",
          AUC = "Area Under Curve (AUC)", 
          SNR = "Signal-to-Noise Ratio (SNR)",
          Time_to_Peak = "Time to Peak (s)",
-         Calcium_Entry_Rate = "Calcium Entry Rate (ΔF/F₀/s)",
+         Calcium_Entry_Rate = expression("Calcium Entry Rate ("*Delta*"F/F"[0]*"/s)"),
          metric)
 }
