@@ -25,7 +25,7 @@ mod_metrics_ui <- function(id) {
                 tags$hr(),
                 h4("Download Options"),
                 fluidRow(
-                  column(6, selectInput(ns("dl_format"), "Format", c("PNG"="png", "PDF"="pdf", "SVG"="svg"), "png")),
+                  column(6, selectInput(ns("dl_format"), "Format", c("PNG"="png", "PDF"="pdf", "SVG"="svg", "TIFF"="tiff"), "png")),
                   column(6, numericInput(ns("dl_dpi"), "DPI", 300, 72, 600, 5))
                 ),
                 fluidRow(

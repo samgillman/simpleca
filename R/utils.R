@@ -227,8 +227,11 @@ compute_metrics_for_dt <- function(dt, group_label, baseline_frames = c(1, 20)) 
   # Combine the list of data.frames into a single data.frame
   result_df <- dplyr::bind_rows(metrics_list)
   
+  # Add a clean, sequential cell label for plotting
+  result_df$Cell_Label <- paste("Cell", seq_len(nrow(result_df)))
+  
   # Reorder columns to have identifiers first
-  id_cols <- c("Group", "Cell", "Cell_ID")
+  id_cols <- c("Group", "Cell", "Cell_ID", "Cell_Label")
   metric_cols <- setdiff(names(result_df), id_cols)
   final_df <- result_df[, c(id_cols, metric_cols)]
   
