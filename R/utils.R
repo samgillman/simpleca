@@ -287,12 +287,12 @@ metric_label <- function(metric) {
   switch(metric,
          Peak_dFF0 = expression(Delta*"F/F"[0]),
          Response_Amplitude = expression("Response Amplitude ("*Delta*"F/F"[0]*")"),
-         Rise_Time = "Time (s)",
-         FWHM = "Time (s)",
-         Half_Width = "Time (s)",
+         Rise_Time = "Rise Time (s)",
+         FWHM = "FWHM (s)",
+         Half_Width = "Half-Width (s)",
          AUC = "AUC", 
          SNR = "SNR", 
-         Time_to_Peak = "Time (s)",
+         Time_to_Peak = "Time to Peak (s)",
          Calcium_Entry_Rate = expression("Rate ("*Delta*"F/F"[0]*"/s)"),
          metric)
 }

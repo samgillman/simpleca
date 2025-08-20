@@ -19,7 +19,19 @@ mod_metrics_ui <- function(id) {
                 textInput(ns("metric_title"),"Custom title (optional)",""),
                 checkboxInput(ns("metric_auto_y"),"Auto y-label (use metric units)", TRUE),
                 conditionalPanel(paste0("!input['", ns("metric_auto_y"), "']"), textInput(ns("metric_y_label"),"Y label","Value")),
-                sliderInput(ns("metric_size"),"Base font size", 8, 22, 14, 1)
+                checkboxInput(ns("metric_bold_axes"), "Bold axis titles", TRUE),
+                sliderInput(ns("metric_size"),"Base font size", 8, 22, 14, 1),
+                tags$hr(),
+                h4("Download Options"),
+                fluidRow(
+                  column(6, selectInput(ns("dl_format"), "Format", c("PNG"="png", "PDF"="pdf", "SVG"="svg"), "png")),
+                  column(6, numericInput(ns("dl_dpi"), "DPI", 300, 72, 600, 5))
+                ),
+                fluidRow(
+                  column(6, numericInput(ns("dl_width"), "Width (in)", 7, 3, 20, 0.5)),
+                  column(6, numericInput(ns("dl_height"), "Height (in)", 5, 3, 20, 0.5))
+                ),
+                downloadButton(ns("dl_plot"), "Download Plot")
             ),
             box(title = "Metrics Plot", status = "success", solidHeader = TRUE, width = 8,
                 withSpinner(plotOutput(ns("metrics_plot"), height = "640px"), type = 4))
@@ -30,16 +42,24 @@ mod_metrics_ui <- function(id) {
 mod_metrics_server <- function(id, rv) {
   moduleServer(id, function(input, output, session) {
     
-    output$metrics_plot <- renderPlot({
+    # Reactive expression to build the plot object
+    # This avoids duplicating code for rendering and downloading
+    metrics_plot_obj <- reactive({
       req(rv$metrics)
       metric <- input$metric_name
       df <- dplyr::filter(rv$metrics, is.finite(.data[[metric]]))
       validate(need(nrow(df) > 0, "No finite values for this metric."))
       
+      # Determine axis title font face
+      axis_face <- if (isTRUE(input$metric_bold_axes)) "bold" else "plain"
+      
       base <- theme_classic(base_size=input$metric_size) +
         theme(legend.position = "none",
-              axis.title = element_text(size = input$metric_size, face = "bold"),
-              axis.text = element_text(size = input$metric_size * 0.9))
+              axis.title.x = element_text(size = input$metric_size, face = axis_face),
+              axis.title.y = element_text(size = input$metric_size, face = axis_face),
+              axis.text = element_text(size = input$metric_size * 0.9),
+              panel.grid.major.y = element_line(color = "grey90", linetype = "dotted"),
+              panel.border = element_rect(color = "grey80", fill = NA))
       
       y_lab <- if (isTRUE(input$metric_auto_y)) metric_label(metric) else input$metric_y_label
       title_txt <- if (nzchar(input$metric_title)) input$metric_title else metric_title(metric)
@@ -80,6 +100,21 @@ mod_metrics_server <- function(id, rv) {
         coord_cartesian(clip = "off") +
         theme(plot.margin = margin(10, 25, 10, 10))
     })
+    
+    output$metrics_plot <- renderPlot({
+      metrics_plot_obj()
+    })
+    
+    output$dl_plot <- downloadHandler(
+      filename = function() {
+        sprintf("metrics_plot_%s.%s", Sys.Date(), input$dl_format)
+      },
+      content = function(file) {
+        ggsave(file, plot = metrics_plot_obj(),
+               width = input$dl_width, height = input$dl_height,
+               dpi = input$dl_dpi, device = input$dl_format)
+      }
+    )
     
   })
 }
