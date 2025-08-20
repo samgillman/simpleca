@@ -43,7 +43,7 @@ mod_preproc_server <- function(id, rv) {
         vals <- rv$metrics[[cl]]
         label <- switch(cl,
                         "Peak_dFF0" = "Peak ΔF/F₀",
-                        "Calcium_Entry_Rate" = "Ca²⁺ Entry Rate",
+                        "Calcium_Entry_Rate" = "Ca²⁺ Entry Rate (ΔF/F₀/s)",
                         "Time_to_Peak" = "Time to Peak (s)",
                         "Time_to_25_Peak" = "Time to 25% Peak (s)",
                         "Time_to_50_Peak" = "Time to 50% Peak (s)",
@@ -77,7 +77,7 @@ mod_preproc_server <- function(id, rv) {
         vals <- rv$metrics[[cl]]
         label <- switch(cl,
                         "Peak_dFF0" = "Peak ΔF/F₀",
-                        "Calcium_Entry_Rate" = "Ca²⁺ Entry Rate",
+                        "Calcium_Entry_Rate" = "Ca²⁺ Entry Rate (ΔF/F₀/s)",
                         "Time_to_Peak" = "Time to Peak (s)",
                         "Time_to_25_Peak" = "Time to 25% Peak (s)",
                         "Time_to_50_Peak" = "Time to 50% Peak (s)",

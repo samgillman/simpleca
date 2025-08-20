@@ -16,7 +16,7 @@ mod_metrics_explained_ui <- function(id) {
                                   "Time to % Peak" = "time_to_percent_peak",
                                   "FWHM & Half-Width" = "fwhm",
                                   "Area Under Curve (AUC)" = "auc",
-                                  "Calcium Entry Rate" = "ca_entry_rate"
+                                  "Calcium Entry Rate (ΔF/F₀/s)" = "ca_entry_rate"
                                   ),
                       selected = "peak_dff0"),
           hr(),
@@ -235,7 +235,7 @@ mod_metrics_explained_ui <- function(id) {
             condition = paste0("input['", ns("metric_to_explain"), "'] == 'ca_entry_rate'"),
             fluidRow(
               box(
-                title = "Calcium Entry Rate", status = "danger", solidHeader = TRUE, width = 12, collapsible = TRUE,
+                title = "Calcium Entry Rate (ΔF/F₀/s)", status = "danger", solidHeader = TRUE, width = 12, collapsible = TRUE,
                 fluidRow(
                   column(4,
                          h4("Explore a Single Cell"),
@@ -246,7 +246,7 @@ mod_metrics_explained_ui <- function(id) {
                          p("It's calculated as the slope of the line between the 10% and 90% amplitude points."),
                          h4("Calculation"),
                          withMathJax(),
-                         helpText("$$ \\text{Rate} = \\frac{0.8 \\times \\text{Amplitude}}{\\text{Rise Time}} $$"),
+                         helpText("$$ \\text{Rate (ΔF/F₀/s)} = \\frac{0.8 \\times \\text{Amplitude}}{\\text{Rise Time}} $$"),
                          uiOutput(ns("ca_calculation_ui"))
                   ),
                   column(8,
@@ -432,7 +432,7 @@ mod_metrics_explained_server <- function(id, rv) {
     output$ca_calculation_ui <- renderUI({
       req(selected_cell_data())
       data <- selected_cell_data()
-      withMathJax(helpText(sprintf("$$ \\text{Rate} = \\frac{0.8 \\times %.3f}{%.2f} = %.3f $$", 
+      withMathJax(helpText(sprintf("$$ \\text{Rate (ΔF/F₀/s)} = \\frac{0.8 \\times %.3f}{%.2f} = %.3f \\text{ ΔF/F₀/s} $$", 
                                   data$metric$Response_Amplitude, data$metric$Rise_Time, data$metric$Calcium_Entry_Rate)))
     })
 

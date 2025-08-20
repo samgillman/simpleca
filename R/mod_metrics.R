@@ -11,7 +11,7 @@ mod_metrics_ui <- function(id) {
                                         "Time to 75% Peak (s)"="Time_to_75_Peak","Rise Time (s)"="Rise_Time",
                                         "FWHM (s)"="FWHM",
                                         "Half Width (HWHM)"="Half_Width",
-                                        "Ca²⁺ Entry Rate"="Calcium_Entry_Rate","AUC"="AUC",
+                                        "Ca²⁺ Entry Rate (ΔF/F₀/s)"="Calcium_Entry_Rate","AUC"="AUC",
                                         "SNR"="SNR"),
                             selected="Peak_dFF0"),
                 checkboxInput(ns("metric_sort_cells"),"Sort cell bars within group", TRUE),

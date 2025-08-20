@@ -74,9 +74,6 @@ find_rising_crossing_time <- function(signal, time_vec, threshold, search_start_
   return(t1 + (t2 - t1) * (threshold - y1) / (y2 - y1))
 }
 
-# Explicitly assign to global environment to ensure availability across modules
-assign("find_rising_crossing_time", find_rising_crossing_time, envir = .GlobalEnv)
-
 #' Function to calculate various metrics for a single cell's time course data
 #'
 #' This function takes a vector of fluorescence values and a time vector,
@@ -296,6 +293,7 @@ metric_label <- function(metric) {
          AUC = "AUC", 
          SNR = "SNR", 
          Time_to_Peak = "Time (s)",
+         Calcium_Entry_Rate = expression("Rate ("*Delta*"F/F"[0]*"/s)"),
          metric)
 }
 
@@ -312,5 +310,6 @@ metric_title <- function(metric) {
          AUC = "Area Under Curve (AUC)", 
          SNR = "Signal-to-Noise Ratio (SNR)",
          Time_to_Peak = "Time to Peak (s)",
+         Calcium_Entry_Rate = "Calcium Entry Rate (ΔF/F₀/s)",
          metric)
 }

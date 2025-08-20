@@ -28,7 +28,6 @@ library(stringr)
 library(tools)
 
 # ============================ Source Modules and Helpers =============================
-source("R/utils.R") # Ensure helper functions are available globally
 lapply(list.files("R", pattern = "\\.R$", full.names = TRUE), source)
 
 # Silence NSE/lint warnings for dplyr/data.table column references
@@ -37,8 +36,6 @@ utils::globalVariables(c(
   "Metric", "Value", "Mean", "SEM", "SD", "N", "n_cells",
   "Cell_Idx", "xpos", "ypos", "label", "Mean ± SEM"
 ))
-
-`%||%` <- function(a, b) if (!is.null(a)) a else b
 
 # ============================== UI =================================
 ui <- dashboardPage(
@@ -124,25 +121,6 @@ server <- function(input, output, session) {
                     metrics_plot_reactive = metrics_plot_obj, 
                     heatmap_plot_reactive = heatmap_plot_obj)
   
-  # --- Group Analysis ---
-  # The following block was removed as per the edit hint.
-  # rv_group <- reactiveValues(
-  #   combined_data = NULL # This will store the master combined dataset for group analysis
-  # )
-  # mod_group_combiner_server("group_combiner", rv_group, parent_session = session)
-  # mod_group_timecourse_server("group_timecourse", rv_group)
-  # mod_group_comparison_server("group_comparison", rv_group)
-
-  # --- Observers to manage UI state ---
-  
-  # When data is combined, switch to the comparison tab
-  # The following block was removed as per the edit hint.
-  # observeEvent(rv_group$combined_data, {
-  #   if(!is.null(rv_group$combined_data)) {
-  #     updateTabItems(session, "sidebar_tabs", selected = "group_timecourse")
-  #   }
-  # })
-
 }
 
 shinyApp(ui, server)
