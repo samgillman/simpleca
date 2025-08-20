@@ -455,7 +455,7 @@ mod_metrics_explained_server <- function(id, rv) {
       p + geom_segment(data = metric, aes(x = Time_to_Peak, xend = Time_to_Peak, y = 0, yend = Peak_dFF0), color = "red", linetype = "dashed") +
         geom_point(data = metric, aes(x = Time_to_Peak, y = Peak_dFF0), color = "red", size = 4) +
         annotate("text", x = metric$Time_to_Peak, y = label_y_pos, label = round(metric$Peak_dFF0, 3), vjust = 0, color = "red", size = 4.5) +
-        labs(title = paste("Peak ΔF/F₀ for Cell", metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
+        labs(title = bquote("Peak "*Delta*"F/F"[0]~"for Cell"~.(metric$Cell)), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme() + coord_cartesian(clip = "off")
     }, res = 96)
     
@@ -668,17 +668,22 @@ mod_metrics_explained_server <- function(id, rv) {
       p10_val <- 0.10 * metric$Response_Amplitude
       p90_val <- 0.90 * metric$Response_Amplitude
       
+      # Create a data frame for the annotation for cleaner code and robust positioning
+      annotation_df <- data.frame(
+        x = min(trace$Time) + diff(range(trace$Time, na.rm = TRUE)) * 0.05,
+        y = max(trace$dFF0, na.rm = TRUE) * 0.95,
+        label = sprintf("Rate = %.3f", data$metric$Calcium_Entry_Rate)
+      )
+      
       ggplot(data$processed_trace, aes(x = Time, y = dFF0)) +
         geom_line(color = "gray50", linewidth = 1) +
-        geom_segment(aes(x = t10, y = p10_val, xend = t90, yend = p10_val), linetype = "dotted", color = "gray50") +
-        geom_segment(aes(x = t90, y = p10_val, xend = t90, yend = p90_val), linetype = "dotted", color = "gray50") +
         geom_point(aes(x=!!t10, y=!!p10_val), color="dodgerblue", size=4) +
         geom_point(aes(x=!!t90, y=!!p90_val), color="dodgerblue", size=4) +
         geom_segment(aes(x = t10, y = p10_val, xend = t90, yend = p90_val), color = "dodgerblue", linewidth = 1.5) +
-        annotate("text", x = mean(c(t10, t90)), y = p90_val,
-                 label = paste("Rate =", round(data$metric$Calcium_Entry_Rate, 3)),
-                 color = "dodgerblue", fontface = "bold", size = 4.5, vjust = -1) +
-        labs(title = paste("Calcium Entry Rate for Cell", data$metric$Cell), x = "Time (s)", y = expression(Delta*F/F[0])) +
+        geom_label(data = annotation_df, aes(x = x, y = y, label = label),
+                   color = "dodgerblue", fontface = "bold", size = 5, hjust = 0,
+                   fill = alpha("white", 0.7), label.size = NA) +
+        labs(title = bquote("Calcium Entry Rate for Cell"~.(metric$Cell)), x = "Time (s)", y = expression(Delta*F/F[0])) +
         explanation_theme() + coord_cartesian(clip = "off")
     }, res = 96)
     

@@ -37,7 +37,7 @@ mod_metrics_server <- function(id, rv) {
       validate(need(nrow(df) > 0, "No finite values for this metric."))
       
       base <- theme_classic(base_size=input$metric_size) +
-        theme(legend.position = "top",
+        theme(legend.position = "none",
               axis.title = element_text(size = input$metric_size, face = "bold"),
               axis.text = element_text(size = input$metric_size * 0.9))
       
@@ -72,7 +72,7 @@ mod_metrics_server <- function(id, rv) {
         theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = max(7, input$metric_size * 0.6)))
       
       cols <- rv$colors
-      if (!is.null(cols)) p <- p + scale_fill_manual(values = cols, name = "Group")
+      if (!is.null(cols)) p <- p + scale_fill_manual(values = cols)
       
       p + geom_label(data = stats_g, aes(x = xpos, y = ypos, label = label),
                      inherit.aes = FALSE, size = lab_size_val,
