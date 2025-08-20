@@ -20,6 +20,7 @@ mod_metrics_ui <- function(id) {
                 checkboxInput(ns("metric_auto_y"),"Auto y-label (use metric units)", TRUE),
                 conditionalPanel(paste0("!input['", ns("metric_auto_y"), "']"), textInput(ns("metric_y_label"),"Y label","Value")),
                 checkboxInput(ns("metric_bold_axes"), "Bold axis titles", TRUE),
+                selectInput(ns("metric_font"), "Font Family", choices = c("Sans-Serif" = "sans", "Serif" = "serif", "Monospace" = "mono"), selected = "sans"),
                 sliderInput(ns("metric_size"),"Base font size", 8, 22, 14, 1),
                 tags$hr(),
                 h4("Download Options"),
@@ -53,13 +54,12 @@ mod_metrics_server <- function(id, rv) {
       # Determine axis title font face
       axis_face <- if (isTRUE(input$metric_bold_axes)) "bold" else "plain"
       
-      base <- theme_classic(base_size=input$metric_size) +
+      base <- theme_classic(base_size=input$metric_size, base_family = input$metric_font) +
         theme(legend.position = "none",
-              axis.title.x = element_text(size = input$metric_size, face = axis_face),
-              axis.title.y = element_text(size = input$metric_size, face = axis_face),
-              axis.text = element_text(size = input$metric_size * 0.9),
-              panel.grid.major.y = element_line(color = "grey90", linetype = "dotted"),
-              panel.border = element_rect(color = "grey80", fill = NA))
+              axis.title.x = element_text(face = axis_face),
+              axis.title.y = element_text(face = axis_face),
+              axis.text = element_text(),
+              panel.grid.major.y = element_line(color = "grey90", linetype = "dotted"))
       
       y_lab <- if (isTRUE(input$metric_auto_y)) metric_label(metric) else input$metric_y_label
       title_txt <- if (nzchar(input$metric_title)) input$metric_title else metric_title(metric)
@@ -96,7 +96,8 @@ mod_metrics_server <- function(id, rv) {
       
       p + geom_label(data = stats_g, aes(x = xpos, y = ypos, label = label),
                      inherit.aes = FALSE, size = lab_size_val,
-                     label.size = 0.15, alpha = 0.9, hjust = 0) +
+                     label.size = 0.15, alpha = 0.9, hjust = 0,
+                     family = input$metric_font) +
         coord_cartesian(clip = "off") +
         theme(plot.margin = margin(10, 25, 10, 10))
     })
