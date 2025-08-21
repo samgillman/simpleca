@@ -35,8 +35,8 @@ mod_preproc_server <- function(id, rv) {
     
     output$preproc_avg_metrics <- renderDT({
       req(rv$metrics)
-      cols <- c("Peak_dFF0","AUC","FWHM", "Half_Width","Calcium_Entry_Rate",
-                "Time_to_Peak","Time_to_25_Peak","Time_to_50_Peak","Time_to_75_Peak","Rise_Time","SNR")
+      cols <- c("Peak_dFF0", "AUC", "FWHM", "Half_Width", "Calcium_Entry_Rate",
+                "Time_to_Peak", "Time_to_25_Peak", "Time_to_50_Peak", "Time_to_75_Peak", "Rise_Time", "SNR")
       present <- intersect(cols, names(rv$metrics))
       
       sm <- lapply(present, function(cl) {
@@ -62,15 +62,15 @@ mod_preproc_server <- function(id, rv) {
       df$Mean <- as.numeric(df$Mean); df$SEM <- as.numeric(df$SEM); df$n <- as.integer(df$n)
       datatable(df, 
                 extensions = "Buttons",
-                options=list(dom='Bti', buttons = c('copy', 'csv', 'excel')), 
+                options=list(dom='Bti', buttons = c('copy', 'csv', 'excel'), pageLength = 15), 
                 rownames=FALSE) |>
         formatRound(c("Mean","SEM"), 4)
     })
     
     avg_metrics_gt <- reactive({
       req(rv$metrics)
-      cols <- c("Peak_dFF0","AUC","FWHM", "Half_Width","Calcium_Entry_Rate",
-                "Time_to_Peak","Time_to_25_Peak","Time_to_50_Peak","Time_to_75_Peak","Rise_Time","SNR")
+      cols <- c("Peak_dFF0", "AUC", "FWHM", "Half_Width", "Calcium_Entry_Rate",
+                "Time_to_Peak", "Time_to_25_Peak", "Time_to_50_Peak", "Time_to_75_Peak", "Rise_Time", "SNR")
       present <- intersect(cols, names(rv$metrics))
       
       sm <- lapply(present, function(cl) {

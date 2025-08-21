@@ -40,7 +40,11 @@ utils::globalVariables(c(
 # ============================== UI =================================
 ui <- dashboardPage(
   skin = "blue",
-  header = dashboardHeader(title = "Calcium Imaging Analysis"),
+  header = dashboardHeader(
+    title = tags$div(
+      tags$img(src = "simpleca.svg", height = 24, style = "margin-right:6px;" )
+    )
+  ),
   sidebar = dashboardSidebar(
     sidebarMenu(id = "sidebar_tabs",
       # --- Individual Analysis Panels (now top-level) ---
@@ -60,6 +64,13 @@ ui <- dashboardPage(
   body = dashboardBody(
     withMathJax(),
     useShinyjs(),
+    tags$head(
+      # Modern webfont
+      tags$link(rel = "stylesheet", href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"),
+      # Consistent accent colours & typography
+      tags$style(HTML("\n      body, .sidebar-menu, .box-title, h1, h2, h3, h4, h5, h6 { font-family: 'Inter', Arial, sans-serif; }\n      :root { --primary-color:#0072B2; --secondary-color:#5bc0de; }\n      /* Sidebar active item */\n      .skin-blue .sidebar-menu > li.active > a { background-color: var(--primary-color) !important; }\n      /* Primary buttons */\n      .btn-primary { background-color: var(--primary-color) !important; border-color: var(--primary-color) !important; transition: filter .15s;}\n      .btn-primary:hover { filter: brightness(1.1); }\n       /* Plot box shadow */\n       .box.box-default { box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+      /* Info/warning boxes accent adjustments */\n      .box.box-primary { border-top-color: var(--primary-color); }\n      .box.box-info    { border-top-color: var(--secondary-color); }\n      /* Uniform spacing between inputs */\n      .shiny-input-container { margin-bottom: 12px; }\n    "))
+    ),
     tags$head(tags$style(HTML("
     /* Custom CSS */
     .small-help {color:#6c757d;font-size:12px;margin-top:4px}
@@ -70,6 +81,11 @@ ui <- dashboardPage(
     .equal-row .col-right { flex: 1; display: flex; flex-direction: column; gap: 20px; }
     .box { height: 100%; display: flex; flex-direction: column; }
     .box-body { flex: 1; }
+          /* Hide default logo text only, not custom logo */
+      .main-header .navbar-brand { color: transparent !important; }
+      .skin-blue .main-header .navbar-brand { color: transparent !important; }
+      /* Ensure custom logo images are full opacity */
+      .main-header img { opacity: 1 !important; }
   "))),
     tabItems(
       # --- Individual Analysis Panels ---

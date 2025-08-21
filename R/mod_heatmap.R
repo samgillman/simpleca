@@ -4,7 +4,7 @@ mod_heatmap_ui <- function(id) {
   ns <- NS(id)
   tabItem(tabName = "heatmap",
           fluidRow(
-            box(title = "Controls", status = "warning", solidHeader = TRUE, width = 4,
+            box(title = "Controls", status = "primary", solidHeader = TRUE, width = 4,
                 selectInput(ns("hm_sort"),"Sort cells by", choices = c("Time to Peak"="tpeak","Peak Amplitude"="amp","Original"="orig"), selected="tpeak"),
                 selectInput(ns("hm_palette"),"Color palette", choices = c("plasma","viridis","magma","inferno","cividis"), selected = "plasma"),
                 tags$hr(),
@@ -15,31 +15,39 @@ mod_heatmap_ui <- function(id) {
                 textInput(ns("hm_x_label"),"X label","Time (s)"),
                 textInput(ns("hm_y_label"),"Y label","Cell"),
                 tags$hr(),
-
-                # --- Typography & Sizing ---
-                h5("Typography & Sizing", style = "font-weight: bold;"),
-                sliderInput(ns("hm_title_size"),"Title size", 10, 28, 16, 1),
-                checkboxInput(ns("hm_bold_title"), "Bold title", value = TRUE),
-                sliderInput(ns("hm_axis_title_size"),"Axis title size", 8, 28, 14, 1),
-                checkboxInput(ns("hm_bold_axis_title"), "Bold axis titles", value = TRUE),
-                sliderInput(ns("hm_axis_text_size"),"Axis text size", 8, 28, 12, 1),
-                checkboxInput(ns("hm_bold_axis_text"), "Bold axis text", value = FALSE),
-                sliderInput(ns("hm_legend_text_size"),"Legend text size", min = 6, max = 24, value = 10, step = 1),
-                checkboxInput(ns("hm_bold_legend_text"), "Bold legend text", value = FALSE),
-                selectInput(ns("hm_font"), "Font", 
-                            choices = c("Arial", "Helvetica", "Times", "Courier"), 
-                            selected = "Arial")
+                
+                # Collapsible appearance group
+                tags$details(
+                  tags$summary(style = "cursor:pointer; font-weight:600; color:#0072B2;", "Appearance & Typography"),
+                  div(style = "margin-top:8px;",
+                    h5("Typography & Sizing", style = "font-weight: bold;"),
+                    sliderInput(ns("hm_title_size"),"Title size", 10, 24, 16, 1),
+                    checkboxInput(ns("hm_bold_title"), "Bold title", value = TRUE),
+                    sliderInput(ns("hm_axis_title_size"),"Axis title size", 8, 24, 14, 1),
+                    checkboxInput(ns("hm_bold_axis_title"), "Bold axis titles", value = TRUE),
+                    sliderInput(ns("hm_axis_text_size"),"Axis text size", 8, 24, 12, 1),
+                    checkboxInput(ns("hm_bold_axis_text"), "Bold axis text", value = FALSE),
+                    sliderInput(ns("hm_legend_text_size"),"Legend text size", min = 6, max = 24, value = 10, step = 1),
+                    checkboxInput(ns("hm_bold_legend_text"), "Bold legend text", value = FALSE),
+                    selectInput(ns("hm_font"), "Font", 
+                                choices = c("Arial", "Helvetica", "Times", "Courier"), 
+                                selected = "Arial")
+                  )
+                )
             ),
-            box(title = "Heatmap", status = "warning", solidHeader = TRUE, width = 8,
+            box(title = "Heatmap", solidHeader = TRUE, width = 8,
                 withSpinner(plotOutput(ns("heatmap_plot"), height = "760px"), type = 4),
                 tags$hr(),
                 fluidRow(
                   column(3, selectInput(ns("hm_dl_fmt"),"Format", choices = c("PNG"="png","PDF"="pdf","TIFF"="tiff","SVG"="svg"), selected = "png")),
-                  column(3, numericInput(ns("hm_dl_w"),"Width (in)", 12, min = 4, max = 30)),
-                  column(3, numericInput(ns("hm_dl_h"),"Height (in)", 8, min = 4, max = 30)),
-                  column(3, numericInput(ns("hm_dl_dpi"),"DPI", 300, min = 72, max = 600))
+                  column(3, selectInput(ns("hm_size_preset"), "Size", choices = c("6x4 in"="6x4","7x5 in"="7x5","8x6 in"="8x6","10x7.5 in"="10x7.5","12x8 in"="12x8"), selected = "8x6")),
+                  column(3, numericInput(ns("hm_dl_w"),"Width (in)", 8, min = 4, max = 30)),
+                  column(3, numericInput(ns("hm_dl_h"),"Height (in)", 6, min = 4, max = 30))
                 ),
-                div(style = "margin-top:8px;", downloadButton(ns("dl_heatmap_plot_local"),"Download Heatmap"))
+                fluidRow(
+                  column(3, numericInput(ns("hm_dl_dpi"),"DPI", 300, min = 72, max = 600)),
+                  column(9, div(style = "text-align:right; margin-top:6px;", downloadButton(ns("dl_heatmap_plot_local"),"Download Heatmap")))
+                )
             )
           )
   )
@@ -75,10 +83,13 @@ mod_heatmap_server <- function(id, rv) {
       all_hm <- purrr::imap(rv$dts, ~build_hm(.x, .y)) |> purrr::compact() |> dplyr::bind_rows()
       validate(need(nrow(all_hm) > 0, "No valid data for heatmap"))
       
+      rng <- range(all_hm$Value, na.rm = TRUE)
+      brks <- unique(round(c(rng[1], median(all_hm$Value, na.rm = TRUE), rng[2]), 3))
+      
       ggplot(all_hm, aes(Time, Cell, fill = Value)) +
         geom_tile() +
         facet_wrap(~ Group, ncol = 1, scales = "free_y") +
-        scale_fill_viridis_c(name = expression(Delta*"F/F"[0]), option = input$hm_palette, na.value = "white") +
+        scale_fill_viridis_c(name = expression(Delta*"F/F"[0]), option = input$hm_palette, na.value = "white", breaks = brks, labels = scales::label_number(accuracy = 0.01)) +
         guides(fill = guide_colorbar(frame.colour = "black", frame.linewidth = 0.3)) +
         labs(title = input$hm_title, x = input$hm_x_label, y = input$hm_y_label) +
         theme_classic(base_size = 14) +
@@ -89,6 +100,7 @@ mod_heatmap_server <- function(id, rv) {
             hjust = if (isTRUE(input$hm_center_title)) 0.5 else 0,
             family = input$hm_font
           ),
+          plot.subtitle = element_text(margin = margin(b = 4)),
           axis.title = element_text(
             size = input$hm_axis_title_size,
             face = if (isTRUE(input$hm_bold_axis_title)) "bold" else "plain",
@@ -113,6 +125,18 @@ mod_heatmap_server <- function(id, rv) {
           strip.text = element_blank()
         )
     })
+    
+    observeEvent(input$hm_size_preset, {
+      preset <- input$hm_size_preset
+      dims <- switch(preset,
+                     "6x4" = c(6,4),
+                     "7x5" = c(7,5),
+                     "8x6" = c(8,6),
+                     "10x7.5" = c(10,7.5),
+                     "12x8" = c(12,8), c(8,6))
+      updateNumericInput(session, "hm_dl_w", value = dims[1])
+      updateNumericInput(session, "hm_dl_h", value = dims[2])
+    }, ignoreInit = TRUE)
     
     output$heatmap_plot <- renderPlot({
       heatmap_plot_reactive()

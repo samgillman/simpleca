@@ -4,7 +4,7 @@ mod_metrics_ui <- function(id) {
   ns <- NS(id)
   tabItem(tabName = "metrics",
           fluidRow(
-            box(title = "Controls", status = "success", solidHeader = TRUE, width = 4,
+            box(title = "Controls", status = "primary", solidHeader = TRUE, width = 4,
                 selectInput(ns("metric_name"),"Metric",
                             choices = c("Peak ΔF/F₀"="Peak_dFF0","Time to Peak (s)"="Time_to_Peak",
                                         "Time to 25% Peak (s)"="Time_to_25_Peak","Time to 50% Peak (s)"="Time_to_50_Peak",
@@ -15,27 +15,31 @@ mod_metrics_ui <- function(id) {
                                         "SNR"="SNR"),
                             selected="Peak_dFF0"),
                 checkboxInput(ns("metric_sort_cells"),"Sort cell bars within group", TRUE),
-                sliderInput(ns("metric_inset_scale"),"Inset size", min = 0.5, max = 3, value = 1, step = 0.1),
                 textInput(ns("metric_title"),"Custom title (optional)",""),
                 checkboxInput(ns("metric_auto_y"),"Auto y-label (use metric units)", TRUE),
                 conditionalPanel(paste0("!input['", ns("metric_auto_y"), "']"), textInput(ns("metric_y_label"),"Y label","Value")),
-                checkboxInput(ns("metric_bold_axes"), "Bold axis titles", TRUE),
-                selectInput(ns("metric_font"), "Font Family", choices = c("Sans-Serif" = "sans", "Serif" = "serif", "Monospace" = "mono"), selected = "sans"),
-                sliderInput(ns("metric_size"),"Base font size", 8, 22, 14, 1),
-                tags$hr(),
-                h4("Download Options"),
-                fluidRow(
-                  column(6, selectInput(ns("dl_format"), "Format", c("PNG"="png", "PDF"="pdf", "SVG"="svg", "TIFF"="tiff"), "png")),
-                  column(6, numericInput(ns("dl_dpi"), "DPI", 300, 72, 600, 5))
-                ),
-                fluidRow(
-                  column(6, numericInput(ns("dl_width"), "Width (in)", 7, 3, 20, 0.5)),
-                  column(6, numericInput(ns("dl_height"), "Height (in)", 5, 3, 20, 0.5))
-                ),
-                downloadButton(ns("dl_plot"), "Download Plot")
+                # Collapsible appearance controls
+                tags$details(
+                  tags$summary(style = "cursor:pointer; font-weight:600; color:#0072B2;", "Appearance & Typography"),
+                  div(style = "margin-top:8px;",
+                      sliderInput(ns("metric_inset_scale"),"Inset size", min = 0.5, max = 3, value = 1, step = 0.1),
+                      checkboxInput(ns("metric_bold_axes"), "Bold axis titles", TRUE),
+                      selectInput(ns("metric_font"), "Font Family", choices = c("Sans-Serif" = "sans", "Serif" = "serif", "Monospace" = "mono"), selected = "sans"),
+                      sliderInput(ns("metric_size"),"Base font size", 8, 22, 14, 1)
+                  )
+                )
             ),
-            box(title = "Metrics Plot", status = "success", solidHeader = TRUE, width = 8,
-                withSpinner(plotOutput(ns("metrics_plot"), height = "640px"), type = 4))
+            box(title = "Metrics Plot", solidHeader = TRUE, width = 8,
+                withSpinner(plotOutput(ns("metrics_plot"), height = "640px"), type = 4),
+                tags$hr(),
+                fluidRow(
+                  column(3, selectInput(ns("dl_format"), "Format", c("PNG"="png", "PDF"="pdf", "SVG"="svg", "TIFF"="tiff"), "png")),
+                  column(3, numericInput(ns("dl_width"), "Width (in)", 7, 3, 20, 0.5)),
+                  column(3, numericInput(ns("dl_height"), "Height (in)", 5, 3, 20, 0.5)),
+                  column(3, numericInput(ns("dl_dpi"), "DPI", 300, 72, 600, 5))
+                ),
+                div(style = "margin-top:10px; text-align:right;", downloadButton(ns("dl_plot"), "Download Plot"))
+            )
           )
   )
 }

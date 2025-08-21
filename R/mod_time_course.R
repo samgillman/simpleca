@@ -49,23 +49,27 @@ mod_time_course_ui <- function(id) {
                                      column(width = 3,
                                             h5("Labels", style = "font-weight: bold; color: #333;"),
                                             textInput(ns("tc_title"),"Title",""),
-                                            textInput(ns("tc_subtitle"),"Subtitle","ΔF/F₀ over time"),
+                                            textInput(ns("tc_subtitle"), "Subtitle", "ΔF/F₀ over time"),
                                             textInput(ns("tc_x"),"X axis label","Time (s)"),
-                                            textInput(ns("tc_y"),"Y axis label","ΔF/F₀"),
+                                            textInput(ns("tc_y"), "Y axis label", "ΔF/F₀"),
                                             checkboxInput(ns("tc_log_y"),"Log10 Y axis", FALSE)
                                      ),
                                      column(width = 3,
-                                            h5("Typography & Axes", style = "font-weight: bold; color: #333;"),
-                                            sliderInput(ns("tc_title_size"),"Title size", 10, 28, 18, 1, width = "100%"),
-                                            checkboxInput(ns("tc_bold_title"), "Bold title", value = TRUE),
-                                            sliderInput(ns("tc_axis_title_size"),"Axis title size", 8, 28, 14, 1, width = "100%"),
-                                            checkboxInput(ns("tc_bold_axis_title"), "Bold axis titles", value = TRUE),
-                                            sliderInput(ns("tc_axis_size"),"Axis text size", 8, 28, 12, 1, width = "100%"),
-                                            checkboxInput(ns("tc_bold_axis_text"), "Bold axis text", value = FALSE),
-                                            selectInput(ns("tc_font"),"Font", 
-                                                        choices=c("Arial","Helvetica","Times","Courier"), 
-                                                        selected="Arial"),
-                                            checkboxInput(ns("tc_limits"),"Custom axis limits", FALSE)
+                                            tags$details(
+                                              tags$summary(style = "cursor:pointer; font-weight:600; color:#0072B2;", "Typography & Axes"),
+                                              div(style = "margin-top:8px;",
+                                                sliderInput(ns("tc_title_size"),"Title size", 10, 24, 18, 1, width = "100%"),
+                                                checkboxInput(ns("tc_bold_title"), "Bold title", value = TRUE),
+                                                sliderInput(ns("tc_axis_title_size"),"Axis title size", 8, 24, 14, 1, width = "100%"),
+                                                checkboxInput(ns("tc_bold_axis_title"), "Bold axis titles", value = TRUE),
+                                                sliderInput(ns("tc_axis_size"),"Axis text size", 8, 24, 12, 1, width = "100%"),
+                                                checkboxInput(ns("tc_bold_axis_text"), "Bold axis text", value = FALSE),
+                                                selectInput(ns("tc_font"),"Font", 
+                                                            choices=c("Arial","Helvetica","Times","Courier"), 
+                                                            selected="Arial"),
+                                                checkboxInput(ns("tc_limits"),"Custom axis limits", FALSE)
+                                              )
+                                            )
                                      )
                                    ),
                                    conditionalPanel(paste0("input['", ns("tc_limits"), "'] == true"),
@@ -163,8 +167,10 @@ mod_time_course_server <- function(id, rv) {
       if (!is.null(input$tc_line_color) && nzchar(input$tc_line_color)) cols <- stats::setNames(rep(input$tc_line_color, length(groups)), groups)
       if (!is.null(cols)) p <- p + scale_color_manual(values=cols) + scale_fill_manual(values=cols)
       
-      p <- p + labs(title=input$tc_title, subtitle=input$tc_subtitle,
-                    x=input$tc_x %||% "Time (s)", y=input$tc_y %||% "ΔF/F₀")
+      y_lab <- if (!is.null(input$tc_y) && nzchar(input$tc_y) && input$tc_y != "ΔF/F₀") input$tc_y else expression(Delta*"F/F"[0])
+      sub_lab <- if (!is.null(input$tc_subtitle) && nzchar(input$tc_subtitle) && input$tc_subtitle != "ΔF/F₀ over time") input$tc_subtitle else expression(Delta*"F/F"[0]*" over time")
+      p <- p + labs(title=input$tc_title, subtitle=sub_lab,
+                    x=input$tc_x %||% "Time (s)", y=y_lab)
       
       base_theme <- switch(input$tc_theme, classic=theme_classic(), minimal=theme_minimal(), light=theme_light(), dark=theme_dark())
       p <- p + base_theme + theme(
