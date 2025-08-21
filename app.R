@@ -47,9 +47,9 @@ ui <- dashboardPage(
       menuItem("Load Data", tabName = "load", icon = icon("database")),
       menuItem("Processed Data", tabName = "preproc", icon = icon("sliders")),
       menuItem("Time Course", tabName = "time", icon = icon("chart-line")),
+      menuItem("Heatmap", tabName = "heatmap", icon = icon("th")),
       menuItem("Metrics", tabName = "metrics", icon = icon("chart-bar")),
       menuItem("Metric Explanations", tabName = "metrics_explained", icon = icon("lightbulb")),
-      menuItem("Heatmap", tabName = "heatmap", icon = icon("th")),
       menuItem("Tables", tabName = "tables", icon = icon("table")),
       menuItem("Export", tabName = "export", icon = icon("download")),
       
@@ -76,9 +76,9 @@ ui <- dashboardPage(
       mod_load_data_ui("load_data"),
       mod_preproc_ui("preproc"),
       mod_time_course_ui("time_course"),
+      mod_heatmap_ui("heatmap"),
       mod_metrics_ui("metrics"),
       mod_metrics_explained_ui("metrics_explained"),
-      mod_heatmap_ui("heatmap"),
       mod_tables_ui("tables"),
       mod_export_ui("export"),
       
