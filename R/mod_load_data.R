@@ -143,6 +143,10 @@ mod_load_data_server <- function(id, rv) {
           dts[[labels[i]]] <- dt
         }
         
+        # NEW: Remove rows with any NA values from all processed data tables
+        # This prevents vertical white lines on the heatmap from NA-filled time points
+        dts <- purrr::map(dts, ~na.omit(.))
+        
         rv$dts <- dts
         rv$raw_traces <- raw_traces
         rv$baselines <- baselines
