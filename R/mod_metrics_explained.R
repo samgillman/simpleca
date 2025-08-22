@@ -228,7 +228,8 @@ mod_metrics_explained_ui <- function(id) {
                 column(6, selectInput(ns("dl_format"), "Format", c("PNG"="png", "PDF"="pdf", "SVG"="svg", "TIFF"="tiff"), "png")),
                 column(3, numericInput(ns("dl_dpi"), "DPI", 300, 72, 600, 5)),
                 column(3, div(style = "margin-top:25px;", downloadButton(ns("dl_plot"), "Download Plot", class = "btn-primary")))
-              ),
+              )
+            ),
             
             # Right Column: The plot itself (dynamically updated)
             column(width = 7,
