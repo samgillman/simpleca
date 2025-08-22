@@ -31,16 +31,24 @@ ensure_time_first <- function(dt, time_col = NULL) {
 
 # Coerce all relevant columns to numeric, handling potential errors
 coerce_numeric_dt <- function(dt) {
-  # Coerce time column first, suppress warnings for non-numeric values
-  suppressWarnings({ dt[[1]] <- as.numeric(dt[[1]]) })
+  # Coerce time column first
+  dt[[1]] <- as.numeric(dt[[1]])
   
   # Identify columns that are not lists (e.g. from bad excel reads)
   keep <- c(TRUE, vapply(dt[, -1], function(col) !is.list(col), logical(1)))
   dt <- dt[, ..keep]
   
-  # Coerce remaining data columns to numeric
+  # Coerce remaining data columns to numeric with better error handling
   for (j in seq(2, ncol(dt))) {
-    suppressWarnings({ dt[[j]] <- as.numeric(dt[[j]]) })
+    original_col <- dt[[j]]
+    numeric_col <- as.numeric(original_col)
+    
+    # Check for conversion issues
+    if (any(is.na(numeric_col) & !is.na(original_col))) {
+      warning("Column ", names(dt)[j], " had conversion issues - some values became NA")
+    }
+    
+    dt[[j]] <- numeric_col
   }
   dt
 }

@@ -150,6 +150,14 @@ mod_load_data_server <- function(id, rv) {
                   dt[[j]] <- dt[[j]]
                 }
               }
+              
+              # Debug: Check for any NA values created
+              na_count <- sum(is.na(dt[, -1]))
+              if (na_count > 0) {
+                cat("Warning: Created", na_count, "NA values in file", labels[i], "\n")
+                cat("F0 values:", F0, "\n")
+                cat("Any non-finite F0:", any(!is.finite(F0)), "\n")
+              }
             }
           }
           dts[[labels[i]]] <- dt
