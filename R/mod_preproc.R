@@ -5,7 +5,7 @@ mod_preproc_ui <- function(id) {
   tabItem(tabName = "preproc",
           fluidRow(
             column(width = 12,
-                   box(title = "Average Metrics (All Cells)", status = "info", solidHeader = TRUE, width = 12,
+                   box(title = "Average Metrics (All Cells)", status = "info", solidHeader = TRUE, width = 12, collapsible = FALSE,
                        DTOutput(ns("preproc_avg_metrics")),
                        tags$hr(),
                        fluidRow(
@@ -15,7 +15,7 @@ mod_preproc_ui <- function(id) {
                        ),
                        downloadButton(ns("dl_avg_metrics_img"), "Download Table Image")
                    ),
-                   box(title = "Download Processed Data", status = "primary", solidHeader = TRUE, width = 12,
+                   box(title = "Download Processed Data", status = "primary", solidHeader = TRUE, width = 12, collapsible = FALSE,
                        tags$p("Download the processed data in the original wide format (first column = Time; subsequent columns = cells)."),
                        selectInput(ns("pp_dl_group"), "Select file", choices = NULL),
                        downloadButton(ns("dl_processed_wide"), "Download Processed File (CSV)")
@@ -114,7 +114,7 @@ mod_preproc_server <- function(id, rv) {
         # A more robust way: save to HTML and use webshot2 directly
         temp_html <- tempfile(fileext = ".html")
         gtsave(avg_metrics_gt(), temp_html)
-
+        
         # webshot requires the file path to be normalized
         webshot2::webshot(
           url = paste0("file:///", normalizePath(temp_html)),

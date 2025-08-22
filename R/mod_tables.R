@@ -9,6 +9,7 @@ mod_tables_ui <- function(id) {
               status = "primary",
               solidHeader = TRUE,
               width = 12,
+              collapsible = FALSE,
               tabsetPanel(
                 id = ns("tables_tabs"),
                 tabPanel(

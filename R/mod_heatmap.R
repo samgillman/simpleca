@@ -4,7 +4,7 @@ mod_heatmap_ui <- function(id) {
   ns <- NS(id)
   tabItem(tabName = "heatmap",
           fluidRow(
-            box(title = "Controls", status = "primary", solidHeader = TRUE, width = 4,
+            box(title = "Controls", status = "primary", solidHeader = TRUE, width = 4, collapsible = FALSE,
                 selectInput(ns("hm_sort"),"Sort cells by", choices = c("Time to Peak"="tpeak","Peak Amplitude"="amp","Original"="orig"), selected="tpeak"),
                 selectInput(ns("hm_palette"),"Color palette", choices = c("plasma","viridis","magma","inferno","cividis"), selected = "plasma"),
                 tags$hr(),
@@ -16,11 +16,10 @@ mod_heatmap_ui <- function(id) {
                 textInput(ns("hm_y_label"),"Y label","Cell"),
                 tags$hr(),
                 
-                # Collapsible appearance group
-                tags$details(
-                  tags$summary(style = "cursor:pointer; font-weight:600; color:#0072B2;", "Appearance & Typography"),
-                  div(style = "margin-top:8px;",
-                    h5("Typography & Sizing", style = "font-weight: bold;"),
+                # Simple appearance section (not collapsible)
+                h5("Appearance & Typography", style = "font-weight: 600; color: #333; margin-bottom: 15px;"),
+                div(style = "margin-left: 10px;",
+                    h6("Typography & Sizing", style = "font-weight: bold; margin-top: 15px;"),
                     sliderInput(ns("hm_title_size"),"Title size", 10, 24, 16, 1),
                     checkboxInput(ns("hm_bold_title"), "Bold title", value = TRUE),
                     sliderInput(ns("hm_axis_title_size"),"Axis title size", 8, 24, 14, 1),
@@ -32,10 +31,9 @@ mod_heatmap_ui <- function(id) {
                     selectInput(ns("hm_font"), "Font", 
                                 choices = c("Arial", "Helvetica", "Times", "Courier"), 
                                 selected = "Arial")
-                  )
                 )
             ),
-            box(title = "Heatmap", solidHeader = TRUE, width = 8,
+            box(title = "Heatmap", solidHeader = TRUE, width = 8, collapsible = FALSE,
                 withSpinner(plotOutput(ns("heatmap_plot"), height = "760px"), type = 4),
                 tags$hr(),
                 fluidRow(

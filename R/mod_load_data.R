@@ -3,93 +3,91 @@
 mod_load_data_ui <- function(id) {
   ns <- NS(id)
   tabItem(tabName = "load",
-    fluidRow(
-      # Left Column: Upload and Settings
-      column(
-        width = 6,
-        box(title = "Load Data", status = "primary", solidHeader = TRUE, width = 12,
-            fileInput(ns("data_files"),"Upload CSV or Excel (wide; first column = Time)", multiple = TRUE,
-                      accept = c(".csv",".xlsx",".xls"))
-        ),
-        box(title = "Processing Options", status = "primary", solidHeader = TRUE, width = 12, class = "proc-compact",
-            # Basic processing controls (always visible)
-            switchInput(ns("pp_enable"),"Enable processing", onLabel="Yes", offLabel="No", value=TRUE, size = "mini"),
-            checkboxInput(ns("pp_compute_dff"), "Compute ΔF/F₀ per cell", TRUE),
-            selectInput(ns("pp_baseline_method"),"Baseline (F₀) method",
-                        choices = c("Frame Range"="frame_range","Rolling minimum"="rolling_min","Percentile"="percentile"),
-                        selected="frame_range"),
-            conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'frame_range'"),
-                             sliderInput(ns("pp_baseline_frames"),"Baseline Frame Range:", min = 1, max = 100, value = c(1, 20), step = 1)
-            ),
-            conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'rolling_min'"),
-                             numericInput(ns("pp_window_size"),"Rolling window (frames)", value=50, min=5, step=1)
-            ),
-            conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'percentile'"),
-                             numericInput(ns("pp_percentile"),"Baseline percentile", value=10, min=1, max=50, step=1)
-            ),
-            
-            # Advanced controls in collapsible section
-            tags$details(
-              tags$summary(style = "cursor: pointer; font-weight: 600; margin: 8px 0; color: #0072B2;", "▼ Advanced Options"),
-              div(style = "margin-left: 16px; margin-top: 8px;",
-                numericInput(ns("pp_sampling_rate"),"Sampling rate (Hz) if Time missing/invalid", value=1, min=0.0001, step=0.1)
+          fluidRow(
+            # Left Column: Upload and Settings
+            column(
+              width = 6,
+              box(title = "Load Data", status = "primary", solidHeader = TRUE, width = 12, collapsible = FALSE,
+                  fileInput(ns("data_files"),"Upload CSV or Excel (wide; first column = Time)", multiple = TRUE,
+                            accept = c(".csv",".xlsx",".xls"))
+              ),
+              box(title = "Processing Options", status = "primary", solidHeader = TRUE, width = 12, collapsible = FALSE,
+                  # Basic processing controls (always visible)
+                  checkboxInput(ns("pp_enable"),"Enable processing", value = TRUE),
+                  checkboxInput(ns("pp_compute_dff"), "Compute ΔF/F₀ per cell", TRUE),
+                  selectInput(ns("pp_baseline_method"),"Baseline (F₀) method",
+                              choices = c("Frame Range"="frame_range","Rolling minimum"="rolling_min","Percentile"="percentile"),
+                              selected="frame_range"),
+                  conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'frame_range'"),
+                                   sliderInput(ns("pp_baseline_frames"),"Baseline Frame Range:", min = 1, max = 100, value = c(1, 20), step = 1)
+                  ),
+                  conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'rolling_min'"),
+                                   numericInput(ns("pp_window_size"),"Rolling window (frames)", value=50, min=5, step=1)
+                  ),
+                  conditionalPanel(paste0("input['", ns("pp_baseline_method"), "'] == 'percentile'"),
+                                   numericInput(ns("pp_percentile"),"Baseline percentile", value=10, min=1, max=50, step=1)
+                  ),
+                  
+                  # Advanced controls in a simple div (not collapsible)
+                  div(style = "margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;",
+                      h5("Advanced Options", style = "font-weight: 600; color: #333; margin-bottom: 10px;"),
+                      numericInput(ns("pp_sampling_rate"),"Sampling rate (Hz) if Time missing/invalid", value=1, min=0.0001, step=0.1)
+                  ),
+                  
+                  # Right-aligned Process button and help text
+                  div(style = "margin-top: 16px; text-align: right;",
+                      actionButton(ns("load_btn"),"Process Data", class = "btn-primary", style = "margin-bottom: 8px;")
+                  ),
+                  div(class="small-help", style = "text-align: center; font-style: italic;","ΔF/F₀ = (F - F₀)/F₀. Operations apply per uploaded file.")
               )
             ),
-            
-            # Right-aligned Process button and help text
-            div(style = "margin-top: 16px; text-align: right;",
-                actionButton(ns("load_btn"),"Process Data", class = "btn-primary", style = "margin-bottom: 8px;")
-            ),
-            div(class="small-help", style = "text-align: center; font-style: italic;","ΔF/F₀ = (F - F₀)/F₀. Operations apply per uploaded file.")
-        )
-      ),
-      # Right Column: At a glance and Processing Status
-      column(
-        width = 6,
-        box(title = "At a glance", status = "info", solidHeader = TRUE, width = 12,
-            div(style = "padding: 5px;",
-                div(class = "stat-card", style = "background: var(--secondary-color); color: white; text-align: center; display:flex; align-items:center; justify-content:center; flex-direction: column; padding:16px 0;",
-                    h3(textOutput(ns("n_files_text"), inline = TRUE)),
-                    p("Files loaded")
-                ),
-                div(class = "stat-card", style = "background: var(--primary-color); color: white; text-align: center; display:flex; align-items:center; justify-content:center; flex-direction: column; padding:16px 0;",
-                    h3(textOutput(ns("n_cells_text"), inline = TRUE)),
-                    p("Total cells")
-                ),
-                div(class = "stat-card", style = "background: #339966; color: white; text-align: center; display:flex; align-items:center; justify-content:center; flex-direction: column; padding:16px 0;",
-                    h3(textOutput(ns("n_timepoints_text"), inline = TRUE)),
-                    p("Total timepoints")
-                )
-            )
-        ),
-        box(title = "Processing Status", status = "info", solidHeader = TRUE, width = 12,
-            div(style = "padding: 10px;",
-                fluidRow(
-                  column(3, align = "center",
-                         icon("file-import", class = "fa-2x", style = "color: #5bc0de; margin-bottom: 8px;"),
-                         h5("Files Loaded", style = "margin: 5px 0; font-weight: 600;"),
-                         textOutput(ns("status_files_loaded"), container = function(...) div(..., style = "font-size: 13px; color: #666;"))
-                  ),
-                  column(3, align = "center",
-                         icon("check-circle", class = "fa-2x", style = "color: #5cb85c; margin-bottom: 8px;"),
-                         h5("Processing", style = "margin: 5px 0; font-weight: 600;"),
-                         textOutput(ns("status_processing"), container = function(...) div(..., style = "font-size: 13px; color: #666;"))
-                  ),
-                  column(3, align = "center",
-                         icon("calculator", class = "fa-2x", style = "color: #f0ad4e; margin-bottom: 8px;"),
-                         h5("Metrics", style = "margin: 5px 0; font-weight: 600;"),
-                         textOutput(ns("status_metrics"), container = function(...) div(..., style = "font-size: 13px; color: #666;"))
-                  ),
-                  column(3, align = "center",
-                         icon("chart-line", class = "fa-2x", style = "color: #9b59b6; margin-bottom: 8px;"),
-                         h5("Ready", style = "margin: 5px 0; font-weight: 600;"),
-                         textOutput(ns("status_ready"), container = function(...) div(..., style = "font-size: 13px; color: #666;"))
+            # Right Column: At a glance and Processing Status
+            column(
+              width = 6,
+              box(title = "At a glance", status = "info", solidHeader = TRUE, width = 12, collapsible = FALSE,
+                  div(style = "padding: 5px;",
+                      div(class = "stat-card", style = "background: var(--secondary-color); color: white; text-align: center; display:flex; align-items:center; justify-content:center; flex-direction: column; padding:16px 0;",
+                          h3(textOutput(ns("n_files_text"), inline = TRUE)),
+                          p("Files loaded")
+                      ),
+                      div(class = "stat-card", style = "background: var(--primary-color); color: white; text-align: center; display:flex; align-items:center; justify-content:center; flex-direction: column; padding:16px 0;",
+                          h3(textOutput(ns("n_cells_text"), inline = TRUE)),
+                          p("Total cells")
+                      ),
+                      div(class = "stat-card", style = "background: #339966; color: white; text-align: center; display:flex; align-items:center; justify-content:center; flex-direction: column; padding:16px 0;",
+                          h3(textOutput(ns("n_timepoints_text"), inline = TRUE)),
+                          p("Total timepoints")
+                      )
                   )
-                )
+              ),
+              box(title = "Processing Status", status = "info", solidHeader = TRUE, width = 12, collapsible = FALSE,
+                  div(style = "padding: 10px;",
+                      fluidRow(
+                        column(3, align = "center",
+                               icon("file-import", class = "fa-2x", style = "color: #5bc0de; margin-bottom: 8px;"),
+                               h5("Files Loaded", style = "margin: 5px 0; font-weight: 600;"),
+                               textOutput(ns("status_files_loaded"), container = function(...) div(..., style = "font-size: 13px; color: #666;"))
+                        ),
+                        column(3, align = "center",
+                               icon("check-circle", class = "fa-2x", style = "color: #5cb85c; margin-bottom: 8px;"),
+                               h5("Processing", style = "margin: 5px 0; font-weight: 600;"),
+                               textOutput(ns("status_processing"), container = function(...) div(..., style = "font-size: 13px; color: #666;"))
+                        ),
+                        column(3, align = "center",
+                               icon("calculator", class = "fa-2x", style = "color: #f0ad4e; margin-bottom: 8px;"),
+                               h5("Metrics", style = "margin: 5px 0; font-weight: 600;"),
+                               textOutput(ns("status_metrics"), container = function(...) div(..., style = "font-size: 13px; color: #666;"))
+                        ),
+                        column(3, align = "center",
+                               icon("chart-line", class = "fa-2x", style = "color: #9b59b6; margin-bottom: 8px;"),
+                               h5("Ready", style = "margin: 5px 0; font-weight: 600;"),
+                               textOutput(ns("status_ready"), container = function(...) div(..., style = "font-size: 13px; color: #666;"))
+                        )
+                      )
+                  )
+              )
             )
-        )
-      )
-    ) # End of fluidRow
+          ) # End of fluidRow
   ) # End of tabItem
 }
 

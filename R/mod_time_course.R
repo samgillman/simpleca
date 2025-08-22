@@ -23,83 +23,8 @@ mod_time_course_ui <- function(id) {
                          )
                        ),
                        
-                       conditionalPanel(
-                         condition = paste0("input['", ns("toggle_settings"), "'] % 2 == 1"),
-                         wellPanel(style = "background-color: #f8f9fa; margin-bottom: 20px;",
-                                   fluidRow(
-                                     column(width = 3,
-                                            h5("Display Options", style = "font-weight: bold; color: #333;"),
-                                            switchInput(ns("tc_show_traces"),"Show individual traces", value = TRUE, size = "mini"),
-                                            sliderInput(ns("tc_trace_transparency"),"Trace transparency (%)", 0, 100, 65, 1, width = "100%"),
-                                            switchInput(ns("tc_show_ribbon"),"Show SEM ribbon", value = TRUE, size = "mini"),
-                                            sliderInput(ns("tc_line_width"),"Line width", 0.5, 4, 1.6, 0.1, width = "100%")
-                                     ),
-                                     column(width = 3,
-                                            h5("Colors & Style", style = "font-weight: bold; color: #333;"),
-                                            colourpicker::colourInput(ns("tc_line_color"),"Line color", value = "#000000"),
-                                            selectInput(ns("tc_legend_pos"),"Legend position", 
-                                                        choices = c("none","bottom","right","top","left"), 
-                                                        selected="none"),
-                                            selectInput(ns("tc_theme"),"Theme", 
-                                                        choices=c("classic","minimal","light","dark"), 
-                                                        selected="classic"),
-                                            checkboxInput(ns("tc_grid_major"),"Major gridlines", TRUE),
-                                            checkboxInput(ns("tc_grid_minor"),"Minor gridlines", FALSE)
-                                     ),
-                                     column(width = 3,
-                                            h5("Labels", style = "font-weight: bold; color: #333;"),
-                                            textInput(ns("tc_title"),"Title",""),
-                                            textInput(ns("tc_subtitle"), "Subtitle", "ΔF/F₀ over time"),
-                                            textInput(ns("tc_x"),"X axis label","Time (s)"),
-                                            textInput(ns("tc_y"), "Y axis label", "ΔF/F₀"),
-                                            checkboxInput(ns("tc_log_y"),"Log10 Y axis", FALSE)
-                                     ),
-                                     column(width = 3,
-                                            tags$details(
-                                              tags$summary(style = "cursor:pointer; font-weight:600; color:#0072B2;", "Typography & Axes"),
-                                              div(style = "margin-top:8px;",
-                                                sliderInput(ns("tc_title_size"),"Title size", 10, 24, 18, 1, width = "100%"),
-                                                checkboxInput(ns("tc_bold_title"), "Bold title", value = TRUE),
-                                                sliderInput(ns("tc_axis_title_size"),"Axis title size", 8, 24, 14, 1, width = "100%"),
-                                                checkboxInput(ns("tc_bold_axis_title"), "Bold axis titles", value = TRUE),
-                                                sliderInput(ns("tc_axis_size"),"Axis text size", 8, 24, 12, 1, width = "100%"),
-                                                checkboxInput(ns("tc_bold_axis_text"), "Bold axis text", value = FALSE),
-                                                selectInput(ns("tc_font"),"Font", 
-                                                            choices=c("Arial","Helvetica","Times","Courier"), 
-                                                            selected="Arial"),
-                                                checkboxInput(ns("tc_limits"),"Custom axis limits", FALSE)
-                                              )
-                                            )
-                                     )
-                                   ),
-                                   conditionalPanel(paste0("input['", ns("tc_limits"), "'] == true"),
-                                                    fluidRow(
-                                                      column(3, numericInput(ns("tc_xmin"),"X min", NA)),
-                                                      column(3, numericInput(ns("tc_xmax"),"X max", NA)),
-                                                      column(3, numericInput(ns("tc_ymin"),"Y min", NA)),
-                                                      column(3, numericInput(ns("tc_ymax"),"Y max", NA))
-                                                    )
-                                   ),
-                                   tags$details(style = "margin-top: 10px;",
-                                                tags$summary(style = "cursor: pointer; font-weight: 600;", "Advanced Options"),
-                                                div(style = "margin-top: 10px;",
-                                                    fluidRow(
-                                                      column(width = 6,
-                                                             h5("Axis Breaks"),
-                                                             textInput(ns("tc_x_breaks"),"X axis breaks (comma-separated)",""),
-                                                             textInput(ns("tc_y_breaks"),"Y axis breaks (comma-separated)","")
-                                                      ),
-                                                      column(width = 6,
-                                                             h5("Tick Format"),
-                                                             selectInput(ns("tc_tick_format"),"Tick format", 
-                                                                         choices=c("number","scientific","percent"), 
-                                                                         selected="number")
-                                                      )
-                                                    )
-                                                )
-                                   )
-                         )
-                       ),
+                       # Settings panel - controlled by reactive visibility
+                       uiOutput(ns("settings_panel")),
                        
                        conditionalPanel(paste0("input['", ns("plot_type_toggle"), "'] == 'Static'"),
                                         withSpinner(plotOutput(ns("timecourse_plot"), height = "620px"), type = 4)
@@ -141,6 +66,26 @@ mod_time_course_ui <- function(id) {
 mod_time_course_server <- function(id, rv) {
   moduleServer(id, function(input, output, session) {
     
+    # Reactive values for UI state
+    settings_visible <- reactiveVal(FALSE)
+    typography_visible <- reactiveVal(FALSE)
+    advanced_visible <- reactiveVal(FALSE)
+    
+    # Toggle settings visibility
+    observeEvent(input$toggle_settings, {
+      settings_visible(!settings_visible())
+    })
+    
+    # Toggle buttons for collapsible sections
+    observeEvent(input$toggle_typography, {
+      typography_visible(!typography_visible())
+    })
+    
+    observeEvent(input$toggle_advanced, {
+      advanced_visible(!advanced_visible())
+    })
+    
+    # Auto-update title when groups change
     observe({
       req(rv$groups)
       if (length(rv$groups) > 0) {
@@ -148,91 +93,281 @@ mod_time_course_server <- function(id, rv) {
       }
     })
     
-    observeEvent(input$toggle_settings, {
-      # The conditional panel handles visibility based on odd/even clicks
-    }, ignoreNULL = FALSE)
+    # Render settings panel based on visibility state
+    output$settings_panel <- renderUI({
+      if (!settings_visible()) return(NULL)
+      
+      ns <- session$ns
+      
+      wellPanel(style = "background-color: #f8f9fa; margin-bottom: 20px;",
+                fluidRow(
+                  column(width = 3,
+                         h5("Display Options", style = "font-weight: bold; color: #333;"),
+                         switchInput(ns("tc_show_traces"),"Show individual traces", value = TRUE, size = "mini"),
+                         sliderInput(ns("tc_trace_transparency"),"Trace transparency (%)", 0, 100, 65, 1, width = "100%"),
+                         switchInput(ns("tc_show_ribbon"),"Show SEM ribbon", value = TRUE, size = "mini"),
+                         sliderInput(ns("tc_line_width"),"Line width", 0.5, 4, 1.6, 0.1, width = "100%")
+                  ),
+                  column(width = 3,
+                         h5("Colors & Style", style = "font-weight: bold; color: #333;"),
+                         colourpicker::colourInput(ns("tc_line_color"),"Line color", value = "#000000"),
+                         selectInput(ns("tc_legend_pos"),"Legend position", 
+                                     choices = c("none","bottom","right","top","left"), 
+                                     selected="none"),
+                         selectInput(ns("tc_theme"),"Theme", 
+                                     choices=c("classic","minimal","light","dark"), 
+                                     selected="classic"),
+                         checkboxInput(ns("tc_grid_major"),"Major gridlines", TRUE),
+                         checkboxInput(ns("tc_grid_minor"),"Minor gridlines", FALSE)
+                  ),
+                  column(width = 3,
+                         h5("Labels", style = "font-weight: bold; color: #333;"),
+                         textInput(ns("tc_title"),"Title",""),
+                         textInput(ns("tc_subtitle"), "Subtitle", "ΔF/F₀ over time"),
+                         textInput(ns("tc_x"),"X axis label","Time (s)"),
+                         textInput(ns("tc_y"), "Y axis label", "ΔF/F₀"),
+                         checkboxInput(ns("tc_log_y"),"Log10 Y axis", FALSE)
+                  ),
+                  column(width = 3,
+                         # Typography & Axes collapsible section
+                         div(class = "collapsible-section",
+                             div(class = "collapsible-header",
+                                 actionButton(ns("toggle_typography"), 
+                                              ifelse(typography_visible(), "▲ Typography & Axes", "▼ Typography & Axes"),
+                                              class = "btn btn-link",
+                                              style = "padding: 0; color: #0072B2; font-weight: 600; text-decoration: none;")),
+                             uiOutput(ns("typography_panel"))
+                         )
+                  )
+                ),
+                
+                # Custom axis limits section
+                div(style = "margin-top: 15px;",
+                    checkboxInput(ns("tc_limits"),"Custom axis limits", FALSE)
+                ),
+                uiOutput(ns("limits_panel")),
+                
+                # Advanced Options collapsible section
+                div(class = "collapsible-section", style = "margin-top: 10px;",
+                    div(class = "collapsible-header",
+                        actionButton(ns("toggle_advanced"), 
+                                     ifelse(advanced_visible(), "▲ Advanced Options", "▼ Advanced Options"),
+                                     class = "btn btn-link",
+                                     style = "padding: 0; color: #0072B2; font-weight: 600; text-decoration: none;")),
+                    uiOutput(ns("advanced_panel"))
+                )
+      )
+    })
     
+    # Render typography panel
+    output$typography_panel <- renderUI({
+      if (!typography_visible()) return(NULL)
+      
+      ns <- session$ns
+      div(style = "margin-top: 8px; margin-left: 16px; border-left: 2px solid #eee; padding-left: 15px;",
+          sliderInput(ns("tc_title_size"),"Title size", 10, 24, 18, 1, width = "100%"),
+          checkboxInput(ns("tc_bold_title"), "Bold title", value = TRUE),
+          sliderInput(ns("tc_axis_title_size"),"Axis title size", 8, 24, 14, 1, width = "100%"),
+          checkboxInput(ns("tc_bold_axis_title"), "Bold axis titles", value = TRUE),
+          sliderInput(ns("tc_axis_size"),"Axis text size", 8, 24, 12, 1, width = "100%"),
+          checkboxInput(ns("tc_bold_axis_text"), "Bold axis text", value = FALSE),
+          selectInput(ns("tc_font"),"Font", 
+                      choices=c("Arial","Helvetica","Times","Courier"), 
+                      selected="Arial")
+      )
+    })
+    
+    # Render limits panel
+    output$limits_panel <- renderUI({
+      if (!input$tc_limits) return(NULL)
+      
+      ns <- session$ns
+      fluidRow(
+        column(3, numericInput(ns("tc_xmin"),"X min", NA)),
+        column(3, numericInput(ns("tc_xmax"),"X max", NA)),
+        column(3, numericInput(ns("tc_ymin"),"Y min", NA)),
+        column(3, numericInput(ns("tc_ymax"),"Y max", NA))
+      )
+    })
+    
+    # Render advanced panel
+    output$advanced_panel <- renderUI({
+      if (!advanced_visible()) return(NULL)
+      
+      ns <- session$ns
+      div(style = "margin-top: 10px; margin-left: 16px; border-left: 2px solid #eee; padding-left: 15px;",
+          fluidRow(
+            column(width = 6,
+                   h5("Axis Breaks"),
+                   textInput(ns("tc_x_breaks"),"X axis breaks (comma-separated)",""),
+                   textInput(ns("tc_y_breaks"),"Y axis breaks (comma-separated)","")
+            ),
+            column(width = 6,
+                   h5("Tick Format"),
+                   selectInput(ns("tc_tick_format"),"Tick format", 
+                               choices=c("number","scientific","percent"), 
+                               selected="number")
+            )
+          )
+      )
+    })
+    
+    # Build timecourse plot function
     build_timecourse_plot <- function() {
       req(rv$summary)
       p <- ggplot()
+      
+      # Add individual traces if requested
       if (isTRUE(input$tc_show_traces) && !is.null(rv$long) && nrow(rv$long) > 0) {
         alpha_traces <- 1 - (as.numeric(input$tc_trace_transparency) %||% 65) / 100
         p <- p + geom_line(data=rv$long, aes(x=Time, y=dFF0, group=interaction(Group, Cell), color=Group),
                            inherit.aes=FALSE, alpha=alpha_traces, linewidth=0.35)
       }
+      
+      # Add ribbon and main line
       p <- p +
         geom_ribbon(data=rv$summary,
                     aes(x=Time, ymin=mean_dFF0 - sem_dFF0, ymax=mean_dFF0 + sem_dFF0, fill=Group),
                     alpha=if (isTRUE(input$tc_show_ribbon)) 0.25 else 0, color=NA) +
-        geom_line(data=rv$summary, aes(x=Time, y=mean_dFF0, color=Group), linewidth=input$tc_line_width)
+        geom_line(data=rv$summary, aes(x=Time, y=mean_dFF0, color=Group), linewidth=input$tc_line_width %||% 1.6)
       
-      groups <- unique(rv$summary$Group); cols <- rv$colors
-      if (!is.null(input$tc_line_color) && nzchar(input$tc_line_color)) cols <- stats::setNames(rep(input$tc_line_color, length(groups)), groups)
-      if (!is.null(cols)) p <- p + scale_color_manual(values=cols) + scale_fill_manual(values=cols)
+      # Apply colors
+      groups <- unique(rv$summary$Group)
+      cols <- rv$colors
+      if (!is.null(input$tc_line_color) && nzchar(input$tc_line_color)) {
+        cols <- stats::setNames(rep(input$tc_line_color, length(groups)), groups)
+      }
+      if (!is.null(cols)) {
+        p <- p + scale_color_manual(values=cols) + scale_fill_manual(values=cols)
+      }
       
-      y_lab <- if (!is.null(input$tc_y) && nzchar(input$tc_y) && input$tc_y != "ΔF/F₀") input$tc_y else expression(Delta*"F/F"[0])
-      sub_lab <- if (!is.null(input$tc_subtitle) && nzchar(input$tc_subtitle) && input$tc_subtitle != "ΔF/F₀ over time") input$tc_subtitle else expression(Delta*"F/F"[0]*" over time")
-      p <- p + labs(title=input$tc_title, subtitle=sub_lab,
-                    x=input$tc_x %||% "Time (s)", y=y_lab)
+      # Labels
+      y_lab <- if (!is.null(input$tc_y) && nzchar(input$tc_y) && input$tc_y != "ΔF/F₀") {
+        input$tc_y
+      } else {
+        expression(Delta*"F/F"[0])
+      }
       
-      base_theme <- switch(input$tc_theme, classic=theme_classic(), minimal=theme_minimal(), light=theme_light(), dark=theme_dark())
+      sub_lab <- if (!is.null(input$tc_subtitle) && nzchar(input$tc_subtitle) && input$tc_subtitle != "ΔF/F₀ over time") {
+        input$tc_subtitle
+      } else {
+        expression(Delta*"F/F"[0]*" over time")
+      }
+      
+      p <- p + labs(title=input$tc_title %||% "", 
+                    subtitle=sub_lab,
+                    x=input$tc_x %||% "Time (s)", 
+                    y=y_lab)
+      
+      # Apply theme
+      base_theme <- switch(input$tc_theme %||% "classic", 
+                           classic=theme_classic(), 
+                           minimal=theme_minimal(), 
+                           light=theme_light(), 
+                           dark=theme_dark())
+      
       p <- p + base_theme + theme(
         plot.title = element_text(
-            hjust=0.5, 
-            size=input$tc_title_size, 
-            face=if(isTRUE(input$tc_bold_title)) "bold" else "plain", 
-            family=input$tc_font
+          hjust=0.5, 
+          size=input$tc_title_size %||% 18, 
+          face=if(isTRUE(input$tc_bold_title)) "bold" else "plain", 
+          family=input$tc_font %||% "Arial"
         ),
-        plot.subtitle = element_text(hjust=0.5, size=max(8, input$tc_title_size - 4), family=input$tc_font),
+        plot.subtitle = element_text(
+          hjust=0.5, 
+          size=max(8, (input$tc_title_size %||% 18) - 4), 
+          family=input$tc_font %||% "Arial"
+        ),
         axis.title = element_text(
-            size=input$tc_axis_title_size, 
-            face=if(isTRUE(input$tc_bold_axis_title)) "bold" else "plain", 
-            family=input$tc_font
+          size=input$tc_axis_title_size %||% 14, 
+          face=if(isTRUE(input$tc_bold_axis_title)) "bold" else "plain", 
+          family=input$tc_font %||% "Arial"
         ),
         axis.text = element_text(
-            size=input$tc_axis_size, 
-            face=if(isTRUE(input$tc_bold_axis_text)) "bold" else "plain", 
-            family=input$tc_font
+          size=input$tc_axis_size %||% 12, 
+          face=if(isTRUE(input$tc_bold_axis_text)) "bold" else "plain", 
+          family=input$tc_font %||% "Arial"
         ),
-        legend.position = input$tc_legend_pos
+        legend.position = input$tc_legend_pos %||% "none"
       )
-      if (isTRUE(input$tc_log_y)) p <- p + scale_y_log10()
       
-      if (nzchar(input$tc_x_breaks)) {
-        xb <- suppressWarnings(as.numeric(strsplit(input$tc_x_breaks, ",")[[1]])); xb <- xb[is.finite(xb)]
-        if (length(xb) > 0) p <- p + scale_x_continuous(breaks=xb)
+      # Apply log scale if requested
+      if (isTRUE(input$tc_log_y)) {
+        p <- p + scale_y_log10()
       }
-      if (nzchar(input$tc_y_breaks)) {
-        yb <- suppressWarnings(as.numeric(strsplit(input$tc_y_breaks, ",")[[1]])); yb <- yb[is.finite(yb)]
+      
+      # Custom axis breaks
+      if (!is.null(input$tc_x_breaks) && nzchar(input$tc_x_breaks)) {
+        xb <- suppressWarnings(as.numeric(strsplit(input$tc_x_breaks, ",")[[1]]))
+        xb <- xb[is.finite(xb)]
+        if (length(xb) > 0) {
+          p <- p + scale_x_continuous(breaks=xb)
+        }
+      }
+      
+      if (!is.null(input$tc_y_breaks) && nzchar(input$tc_y_breaks)) {
+        yb <- suppressWarnings(as.numeric(strsplit(input$tc_y_breaks, ",")[[1]]))
+        yb <- yb[is.finite(yb)]
         if (length(yb) > 0) {
-          lab_fun <- switch(input$tc_tick_format, scientific = scales::label_scientific(digits=2),
-                            percent = scales::label_percent(accuracy=0.01), scales::label_number(accuracy=0.01))
+          lab_fun <- switch(input$tc_tick_format %||% "number", 
+                            scientific = scales::label_scientific(digits=2),
+                            percent = scales::label_percent(accuracy=0.01), 
+                            scales::label_number(accuracy=0.01))
           p <- p + scale_y_continuous(breaks=yb, labels=lab_fun)
         }
       }
+      
+      # Grid lines
       if (isTRUE(input$tc_grid_major) || isTRUE(input$tc_grid_minor)) {
         p <- p + theme(
-          panel.grid.major = if (input$tc_grid_major) element_line(color="grey90", linewidth=0.3) else element_blank(),
-          panel.grid.minor = if (input$tc_grid_minor) element_line(color="grey95", linewidth=0.2) else element_blank()
+          panel.grid.major = if (isTRUE(input$tc_grid_major)) {
+            element_line(color="grey90", linewidth=0.3)
+          } else {
+            element_blank()
+          },
+          panel.grid.minor = if (isTRUE(input$tc_grid_minor)) {
+            element_line(color="grey95", linewidth=0.2)
+          } else {
+            element_blank()
+          }
         )
-      } else p <- p + theme(panel.grid = element_blank())
-      
-      if (isTRUE(input$tc_limits)) {
-        if (!is.na(input$tc_xmin) && !is.na(input$tc_xmax)) p <- p + coord_cartesian(xlim=c(input$tc_xmin, input$tc_xmax))
-        if (!is.na(input$tc_ymin) && !is.na(input$tc_ymax)) p <- p + coord_cartesian(ylim=c(input$tc_ymin, input$tc_ymax))
+      } else {
+        p <- p + theme(panel.grid = element_blank())
       }
-      p
+      
+      # Custom axis limits
+      if (isTRUE(input$tc_limits)) {
+        xlims <- ylims <- NULL
+        
+        if (!is.na(input$tc_xmin) && !is.na(input$tc_xmax)) {
+          xlims <- c(input$tc_xmin, input$tc_xmax)
+        }
+        
+        if (!is.na(input$tc_ymin) && !is.na(input$tc_ymax)) {
+          ylims <- c(input$tc_ymin, input$tc_ymax)
+        }
+        
+        if (!is.null(xlims) || !is.null(ylims)) {
+          p <- p + coord_cartesian(xlim=xlims, ylim=ylims)
+        }
+      }
+      
+      return(p)
     }
     
+    # Render static plot
     output$timecourse_plot <- renderPlot({ 
       if (is.null(rv$summary) || nrow(rv$summary) == 0) {
         ggplot() + theme_void() +
           annotate("text", x = 0.5, y = 0.6, label = "Upload data in 'Load Data' then click Process", size = 6, alpha = 0.7) +
           annotate("text", x = 0.5, y = 0.45, label = "Time Course will render here", size = 4.5, alpha = 0.6) +
           xlim(0,1) + ylim(0,1)
-      } else build_timecourse_plot() 
+      } else {
+        build_timecourse_plot()
+      }
     })
     
+    # Render interactive plot
     output$timecourse_plotly <- plotly::renderPlotly({
       p <- build_timecourse_plot()
       plotly::ggplotly(p, tooltip = c("x","y","colour")) |>
@@ -242,6 +377,7 @@ mod_time_course_server <- function(id, rv) {
         )
     })
     
+    # Handle size preset changes
     observeEvent(input$tc_size_preset, {
       preset <- input$tc_size_preset
       dims <- switch(preset,
@@ -249,36 +385,54 @@ mod_time_course_server <- function(id, rv) {
                      "7x5" = c(7,5),
                      "8x6" = c(8,6),
                      "10x7.5" = c(10,7.5),
-                     "12x8" = c(12,8), c(8,6))
+                     "12x8" = c(12,8), 
+                     c(8,6))
       updateNumericInput(session, "tc_dl_w", value = dims[1])
       updateNumericInput(session, "tc_dl_h", value = dims[2])
     }, ignoreInit = TRUE)
-
+    
+    # Render summary table
     output$tc_summary_table <- renderUI({
       req(rv$metrics)
       metric_cols <- c("Peak_dFF0","AUC","Half_Width","Calcium_Entry_Rate",
                        "Time_to_Peak","Time_to_25_Peak","Time_to_50_Peak","Time_to_75_Peak","Rise_Time","SNR")
       present <- intersect(metric_cols, names(rv$metrics))
       if (length(present) == 0) return(NULL)
+      
       nice_name <- function(cl){
         switch(cl,
                Peak_dFF0 = "Peak ΔF/F₀", 
-               Calcium_Entry_Rate = "Ca²⁺ Entry Rate", Time_to_Peak = "Time to Peak (s)",
-               Time_to_25_Peak = "Time to 25% Peak (s)", Time_to_50_Peak = "Time to 50% Peak (s)",
-               Time_to_75_Peak = "Time to 75% Peak (s)", Rise_Time = "Rise Time (s)",
-               Half_Width = "Half Width (s)", AUC = "AUC", SNR = "SNR", cl)
+               Calcium_Entry_Rate = "Ca²⁺ Entry Rate", 
+               Time_to_Peak = "Time to Peak (s)",
+               Time_to_25_Peak = "Time to 25% Peak (s)", 
+               Time_to_50_Peak = "Time to 50% Peak (s)",
+               Time_to_75_Peak = "Time to 75% Peak (s)", 
+               Rise_Time = "Rise Time (s)",
+               Half_Width = "Half Width (s)", 
+               AUC = "AUC", 
+               SNR = "SNR", 
+               cl)
       }
+      
       rows <- lapply(present, function(cl){
-        vals <- rv$metrics[[cl]]; n <- sum(is.finite(vals))
-        data.frame(Metric = nice_name(cl), Mean = mean(vals, na.rm = TRUE),
-                   SEM = stats::sd(vals, na.rm = TRUE)/max(1, sqrt(n)), n = n, check.names = FALSE)
+        vals <- rv$metrics[[cl]]
+        n <- sum(is.finite(vals))
+        data.frame(Metric = nice_name(cl), 
+                   Mean = mean(vals, na.rm = TRUE),
+                   SEM = stats::sd(vals, na.rm = TRUE)/max(1, sqrt(n)), 
+                   n = n, 
+                   check.names = FALSE)
       })
+      
       df <- dplyr::bind_rows(rows)
-      tb <- knitr::kable(df, format = "html", digits = 4, col.names = c("Metric","Mean","SEM","n")) |>
-        kableExtra::kable_styling(full_width = TRUE, bootstrap_options = c("condensed", "striped", "hover"))
+      tb <- knitr::kable(df, format = "html", digits = 4, 
+                         col.names = c("Metric","Mean","SEM","n")) |>
+        kableExtra::kable_styling(full_width = TRUE, 
+                                  bootstrap_options = c("condensed", "striped", "hover"))
       htmltools::HTML(tb)
     })
     
+    # Download handler
     output$dl_timecourse_plot_local <- downloadHandler(
       filename = function() {
         base_name <- if (!is.null(rv$groups) && length(rv$groups) > 0) {
