@@ -223,24 +223,12 @@ mod_metrics_explained_ui <- function(id) {
               h4("Explore a Single Cell"),
               uiOutput(ns("cell_selector_ui")),
               hr(),
-              box(
-                title = "Download Plot",
-                status = "primary",
-                solidHeader = TRUE,
-                width = 12,
-                collapsible = TRUE,
-                collapsed = TRUE,
-                fluidRow(
-                  column(6, selectInput(ns("dl_format"), "Format", c("PNG"="png", "PDF"="pdf", "SVG"="svg", "TIFF"="tiff"), "png")),
-                  column(6, numericInput(ns("dl_dpi"), "DPI", 300, 72, 600, 5))
-                ),
-                fluidRow(
-                  column(6, numericInput(ns("dl_width"), "Width (in)", 7, 3, 20, 0.5)),
-                  column(6, numericInput(ns("dl_height"), "Height (in)", 5, 3, 20, 0.5))
-                ),
-                downloadButton(ns("dl_plot"), "Download Plot", class = "btn-primary", icon = icon("download"))
-              )
-            ),
+              # Simple download section matching other tabs
+              fluidRow(
+                column(6, selectInput(ns("dl_format"), "Format", c("PNG"="png", "PDF"="pdf", "SVG"="svg", "TIFF"="tiff"), "png")),
+                column(3, numericInput(ns("dl_dpi"), "DPI", 300, 72, 600, 5)),
+                column(3, div(style = "margin-top:25px;", downloadButton(ns("dl_plot"), "Download Plot", class = "btn-primary")))
+              ),
             
             # Right Column: The plot itself (dynamically updated)
             column(width = 7,
@@ -905,15 +893,11 @@ mod_metrics_explained_server <- function(id, rv) {
           ggsave(file, plot = plot_obj, 
                  device = input$dl_format %||% "png", 
                  dpi = input$dl_dpi %||% 300,
-                 width = input$dl_width %||% 8, 
-                 height = input$dl_height %||% 6, 
+                 width = 8, height = 6, 
                  bg = "white")
-          
-          showNotification("Plot downloaded successfully", type = "success", duration = 3)
           
         }, error = function(e) {
           showNotification(paste("Download failed:", e$message), type = "error", duration = 5)
-          print(paste("Download error:", e$message))  # For debugging
         })
       }
     )
