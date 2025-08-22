@@ -42,8 +42,7 @@ ui <- dashboardPage(
   skin = "blue",
   header = dashboardHeader(
     title = tags$div(
-      tags$img(src = "simpleca.svg", height = 24, style = "margin-right:6px;" ),
-      tags$span("SimpleCa²⁺", style = "font-size: 20px; font-weight: 600; color: white; vertical-align: middle;")
+      "SimpleCa"
     )
   ),
   sidebar = dashboardSidebar(
@@ -83,17 +82,6 @@ ui <- dashboardPage(
     .equal-row .col-right { flex: 1; display: flex; flex-direction: column; gap: 20px; }
     .box { height: 100%; display: flex; flex-direction: column; }
     .box-body { flex: 1; }
-          /* Hide default logo text only, not custom logo */
-      .main-header .navbar-brand { color: transparent !important; }
-      .skin-blue .main-header .navbar-brand { color: transparent !important; }
-      /* Ensure custom logo images are full opacity */
-      .main-header img { opacity: 1 !important; }
-      /* Style the custom app name */
-      .main-header .navbar-brand span { 
-        color: white !important; 
-        opacity: 1 !important;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-      }
   "))),
     tabItems(
       # --- Individual Analysis Panels ---
