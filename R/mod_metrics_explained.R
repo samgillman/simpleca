@@ -407,9 +407,7 @@ mod_metrics_explained_server <- function(id, rv) {
         div(style = "background-color: #d4edda; padding: 10px; border-radius: 5px; margin-top: 10px; border: 1px solid #c3e6cb;",
           h5("Result:", style = "margin: 0; color: #155724;"),
           p(sprintf("Rise Time (10-90%%) = %.2f seconds", data$metric$Rise_Time), 
-            style = "margin: 5px 0 0 0; font-weight: bold; color: #155724;"),
-          p(if(data$metric$Rise_Time <= 10) "Fast response" else if(data$metric$Rise_Time <= 30) "Moderate response speed" else "Slow response",
-            style = "margin: 5px 0 0 0; font-style: italic; color: #155724; font-size: 0.9em;")
+            style = "margin: 5px 0 0 0; font-weight: bold; color: #155724;")
         )
       ))
     })
