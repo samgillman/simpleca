@@ -870,11 +870,18 @@ mod_metrics_explained_server <- function(id, rv) {
                      color = "white", fill = "#2E86AB", fontface = "bold", size = 3,
                      hjust = 0.5, vjust = -0.3, label.size = 0) +
             # Add the final calcium entry rate result prominently in top left
-            annotate("label", x = min(trace$Time) + x_range * 0.02, 
-                     y = max(trace$dFF0, na.rm = TRUE) + y_range * 0.22, 
-                     label = sprintf("Calcium Entry Rate\n%.3f ΔF/F₀/s", data$metric$Calcium_Entry_Rate),
-                     color = "white", fill = "#28A745", fontface = "bold", size = 3.5,
-                     hjust = 0, vjust = 0.5, label.size = 0) +
+            annotate("rect", xmin = min(trace$Time), xmax = min(trace$Time) + x_range * 0.28,
+                     ymin = max(trace$dFF0, na.rm = TRUE) + y_range * 0.18,
+                     ymax = max(trace$dFF0, na.rm = TRUE) + y_range * 0.26,
+                     fill = "#28A745", color = "#28A745", alpha = 0.9) +
+            annotate("text", x = min(trace$Time) + x_range * 0.02, 
+                     y = max(trace$dFF0, na.rm = TRUE) + y_range * 0.24, 
+                     label = "Calcium Entry Rate",
+                     color = "white", fontface = "bold", size = 3.5, hjust = 0) +
+            annotate("text", x = min(trace$Time) + x_range * 0.02, 
+                     y = max(trace$dFF0, na.rm = TRUE) + y_range * 0.20, 
+                     label = sprintf("%.3f ΔF/F[0]/s", data$metric$Calcium_Entry_Rate),
+                     color = "white", fontface = "bold", size = 3.5, hjust = 0, parse = TRUE) +
             labs(title = metric$Cell_Label, x = "Time (s)", y = expression(Delta*F/F[0])) +
             explanation_theme() + 
             coord_cartesian(clip = "off", ylim = c(min(trace$dFF0, na.rm = TRUE) - y_range*0.05, 
