@@ -853,34 +853,34 @@ mod_metrics_explained_server <- function(id, rv) {
             geom_point(x = t10, y = p10_val, color="#F24236", size=5, stroke = 1) +
             geom_point(x = t90, y = p90_val, color="#F24236", size=5, stroke = 1) +
             # Clean labels with background boxes - positioned to avoid overlap
-            annotate("label", x = t10, y = p10_val - y_range * 0.15, 
+            annotate("label", x = t10, y = p10_val - y_range * 0.18, 
                      label = sprintf("10%%\n%.3f ΔF/F₀\n%.1fs", p10_val, t10), 
                      color = "white", fill = "#F24236", fontface = "bold", size = 3,
                      hjust = 0.5, vjust = 1, label.size = 0) +
-            annotate("label", x = t90, y = p90_val + y_range * 0.12, 
+            annotate("label", x = t90, y = p90_val - y_range * 0.18, 
                      label = sprintf("90%%\n%.3f ΔF/F₀\n%.1fs", p90_val, t90), 
                      color = "white", fill = "#F24236", fontface = "bold", size = 3,
-                     hjust = 0.5, vjust = 0, label.size = 0) +
-            # Time interval annotation with arrow - positioned above trace
+                     hjust = 0.5, vjust = 1, label.size = 0) +
+            # Time interval annotation with arrow - positioned well above trace
             annotate("segment", x = t10, xend = t90, 
-                     y = max(trace$dFF0, na.rm = TRUE) + y_range * 0.06, 
-                     yend = max(trace$dFF0, na.rm = TRUE) + y_range * 0.06,
+                     y = max(trace$dFF0, na.rm = TRUE) + y_range * 0.12, 
+                     yend = max(trace$dFF0, na.rm = TRUE) + y_range * 0.12,
                      arrow = arrow(length = unit(0.25, "cm"), ends = "both", type = "closed"), 
                      color = "#2E86AB", linewidth = 1) +
-            annotate("label", x = mean(c(t10, t90)), y = max(trace$dFF0, na.rm = TRUE) + y_range * 0.06, 
+            annotate("label", x = mean(c(t10, t90)), y = max(trace$dFF0, na.rm = TRUE) + y_range * 0.12, 
                      label = sprintf("Δt = %.1f s", data$metric$Rise_Time),
                      color = "white", fill = "#2E86AB", fontface = "bold", size = 3,
                      hjust = 0.5, vjust = -0.3, label.size = 0) +
             # Add the final calcium entry rate result prominently in top left
             annotate("label", x = min(trace$Time) + x_range * 0.02, 
-                     y = max(trace$dFF0, na.rm = TRUE) + y_range * 0.14, 
+                     y = max(trace$dFF0, na.rm = TRUE) + y_range * 0.22, 
                      label = sprintf("Calcium Entry Rate\n%.3f ΔF/F₀/s", data$metric$Calcium_Entry_Rate),
                      color = "white", fill = "#28A745", fontface = "bold", size = 3.5,
                      hjust = 0, vjust = 0.5, label.size = 0) +
             labs(title = metric$Cell_Label, x = "Time (s)", y = expression(Delta*F/F[0])) +
             explanation_theme() + 
-            coord_cartesian(clip = "off", ylim = c(min(trace$dFF0, na.rm = TRUE) - y_range*0.05, 
-                                                   max(trace$dFF0, na.rm = TRUE) + y_range*0.2))
+            coord_cartesian(clip = "off", ylim = c(min(trace$dFF0, na.rm = TRUE) - y_range*0.25, 
+                                                   max(trace$dFF0, na.rm = TRUE) + y_range*0.3))
         }
       )
     })
