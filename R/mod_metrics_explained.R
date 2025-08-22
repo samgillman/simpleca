@@ -852,21 +852,15 @@ mod_metrics_explained_server <- function(id, rv) {
             # Add points at 10% and 90%
             geom_point(x = t10, y = p10_val, color="#F24236", size=5, stroke = 1) +
             geom_point(x = t90, y = p90_val, color="#F24236", size=5, stroke = 1) +
-            # Clean labels with background boxes - positioned to avoid overlap
-            annotate("label", x = t10, y = p10_val - y_range * 0.25, 
-                     label = sprintf("10%%\n%.3f\n%.1fs", p10_val, t10), 
-                     color = "white", fill = "#F24236", fontface = "bold", size = 3,
-                     hjust = 0.5, vjust = 1, label.size = 0) +
-            annotate("text", x = t10, y = p10_val - y_range * 0.225, 
-                     label = expression(paste(Delta, "F/F"[0])), 
-                     color = "white", fontface = "bold", size = 3, hjust = 0.5) +
-            annotate("label", x = t90 + x_range * 0.08, y = p90_val - y_range * 0.25, 
-                     label = sprintf("90%%\n%.3f\n%.1fs", p90_val, t90), 
-                     color = "white", fill = "#F24236", fontface = "bold", size = 3,
-                     hjust = 0.5, vjust = 1, label.size = 0) +
-            annotate("text", x = t90 + x_range * 0.08, y = p90_val - y_range * 0.225, 
-                     label = expression(paste(Delta, "F/F"[0])), 
-                     color = "white", fontface = "bold", size = 3, hjust = 0.5) +
+            # Simple percentage labels like rise time plot
+            annotate("label", x = t10, y = p10_val, 
+                     label = "10%", 
+                     color = "white", fill = "#F24236", fontface = "bold", size = 3.5,
+                     hjust = 1.2, vjust = 0.5, label.size = 0) +
+            annotate("label", x = t90, y = p90_val, 
+                     label = "90%", 
+                     color = "white", fill = "#F24236", fontface = "bold", size = 3.5,
+                     hjust = -0.2, vjust = 0.5, label.size = 0) +
             # Time interval annotation with arrow - positioned well above trace
             annotate("segment", x = t10, xend = t90, 
                      y = max(trace$dFF0, na.rm = TRUE) + y_range * 0.12, 
@@ -885,7 +879,7 @@ mod_metrics_explained_server <- function(id, rv) {
                      hjust = 0, vjust = 0.5, label.size = 0) +
             labs(title = metric$Cell_Label, x = "Time (s)", y = expression(Delta*F/F[0])) +
             explanation_theme() + 
-            coord_cartesian(clip = "off", ylim = c(min(trace$dFF0, na.rm = TRUE) - y_range*0.25, 
+            coord_cartesian(clip = "off", ylim = c(min(trace$dFF0, na.rm = TRUE) - y_range*0.05, 
                                                    max(trace$dFF0, na.rm = TRUE) + y_range*0.3))
         }
       )
