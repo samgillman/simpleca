@@ -243,6 +243,9 @@ mod_time_course_server <- function(id, rv) {
       }
       if (!is.null(cols)) {
         p <- p + scale_color_manual(values=cols) + scale_fill_manual(values=cols)
+      } else {
+        # Fallback: if no colors defined, use default ggplot colors
+        p <- p + scale_color_discrete() + scale_fill_discrete()
       }
       
       # Labels

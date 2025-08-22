@@ -880,7 +880,11 @@ mod_metrics_explained_server <- function(id, rv) {
                      color = "white", fontface = "bold", size = 3.5, hjust = 0) +
             annotate("text", x = min(trace$Time) + x_range * 0.02, 
                      y = max(trace$dFF0, na.rm = TRUE) + y_range * 0.20, 
-                     label = sprintf("%.3f ΔF/F[0]/s", data$metric$Calcium_Entry_Rate),
+                     label = sprintf("%.3f", data$metric$Calcium_Entry_Rate),
+                     color = "white", fontface = "bold", size = 3.5, hjust = 0) +
+            annotate("text", x = min(trace$Time) + x_range * 0.02 + x_range * 0.08, 
+                     y = max(trace$dFF0, na.rm = TRUE) + y_range * 0.20, 
+                     label = expression(paste(Delta, "F/F"[0], "/s")),
                      color = "white", fontface = "bold", size = 3.5, hjust = 0, parse = TRUE) +
             labs(title = metric$Cell_Label, x = "Time (s)", y = expression(Delta*F/F[0])) +
             explanation_theme() + 
@@ -898,15 +902,29 @@ mod_metrics_explained_server <- function(id, rv) {
       filename = function() {
         req(input$metric_to_explain, selected_cell_data())
         cell_label <- gsub("[^A-Za-z0-9_-]", "_", selected_cell_data()$metric$Cell_Label)
-        sprintf("%s_%s.%s", input$metric_to_explain, cell_label, input$dl_format)
+        sprintf("%s_%s.%s", input$metric_to_explain, cell_label, input$dl_format %||% "png")
       },
       content = function(file) {
         req(explanation_plot_obj())
         tryCatch({
-          ggsave(file, plot = explanation_plot_obj(), device = input$dl_format, dpi = input$dl_dpi,
-                 width = input$dl_width, height = input$dl_height, bg = "white")
+          plot_obj <- explanation_plot_obj()
+          if (is.null(plot_obj)) {
+            showNotification("No plot available for download", type = "error", duration = 5)
+            return()
+          }
+          
+          ggsave(file, plot = plot_obj, 
+                 device = input$dl_format %||% "png", 
+                 dpi = input$dl_dpi %||% 300,
+                 width = input$dl_width %||% 8, 
+                 height = input$dl_height %||% 6, 
+                 bg = "white")
+          
+          showNotification("Plot downloaded successfully", type = "success", duration = 3)
+          
         }, error = function(e) {
           showNotification(paste("Download failed:", e$message), type = "error", duration = 5)
+          print(paste("Download error:", e$message))  # For debugging
         })
       }
     )
