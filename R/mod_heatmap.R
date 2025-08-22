@@ -14,23 +14,22 @@ mod_heatmap_ui <- function(id) {
                 checkboxInput(ns("hm_center_title"), "Center title", value = TRUE),
                 textInput(ns("hm_x_label"),"X label","Time (s)"),
                 textInput(ns("hm_y_label"),"Y label","Cell"),
-                tags$hr(),
-                
-                # Simple appearance section (not collapsible)
-                h5("Appearance & Typography", style = "font-weight: 600; color: #333; margin-bottom: 15px;"),
-                div(style = "margin-left: 10px;",
-                    h6("Typography & Sizing", style = "font-weight: bold; margin-top: 15px;"),
-                    sliderInput(ns("hm_title_size"),"Title size", 10, 24, 16, 1),
-                    checkboxInput(ns("hm_bold_title"), "Bold title", value = TRUE),
-                    sliderInput(ns("hm_axis_title_size"),"Axis title size", 8, 24, 14, 1),
-                    checkboxInput(ns("hm_bold_axis_title"), "Bold axis titles", value = TRUE),
-                    sliderInput(ns("hm_axis_text_size"),"Axis text size", 8, 24, 12, 1),
-                    checkboxInput(ns("hm_bold_axis_text"), "Bold axis text", value = FALSE),
-                    sliderInput(ns("hm_legend_text_size"),"Legend text size", min = 6, max = 24, value = 10, step = 1),
-                    checkboxInput(ns("hm_bold_legend_text"), "Bold legend text", value = FALSE),
-                    selectInput(ns("hm_font"), "Font", 
-                                choices = c("Arial", "Helvetica", "Times", "Courier"), 
-                                selected = "Arial")
+                tags$details(
+                  tags$summary(style = "cursor:pointer; font-weight:600; color:#0072B2;", "Appearance & Typography"),
+                  div(style = "margin-top:8px;",
+                      h6("Typography & Sizing", style = "font-weight: bold; margin-top: 15px;"),
+                      sliderInput(ns("hm_title_size"),"Title size", 10, 24, 16, 1),
+                      checkboxInput(ns("hm_bold_title"), "Bold title", value = TRUE),
+                      sliderInput(ns("hm_axis_title_size"),"Axis title size", 8, 24, 14, 1),
+                      checkboxInput(ns("hm_bold_axis_title"), "Bold axis titles", value = TRUE),
+                      sliderInput(ns("hm_axis_text_size"),"Axis text size", 8, 24, 12, 1),
+                      checkboxInput(ns("hm_bold_axis_text"), "Bold axis text", value = FALSE),
+                      sliderInput(ns("hm_legend_text_size"),"Legend text size", min = 6, max = 24, value = 10, step = 1),
+                      checkboxInput(ns("hm_bold_legend_text"), "Bold legend text", value = FALSE),
+                      selectInput(ns("hm_font"), "Font", 
+                                  choices = c("Arial", "Helvetica", "Times", "Courier"), 
+                                  selected = "Arial")
+                  )
                 )
             ),
             box(title = "Heatmap", solidHeader = TRUE, width = 8, collapsible = FALSE,
