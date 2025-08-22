@@ -32,8 +32,6 @@ mod_load_data_ui <- function(id) {
             tags$details(
               tags$summary(style = "cursor: pointer; font-weight: 600; margin: 8px 0; color: #0072B2;", "▼ Advanced Options"),
               div(style = "margin-left: 16px; margin-top: 8px;",
-                checkboxInput(ns("pp_apply_bg"),"Background subtraction (single column)", FALSE),
-                textInput(ns("pp_bg_col"),"Background column name (exact)", value=""),
                 numericInput(ns("pp_sampling_rate"),"Sampling rate (Hz) if Time missing/invalid", value=1, min=0.0001, step=0.1)
               )
             ),
@@ -122,10 +120,6 @@ mod_load_data_server <- function(id, rv) {
           
           if (isTRUE(input$pp_enable)) {
             if (isTRUE(input$pp_compute_dff)) {
-              if (isTRUE(input$pp_apply_bg) && nzchar(input$pp_bg_col) && input$pp_bg_col %in% names(dt)) {
-                bg <- dt[[input$pp_bg_col]]
-                for (j in 2:ncol(dt)) if (names(dt)[j] != input$pp_bg_col) dt[[j]] <- dt[[j]] - bg
-              }
               if (identical(input$pp_baseline_method,"frame_range")) {
                 start_frame <- max(1, as.integer(input$pp_baseline_frames[1] %||% 2))
                 end_frame <- min(nrow(dt), as.integer(input$pp_baseline_frames[2] %||% 20))
@@ -145,16 +139,23 @@ mod_load_data_server <- function(id, rv) {
               
               for (k in seq_along(F0)) {
                 j <- k+1; f0 <- F0[[k]]
-                dt[[j]] <- if (is.finite(f0) && f0 != 0) (dt[[j]] - f0) / f0 else NA_real_
+                # More robust ΔF/F₀ calculation
+                if (is.finite(f0) && f0 > 1e-6) {
+                  dt[[j]] <- (dt[[j]] - f0) / f0
+                } else if (is.finite(f0) && f0 <= 1e-6) {
+                  # For very small baselines, use absolute difference
+                  dt[[j]] <- dt[[j]] - f0
+                } else {
+                  # For invalid baselines, keep original values
+                  dt[[j]] <- dt[[j]]
+                }
               }
             }
           }
           dts[[labels[i]]] <- dt
         }
         
-        # NEW: Remove rows with any NA values from all processed data tables
-        # This prevents vertical white lines on the heatmap from NA-filled time points
-        dts <- purrr::map(dts, ~na.omit(.))
+        # Keep all rows - NA values will be handled gracefully in plots
         
         rv$dts <- dts
         rv$raw_traces <- raw_traces
