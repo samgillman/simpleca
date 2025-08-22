@@ -238,7 +238,7 @@ mod_metrics_explained_ui <- function(id) {
                   column(6, numericInput(ns("dl_width"), "Width (in)", 7, 3, 20, 0.5)),
                   column(6, numericInput(ns("dl_height"), "Height (in)", 5, 3, 20, 0.5))
                 ),
-                downloadButton(ns("dl_plot"), "Download Plot")
+                downloadButton(ns("dl_plot"), "Download Plot", class = "btn-primary", icon = icon("download"))
               )
             ),
             

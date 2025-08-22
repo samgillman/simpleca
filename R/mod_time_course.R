@@ -224,8 +224,16 @@ mod_time_course_server <- function(id, rv) {
         transparency_pct <- if (is.null(input$tc_trace_transparency)) 65 else as.numeric(input$tc_trace_transparency)
         alpha_traces <- 1 - (transparency_pct / 100)
         alpha_traces <- max(0.1, min(1.0, alpha_traces))  # Ensure valid range
-        p <- p + geom_line(data=rv$long, aes(x=Time, y=dFF0, group=interaction(Group, Cell), color=Group),
-                           inherit.aes=FALSE, alpha=alpha_traces, linewidth=0.35)
+        
+        # For single group, use gray for individual traces; otherwise use group colors
+        groups <- unique(rv$long$Group)
+        if (length(groups) == 1) {
+          p <- p + geom_line(data=rv$long, aes(x=Time, y=dFF0, group=interaction(Group, Cell)),
+                             inherit.aes=FALSE, alpha=alpha_traces, linewidth=0.35, color="gray60")
+        } else {
+          p <- p + geom_line(data=rv$long, aes(x=Time, y=dFF0, group=interaction(Group, Cell), color=Group),
+                             inherit.aes=FALSE, alpha=alpha_traces, linewidth=0.35)
+        }
       }
       
       # Add ribbon and main line
