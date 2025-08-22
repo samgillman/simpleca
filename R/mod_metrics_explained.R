@@ -191,9 +191,14 @@ mod_metrics_explained_ui <- function(id) {
                 uiOutput(ns("auc_data_points_ui")),
                 h4("Calculation", style = "color: #2c3e50; margin-top: 20px;"),
                 withMathJax(),
-                p("AUC is calculated using the trapezoidal rule, which approximates the area by dividing the curve into trapezoids:"),
-                helpText("$$ \\text{AUC} = \\sum_{i=1}^{n-1} \\frac{(y_i + y_{i+1})}{2} \\times (t_{i+1} - t_i) $$"),
-                p("This formula calculates the area of each trapezoid between consecutive time points and sums them all up to get the total area under the curve."),
+                p("In this app, AUC is calculated using the trapezoidal rule with the following steps:"),
+                tags$ol(
+                  tags$li("Calculate time differences between consecutive points: Δt = t(i+1) - t(i)"),
+                  tags$li("Calculate average heights between consecutive points: heights = (y(i+1) + y(i)) / 2"),
+                  tags$li("Sum the products: AUC = Σ(Δt × heights)")
+                ),
+                helpText("$$ \\text{AUC} = \\sum_{i=1}^{n-1} \\Delta t_i \\times \\frac{y_i + y_{i+1}}{2} $$"),
+                p("where Δt_i = t_{i+1} - t_i and y_i represents the ΔF/F₀ values at each time point."),
                 uiOutput(ns("auc_calculation_ui"))
               ),
               
