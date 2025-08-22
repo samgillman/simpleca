@@ -872,7 +872,7 @@ mod_metrics_explained_server <- function(id, rv) {
             # Add the final calcium entry rate result prominently in top left
             annotate("label", x = min(trace$Time) + x_range * 0.02, 
                      y = max(trace$dFF0, na.rm = TRUE) + y_range * 0.22, 
-                     label = paste0("Calcium Entry Rate\n", sprintf("%.3f ΔF/F₀/s", data$metric$Calcium_Entry_Rate)),
+                     label = paste0("Calcium Entry Rate\n", sprintf("%.3f", data$metric$Calcium_Entry_Rate)),
                      color = "white", fill = "#28A745", fontface = "bold", size = 3.5,
                      hjust = 0, vjust = 0.5, label.size = 0) +
             labs(title = metric$Cell_Label, x = "Time (s)", y = expression(Delta*F/F[0])) +
