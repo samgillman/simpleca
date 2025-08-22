@@ -853,14 +853,20 @@ mod_metrics_explained_server <- function(id, rv) {
             geom_point(x = t10, y = p10_val, color="#F24236", size=5, stroke = 1) +
             geom_point(x = t90, y = p90_val, color="#F24236", size=5, stroke = 1) +
             # Clean labels with background boxes - positioned to avoid overlap
-            annotate("label", x = t10, y = p10_val - y_range * 0.18, 
-                     label = sprintf("10%%\n%.3f ΔF/F₀\n%.1fs", p10_val, t10), 
+            annotate("label", x = t10, y = p10_val - y_range * 0.25, 
+                     label = sprintf("10%%\n%.3f\n%.1fs", p10_val, t10), 
                      color = "white", fill = "#F24236", fontface = "bold", size = 3,
                      hjust = 0.5, vjust = 1, label.size = 0) +
-            annotate("label", x = t90, y = p90_val - y_range * 0.18, 
-                     label = sprintf("90%%\n%.3f ΔF/F₀\n%.1fs", p90_val, t90), 
+            annotate("text", x = t10, y = p10_val - y_range * 0.225, 
+                     label = expression(paste(Delta, "F/F"[0])), 
+                     color = "white", fontface = "bold", size = 3, hjust = 0.5) +
+            annotate("label", x = t90 + x_range * 0.08, y = p90_val - y_range * 0.25, 
+                     label = sprintf("90%%\n%.3f\n%.1fs", p90_val, t90), 
                      color = "white", fill = "#F24236", fontface = "bold", size = 3,
                      hjust = 0.5, vjust = 1, label.size = 0) +
+            annotate("text", x = t90 + x_range * 0.08, y = p90_val - y_range * 0.225, 
+                     label = expression(paste(Delta, "F/F"[0])), 
+                     color = "white", fontface = "bold", size = 3, hjust = 0.5) +
             # Time interval annotation with arrow - positioned well above trace
             annotate("segment", x = t10, xend = t90, 
                      y = max(trace$dFF0, na.rm = TRUE) + y_range * 0.12, 
