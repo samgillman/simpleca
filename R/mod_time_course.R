@@ -114,8 +114,11 @@ mod_time_course_ui <- function(id) {
                          column(3, selectInput(ns("tc_dl_fmt"),"Format", 
                                                choices = c("PNG"="png","PDF"="pdf","TIFF"="tiff","SVG"="svg"), 
                                                selected = "png")),
-                         column(3, numericInput(ns("tc_dl_w"),"Width (in)", 12, min = 4, max = 30)),
-                         column(3, numericInput(ns("tc_dl_h"),"Height (in)", 8, min = 4, max = 30)),
+                         column(3, selectInput(ns("tc_size_preset"), "Size", choices = c("6x4 in"="6x4","7x5 in"="7x5","8x6 in"="8x6","10x7.5 in"="10x7.5","12x8 in"="12x8"), selected = "8x6")),
+                         column(3, numericInput(ns("tc_dl_w"),"Width (in)", 8, min = 4, max = 30)),
+                         column(3, numericInput(ns("tc_dl_h"),"Height (in)", 6, min = 4, max = 30))
+                       ),
+                       fluidRow(
                          column(3, numericInput(ns("tc_dl_dpi"),"DPI", 300, min = 72, max = 600))
                        ),
                        div(style = "margin-top: 10px;", 
@@ -221,14 +224,36 @@ mod_time_course_server <- function(id, rv) {
       p
     }
     
-    output$timecourse_plot <- renderPlot({ build_timecourse_plot() })
+    output$timecourse_plot <- renderPlot({ 
+      if (is.null(rv$summary) || nrow(rv$summary) == 0) {
+        ggplot() + theme_void() +
+          annotate("text", x = 0.5, y = 0.6, label = "Upload data in 'Load Data' then click Process", size = 6, alpha = 0.7) +
+          annotate("text", x = 0.5, y = 0.45, label = "Time Course will render here", size = 4.5, alpha = 0.6) +
+          xlim(0,1) + ylim(0,1)
+      } else build_timecourse_plot() 
+    })
     
     output$timecourse_plotly <- plotly::renderPlotly({
       p <- build_timecourse_plot()
       plotly::ggplotly(p, tooltip = c("x","y","colour")) |>
-        plotly::layout(legend = list(orientation = if (identical(input$tc_legend_pos, "none")) "h" else NULL))
+        plotly::layout(
+          yaxis = list(title = "ΔF/F₀"),
+          legend = list(orientation = if (identical(input$tc_legend_pos, "none")) "h" else NULL)
+        )
     })
     
+    observeEvent(input$tc_size_preset, {
+      preset <- input$tc_size_preset
+      dims <- switch(preset,
+                     "6x4" = c(6,4),
+                     "7x5" = c(7,5),
+                     "8x6" = c(8,6),
+                     "10x7.5" = c(10,7.5),
+                     "12x8" = c(12,8), c(8,6))
+      updateNumericInput(session, "tc_dl_w", value = dims[1])
+      updateNumericInput(session, "tc_dl_h", value = dims[2])
+    }, ignoreInit = TRUE)
+
     output$tc_summary_table <- renderUI({
       req(rv$metrics)
       metric_cols <- c("Peak_dFF0","AUC","Half_Width","Calcium_Entry_Rate",

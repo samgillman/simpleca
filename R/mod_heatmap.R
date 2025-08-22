@@ -84,12 +84,13 @@ mod_heatmap_server <- function(id, rv) {
       validate(need(nrow(all_hm) > 0, "No valid data for heatmap"))
       
       rng <- range(all_hm$Value, na.rm = TRUE)
-      brks <- unique(round(c(rng[1], median(all_hm$Value, na.rm = TRUE), rng[2]), 3))
+      brks <- seq(floor(rng[1]), ceiling(rng[2]), by = 1)
+      if (length(brks) < 2) brks <- unique(floor(pretty(rng, n = 5)))
       
       ggplot(all_hm, aes(Time, Cell, fill = Value)) +
         geom_tile() +
         facet_wrap(~ Group, ncol = 1, scales = "free_y") +
-        scale_fill_viridis_c(name = expression(Delta*"F/F"[0]), option = input$hm_palette, na.value = "white", breaks = brks, labels = scales::label_number(accuracy = 0.01)) +
+        scale_fill_viridis_c(name = expression(Delta*"F/F"[0]), option = input$hm_palette, na.value = "white", breaks = brks, labels = brks) +
         guides(fill = guide_colorbar(frame.colour = "black", frame.linewidth = 0.3)) +
         labs(title = input$hm_title, x = input$hm_x_label, y = input$hm_y_label) +
         theme_classic(base_size = 14) +
