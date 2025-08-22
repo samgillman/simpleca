@@ -217,9 +217,13 @@ mod_time_course_server <- function(id, rv) {
       req(rv$summary)
       p <- ggplot()
       
-      # Add individual traces if requested
-      if (isTRUE(input$tc_show_traces) && !is.null(rv$long) && nrow(rv$long) > 0) {
-        alpha_traces <- 1 - (as.numeric(input$tc_trace_transparency) %||% 65) / 100
+      # Add individual traces if requested (default to TRUE when settings panel is hidden)
+      show_traces <- if (is.null(input$tc_show_traces)) TRUE else input$tc_show_traces
+      if (isTRUE(show_traces) && !is.null(rv$long) && nrow(rv$long) > 0) {
+        # Calculate alpha with proper default when settings panel is hidden
+        transparency_pct <- if (is.null(input$tc_trace_transparency)) 65 else as.numeric(input$tc_trace_transparency)
+        alpha_traces <- 1 - (transparency_pct / 100)
+        alpha_traces <- max(0.1, min(1.0, alpha_traces))  # Ensure valid range
         p <- p + geom_line(data=rv$long, aes(x=Time, y=dFF0, group=interaction(Group, Cell), color=Group),
                            inherit.aes=FALSE, alpha=alpha_traces, linewidth=0.35)
       }
@@ -229,7 +233,7 @@ mod_time_course_server <- function(id, rv) {
         geom_ribbon(data=rv$summary,
                     aes(x=Time, ymin=mean_dFF0 - sem_dFF0, ymax=mean_dFF0 + sem_dFF0, fill=Group),
                     alpha=if (isTRUE(input$tc_show_ribbon)) 0.25 else 0, color=NA) +
-        geom_line(data=rv$summary, aes(x=Time, y=mean_dFF0, color=Group), linewidth=input$tc_line_width %||% 1.6)
+        geom_line(data=rv$summary, aes(x=Time, y=mean_dFF0), color="black", linewidth=input$tc_line_width %||% 1.6)
       
       # Apply colors
       groups <- unique(rv$summary$Group)

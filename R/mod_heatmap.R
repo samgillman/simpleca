@@ -88,7 +88,7 @@ mod_heatmap_server <- function(id, rv) {
       ggplot(all_hm, aes(Time, Cell, fill = Value)) +
         geom_tile() +
         facet_wrap(~ Group, ncol = 1, scales = "free_y") +
-        scale_fill_viridis_c(name = expression(Delta*"F/F"[0]), option = input$hm_palette, na.value = "grey50", breaks = brks, labels = brks) +
+        scale_fill_viridis_c(name = expression(Delta*"F/F"[0]), option = input$hm_palette, na.value = "red", breaks = brks, labels = brks) +
         guides(fill = guide_colorbar(frame.colour = "black", frame.linewidth = 0.3)) +
         labs(title = input$hm_title, x = input$hm_x_label, y = input$hm_y_label) +
         theme_classic(base_size = 14) +

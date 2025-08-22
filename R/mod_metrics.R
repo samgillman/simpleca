@@ -16,7 +16,7 @@ mod_metrics_ui <- function(id) {
                             selected="Peak_dFF0"),
                 selectInput(ns("metric_plot_style"), "Plot style",
                             choices = c("Box + swarm" = "boxswarm", "Bars" = "bars", "Violin" = "violin"),
-                            selected = "boxswarm"),
+                            selected = "bars"),
                 checkboxInput(ns("metric_sort_cells"),"Sort cell bars within group", TRUE),
                 textInput(ns("metric_title"),"Custom title (optional)",""),
                 checkboxInput(ns("metric_auto_y"),"Auto y-label (use metric units)", TRUE),

@@ -13,8 +13,6 @@ mod_load_data_ui <- function(id) {
               ),
               box(title = "Processing Options", status = "primary", solidHeader = TRUE, width = 12, collapsible = FALSE,
                   # Basic processing controls (always visible)
-                  checkboxInput(ns("pp_enable"),"Enable processing", value = TRUE),
-                  checkboxInput(ns("pp_compute_dff"), "Compute ΔF/F₀ per cell", TRUE),
                   selectInput(ns("pp_baseline_method"),"Baseline (F₀) method",
                               choices = c("Frame Range"="frame_range","Rolling minimum"="rolling_min","Percentile"="percentile"),
                               selected="frame_range"),
@@ -116,8 +114,9 @@ mod_load_data_server <- function(id, rv) {
           
           raw_traces[[labels[i]]] <- data.table::copy(dt)
           
-          if (isTRUE(input$pp_enable)) {
-            if (isTRUE(input$pp_compute_dff)) {
+          # Always enable processing and ΔF/F₀ computation
+          {
+            {
               if (identical(input$pp_baseline_method,"frame_range")) {
                 start_frame <- max(1, as.integer(input$pp_baseline_frames[1] %||% 2))
                 end_frame <- min(nrow(dt), as.integer(input$pp_baseline_frames[2] %||% 20))
@@ -168,16 +167,11 @@ mod_load_data_server <- function(id, rv) {
         rv$baselines <- baselines
         
         # Store baseline calculation parameters for explanation module
-        if (isTRUE(input$pp_enable) && isTRUE(input$pp_compute_dff)) {
-          rv$baseline_method <- input$pp_baseline_method
-          if (identical(rv$baseline_method, "frame_range")) {
-            rv$baseline_frames <- c(input$pp_baseline_frames[1] %||% 2, input$pp_baseline_frames[2] %||% 20)
-          } else {
-            rv$baseline_frames <- NULL # Not applicable for other methods
-          }
+        rv$baseline_method <- input$pp_baseline_method
+        if (identical(rv$baseline_method, "frame_range")) {
+          rv$baseline_frames <- c(input$pp_baseline_frames[1] %||% 2, input$pp_baseline_frames[2] %||% 20)
         } else {
-          rv$baseline_method <- NULL
-          rv$baseline_frames <- NULL
+          rv$baseline_frames <- NULL # Not applicable for other methods
         }
         
         rv$long <- purrr::imap(dts, ~to_long(.x, .y)) |> dplyr::bind_rows()
@@ -190,7 +184,7 @@ mod_load_data_server <- function(id, rv) {
                              n_cells = dplyr::n(), .groups = "drop")
         } else NULL
         
-        baseline_frame_range <- if (isTRUE(input$pp_enable) && identical(input$pp_baseline_method, "frame_range")) {
+        baseline_frame_range <- if (identical(input$pp_baseline_method, "frame_range")) {
           c(as.integer(input$pp_baseline_frames[1] %||% 2), as.integer(input$pp_baseline_frames[2] %||% 20))
         } else {
           c(1, 20) # Default for other methods, though not directly used
