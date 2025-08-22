@@ -1,8 +1,8 @@
-# Calcium Imaging Analysis Protocol
+# SimpleCa²⁺: Calcium Imaging Analysis Protocol
 
 ## 1. Introduction
 
-This document provides a comprehensive guide on how to use the Calcium Imaging Analysis application. The purpose of this tool is to process, analyze, and visualize calcium imaging data from individual recordings, allowing for the quantification of cellular responses and the generation of publication-quality figures and tables.
+This document provides a comprehensive guide on how to use the SimpleCa²⁺ application. The purpose of this tool is to process, analyze, and visualize calcium imaging data from individual recordings, allowing for the quantification of cellular responses and the generation of publication-quality figures and tables.
 
 ## 2. Data Preparation
 
