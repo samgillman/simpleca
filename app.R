@@ -74,6 +74,7 @@ ui <- dashboardPage(
     ),
     tags$head(tags$style(HTML("
     /* Custom CSS */
+    body, .content-wrapper, .content { background-color: #f4f6f9 !important; }
     .small-help {color:#6c757d;font-size:12px;margin-top:4px}
     .box-title {font-weight:600}
     details > summary {cursor:pointer;font-weight:600;margin-top:8px}
