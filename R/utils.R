@@ -4,13 +4,6 @@ library(shiny)
 library(data.table)
 library(dplyr)
 library(stringr) # For str_extract
-library(bsplus)
-
-# ---- UI tooltip helper ----
-# Usage: add_tt("Label text", "Tooltip explanation")
-add_tt <- function(label, text, placement = "top") {
-  bsplus::bs_embed_tooltip(label, title = text, placement = placement, trigger = "hover")
-}
 
 # ============================ Helper Functions =============================
 
