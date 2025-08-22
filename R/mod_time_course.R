@@ -104,7 +104,7 @@ mod_time_course_server <- function(id, rv) {
                   column(width = 3,
                          h5("Display Options", style = "font-weight: bold; color: #333;"),
                          switchInput(ns("tc_show_traces"),"Show individual traces", value = TRUE, size = "mini"),
-                         sliderInput(ns("tc_trace_transparency"),"Trace transparency (%)", 0, 100, 65, 1, width = "100%"),
+                         sliderInput(ns("tc_trace_transparency"),"Trace transparency (%)", 0, 100, 50, 1, width = "100%"),
                          switchInput(ns("tc_show_ribbon"),"Show SEM ribbon", value = TRUE, size = "mini"),
                          sliderInput(ns("tc_line_width"),"Line width", 0.5, 4, 1.6, 0.1, width = "100%")
                   ),
@@ -221,7 +221,7 @@ mod_time_course_server <- function(id, rv) {
       show_traces <- if (is.null(input$tc_show_traces)) TRUE else input$tc_show_traces
       if (isTRUE(show_traces) && !is.null(rv$long) && nrow(rv$long) > 0) {
         # Calculate alpha with proper default when settings panel is hidden
-        transparency_pct <- if (is.null(input$tc_trace_transparency)) 65 else as.numeric(input$tc_trace_transparency)
+        transparency_pct <- if (is.null(input$tc_trace_transparency)) 50 else as.numeric(input$tc_trace_transparency)
         alpha_traces <- 1 - (transparency_pct / 100)
         alpha_traces <- max(0.1, min(1.0, alpha_traces))  # Ensure valid range
         

@@ -21,13 +21,6 @@ mod_export_ui <- function(id) {
                 tags$hr(), h4("Processed Data"),
                 selectInput(ns("exp_dl_group"), "Select file", choices = NULL),
                 downloadButton(ns("dl_processed_wide_exp"), "Download Processed Data (CSV)")
-            ),
-            box(title = "Notes", status = "info", solidHeader = TRUE, width = 8, collapsible = FALSE,
-                tags$ul(
-                  tags$li("PNG/TIFF recommended for slides/publication; use 300–600 DPI"),
-                  tags$li("PDF/SVG preserve vector graphics")
-                ),
-                verbatimTextOutput(ns("export_info"))
             )
           ) # end fluidRow
   ) # end tabItem
@@ -41,11 +34,6 @@ mod_export_server <- function(id, rv, metrics_plot_reactive, heatmap_plot_reacti
       updateSelectInput(session, "exp_dl_group", choices = names(rv$dts), selected = names(rv$dts)[1])
     })
     
-    output$export_info <- renderText({
-      paste0("Format: ", toupper(input$exp_fmt), "\n",
-             "Size: ", input$exp_w, " x ", input$exp_h, " in\n",
-             "DPI: ", input$exp_dpi)
-    })
     
     output$dl_processed_wide_exp <- downloadHandler(
       filename = function() sprintf("processed_%s_%s.csv", input$exp_dl_group %||% "data", Sys.Date()),
