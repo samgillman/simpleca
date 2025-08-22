@@ -193,24 +193,7 @@ mod_metrics_explained_ui <- function(id) {
                 withMathJax(),
                 p("AUC is calculated using the trapezoidal rule, which approximates the area by dividing the curve into trapezoids:"),
                 helpText("$$ \\text{AUC} = \\sum_{i=1}^{n-1} \\frac{(y_i + y_{i+1})}{2} \\times (t_{i+1} - t_i) $$"),
-                p("Where:"),
-                tags$ul(
-                  tags$li(HTML("<b>y<sub>i</sub>:</b> ΔF/F₀ value at time point i")),
-                  tags$li(HTML("<b>y<sub>i+1</sub>:</b> ΔF/F₀ value at the next time point")),
-                  tags$li(HTML("<b>t<sub>i</sub>:</b> Time at point i")),
-                  tags$li(HTML("<b>t<sub>i+1</sub>:</b> Time at the next point")),
-                  tags$li(HTML("<b>n:</b> Total number of time points"))
-                ),
                 p("This formula calculates the area of each trapezoid between consecutive time points and sums them all up to get the total area under the curve."),
-                p("Visual representation:"),
-                div(style = "text-align: center; margin: 15px 0;",
-                  tags$div(style = "display: inline-block; text-align: left; background-color: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #dee2e6;",
-                    tags$p("📊 The curve is divided into small trapezoids"),
-                    tags$p("📐 Each trapezoid's area = average height × width"),
-                    tags$p("➕ Total AUC = sum of all trapezoid areas"),
-                    tags$p("🎯 More accurate than simple rectangles")
-                  )
-                ),
                 uiOutput(ns("auc_calculation_ui"))
               ),
               
