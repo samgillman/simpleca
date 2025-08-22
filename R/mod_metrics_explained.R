@@ -111,20 +111,23 @@ mod_metrics_explained_ui <- function(id) {
               # --- UI for Calcium Entry Rate Explanation ---
               conditionalPanel(
                 condition = paste0("input['", ns("metric_to_explain"), "'] == 'ca_entry_rate'"),
-                p("This metric provides an estimate of the rate of calcium influx during the initial rising phase of the response."),
-                p("It's calculated as the slope of the line between the 10% and 90% amplitude points, representing the steepest part of the rise."),
-                h4("Mathematical Formula"),
-                withMathJax(),
-                p("The calcium entry rate is calculated using the rise between 10% and 90% of the response amplitude:"),
-                helpText("$$ \\text{Calcium Entry Rate} = \\frac{\\Delta F/F_0(t_{90\\%}) - \\Delta F/F_0(t_{10\\%})}{t_{90\\%} - t_{10\\%}} $$"),
-                p("This can be simplified to:"),
-                helpText("$$ \\text{Rate (ΔF/F₀/s)} = \\frac{0.8 \\times \\text{Response Amplitude}}{\\text{Rise Time (10-90%)}} $$"),
-                p("Where:"),
+                h4("Definition", style = "color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px;"),
+                p("Calcium Entry Rate estimates the speed of calcium influx during the initial rising phase of the response. It measures how quickly the fluorescence signal increases between 10% and 90% of the peak amplitude."),
+                
+                h4("Key Terms", style = "color: #2c3e50; margin-top: 20px;"),
                 tags$ul(
-                  tags$li(HTML("<b>Response Amplitude</b> = Peak ΔF/F₀ value")),
-                  tags$li(HTML("<b>Rise Time (10-90%)</b> = t<sub>90%</sub> - t<sub>10%</sub>")),
-                  tags$li(HTML("<b>0.8</b> = Factor representing 80% of amplitude (90% - 10%)"))
+                  tags$li(HTML("<b>10% Point:</b> The time and amplitude when the signal first reaches 10% of its peak value")),
+                  tags$li(HTML("<b>90% Point:</b> The time and amplitude when the signal first reaches 90% of its peak value")),
+                  tags$li(HTML("<b>Rise Time:</b> The duration between the 10% and 90% points (t<sub>90%</sub> - t<sub>10%</sub>)")),
+                  tags$li(HTML("<b>Rate:</b> The slope of the line connecting these two points"))
                 ),
+                
+                h4("For This Cell", style = "color: #2c3e50; margin-top: 20px;"),
+                uiOutput(ns("ca_data_points_ui")),
+                
+                h4("Calculation", style = "color: #2c3e50; margin-top: 20px;"),
+                withMathJax(),
+                p("The calcium entry rate is calculated as the slope between the 10% and 90% points:"),
                 uiOutput(ns("ca_calculation_ui"))
               ),
               
@@ -307,6 +310,31 @@ mod_metrics_explained_server <- function(id, rv) {
       withMathJax(helpText(sprintf("$$ \\text{AUC} = %.2f $$", data$metric$AUC)))
     })
 
+    output$ca_data_points_ui <- renderUI({
+      req(selected_cell_data())
+      data <- selected_cell_data()
+      
+      # Calculate the actual 10% and 90% values and times for this specific cell
+      search_start_idx <- min(rv$baseline_frames[2] + 1, which.max(data$processed_trace$dFF0))
+      peak_idx <- which.max(data$processed_trace$dFF0)
+      t10 <- find_rising_crossing_time(data$processed_trace$dFF0, data$processed_trace$Time, 
+                                       0.10 * data$metric$Response_Amplitude, search_start_idx, peak_idx)
+      t90 <- find_rising_crossing_time(data$processed_trace$dFF0, data$processed_trace$Time, 
+                                       0.90 * data$metric$Response_Amplitude, search_start_idx, peak_idx)
+      
+      p10_val <- 0.10 * data$metric$Response_Amplitude
+      p90_val <- 0.90 * data$metric$Response_Amplitude
+      
+      div(style = "background-color: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid #3498db;",
+        tags$ul(style = "margin-bottom: 0;",
+          tags$li(sprintf("10%% point: %.3f ΔF/F₀ at %.2f seconds", p10_val, t10)),
+          tags$li(sprintf("90%% point: %.3f ΔF/F₀ at %.2f seconds", p90_val, t90)),
+          tags$li(sprintf("Rise time: %.2f seconds", data$metric$Rise_Time)),
+          tags$li(sprintf("Signal rise: %.3f ΔF/F₀", p90_val - p10_val))
+        )
+      )
+    })
+
     output$ca_calculation_ui <- renderUI({
       req(selected_cell_data())
       data <- selected_cell_data()
@@ -323,18 +351,15 @@ mod_metrics_explained_server <- function(id, rv) {
       p90_val <- 0.90 * data$metric$Response_Amplitude
       
       withMathJax(tagList(
-        h5("For this specific cell:", style = "color: #333; font-weight: bold;"),
-        p(sprintf("• 10%% amplitude point: %.3f ΔF/F₀ at %.2f seconds", p10_val, t10)),
-        p(sprintf("• 90%% amplitude point: %.3f ΔF/F₀ at %.2f seconds", p90_val, t90)),
-        p(sprintf("• Rise time (10-90%%): %.2f seconds", data$metric$Rise_Time)),
-        br(),
-        p("Step-by-step calculation:"),
-        helpText(sprintf("$$ \\text{Rise} = \\Delta F/F_0(t_{90\\%%}) - \\Delta F/F_0(t_{10\\%%}) = %.3f - %.3f = %.3f $$", 
-                         p90_val, p10_val, p90_val - p10_val)),
-        helpText(sprintf("$$ \\text{Time interval} = t_{90\\%%} - t_{10\\%%} = %.2f - %.2f = %.2f \\text{ s} $$", 
-                         t90, t10, data$metric$Rise_Time)),
-        helpText(sprintf("$$ \\text{Calcium Entry Rate} = \\frac{%.3f}{%.2f} = %.3f \\text{ ΔF/F₀/s} $$", 
-                         p90_val - p10_val, data$metric$Rise_Time, data$metric$Calcium_Entry_Rate))
+        helpText(sprintf("$$ \\text{Calcium Entry Rate} = \\frac{\\text{Signal Rise}}{\\text{Time Interval}} = \\frac{%.3f - %.3f}{%.2f - %.2f} $$", 
+                         p90_val, p10_val, t90, t10)),
+        helpText(sprintf("$$ = \\frac{%.3f}{%.2f} = %.3f \\text{ ΔF/F₀/s} $$", 
+                         p90_val - p10_val, data$metric$Rise_Time, data$metric$Calcium_Entry_Rate)),
+        div(style = "background-color: #d4edda; padding: 10px; border-radius: 5px; margin-top: 10px; border: 1px solid #c3e6cb;",
+          h5("Result:", style = "margin: 0; color: #155724;"),
+          p(sprintf("Calcium Entry Rate = %.3f ΔF/F₀/s", data$metric$Calcium_Entry_Rate), 
+            style = "margin: 5px 0 0 0; font-weight: bold; color: #155724;")
+        )
       ))
     })
 
@@ -500,50 +525,53 @@ mod_metrics_explained_server <- function(id, rv) {
           p10_val <- 0.10 * metric$Response_Amplitude
           p90_val <- 0.90 * metric$Response_Amplitude
           
-          # Calculate positions for labels
+          # Calculate positions for cleaner labels
           y_range <- diff(range(trace$dFF0, na.rm = TRUE))
-          label_x_pos <- min(trace$Time) + diff(range(trace$Time, na.rm=TRUE)) * 0.01
-          rate_label_y <- max(trace$dFF0, na.rm = TRUE) * 0.95
-          slope_label_y <- (p10_val + p90_val) / 2 + y_range * 0.05
+          x_range <- diff(range(trace$Time, na.rm = TRUE))
           
           ggplot(data$processed_trace, aes(x = Time, y = dFF0)) +
-            geom_line(color = "gray50", linewidth = 1) +
-            # Add horizontal dotted lines to 10% and 90% levels
-            geom_segment(aes(x = 0, y = p10_val, xend = t10, yend = p10_val), color = "darkorange", linetype = "dotted") +
-            geom_segment(aes(x = 0, y = p90_val, xend = t90, yend = p90_val), color = "darkorange", linetype = "dotted") +
-            # Add vertical dashed lines from time axis to points
-            geom_segment(aes(x = t10, y = 0, xend = t10, yend = p10_val), color = "darkorange", linetype = "dashed") +
-            geom_segment(aes(x = t90, y = 0, xend = t90, yend = p90_val), color = "darkorange", linetype = "dashed") +
-            # Add the slope line between 10% and 90% points
-            geom_segment(aes(x = t10, y = p10_val, xend = t90, yend = p90_val), color = "dodgerblue", linewidth = 2) +
+            geom_line(color = "gray60", linewidth = 1.2) +
+            # Add horizontal reference lines (subtle)
+            geom_hline(yintercept = p10_val, color = "gray80", linetype = "dotted", alpha = 0.8) +
+            geom_hline(yintercept = p90_val, color = "gray80", linetype = "dotted", alpha = 0.8) +
+            # Add vertical reference lines (subtle)
+            geom_vline(xintercept = t10, color = "gray80", linetype = "dotted", alpha = 0.8) +
+            geom_vline(xintercept = t90, color = "gray80", linetype = "dotted", alpha = 0.8) +
+            # Add the slope line between 10% and 90% points (prominent)
+            geom_segment(aes(x = t10, y = p10_val, xend = t90, yend = p90_val), 
+                         color = "#2E86AB", linewidth = 3, alpha = 0.9) +
             # Add points at 10% and 90%
-            geom_point(aes(x=!!t10, y=!!p10_val), color="dodgerblue", size=4) +
-            geom_point(aes(x=!!t90, y=!!p90_val), color="dodgerblue", size=4) +
-            # Add labels for 10% and 90% points with actual values
-            annotate("text", x = label_x_pos, y = p10_val, 
-                     label = sprintf("10%% (%.3f ΔF/F₀)", p10_val), 
-                     color = "darkorange", fontface = "bold", hjust = 0, size = 3.5) +
-            annotate("text", x = label_x_pos, y = p90_val, 
-                     label = sprintf("90%% (%.3f ΔF/F₀)", p90_val), 
-                     color = "darkorange", fontface = "bold", hjust = 0, size = 3.5) +
-            # Add time labels below the points
-            annotate("text", x = t10, y = min(trace$dFF0, na.rm = TRUE) - y_range * 0.05, 
-                     label = sprintf("t = %.2fs", t10), 
-                     color = "darkorange", fontface = "bold", hjust = 0.5, size = 3.5) +
-            annotate("text", x = t90, y = min(trace$dFF0, na.rm = TRUE) - y_range * 0.05, 
-                     label = sprintf("t = %.2fs", t90), 
-                     color = "darkorange", fontface = "bold", hjust = 0.5, size = 3.5) +
-            # Add slope annotation with calculation
-            annotate("text", x = mean(c(t10, t90)), y = slope_label_y, 
-                     label = sprintf("Slope = (%.3f - %.3f) / (%.2f - %.2f) = %.3f ΔF/F₀/s", 
-                                   p90_val, p10_val, t90, t10, data$metric$Calcium_Entry_Rate),
-                     color = "dodgerblue", fontface = "bold", size = 3.8, hjust = 0.5) +
-            # Add final rate result
-            annotate("text", x = min(trace$Time) + diff(range(trace$Time, na.rm = TRUE)) * 0.05, y = rate_label_y,
-                     label = sprintf("Calcium Entry Rate = %.3f ΔF/F₀/s", data$metric$Calcium_Entry_Rate),
-                     color = "firebrick", fontface = "bold", size = 4.5, hjust = 0) +
+            geom_point(aes(x=!!t10, y=!!p10_val), color="#F24236", size=5, stroke = 1) +
+            geom_point(aes(x=!!t90, y=!!p90_val), color="#F24236", size=5, stroke = 1) +
+            # Clean labels with background boxes
+            annotate("label", x = t10 - x_range*0.08, y = p10_val, 
+                     label = sprintf("10%%\n%.3f ΔF/F₀\n%.1fs", p10_val, t10), 
+                     color = "white", fill = "#F24236", fontface = "bold", size = 3.2,
+                     hjust = 1, vjust = 0.5, label.size = 0) +
+            annotate("label", x = t90 + x_range*0.08, y = p90_val, 
+                     label = sprintf("90%%\n%.3f ΔF/F₀\n%.1fs", p90_val, t90), 
+                     color = "white", fill = "#F24236", fontface = "bold", size = 3.2,
+                     hjust = 0, vjust = 0.5, label.size = 0) +
+            # Time interval annotation with arrow
+            annotate("segment", x = t10, xend = t90, 
+                     y = max(trace$dFF0, na.rm = TRUE) + y_range * 0.08, 
+                     yend = max(trace$dFF0, na.rm = TRUE) + y_range * 0.08,
+                     arrow = arrow(length = unit(0.3, "cm"), ends = "both", type = "closed"), 
+                     color = "#2E86AB", linewidth = 1.2) +
+            annotate("label", x = mean(c(t10, t90)), y = max(trace$dFF0, na.rm = TRUE) + y_range * 0.08, 
+                     label = sprintf("Rise Time: %.2f s", data$metric$Rise_Time),
+                     color = "white", fill = "#2E86AB", fontface = "bold", size = 3.2,
+                     hjust = 0.5, vjust = -0.2, label.size = 0) +
+            # Add the final calcium entry rate result prominently
+            annotate("label", x = min(trace$Time) + x_range * 0.05, 
+                     y = max(trace$dFF0, na.rm = TRUE) + y_range * 0.15, 
+                     label = sprintf("Calcium Entry Rate\n%.3f ΔF/F₀/s", data$metric$Calcium_Entry_Rate),
+                     color = "white", fill = "#28A745", fontface = "bold", size = 4,
+                     hjust = 0, vjust = 0.5, label.size = 0) +
             labs(title = metric$Cell_Label, x = "Time (s)", y = expression(Delta*F/F[0])) +
-            explanation_theme() + coord_cartesian(clip = "off")
+            explanation_theme() + 
+            coord_cartesian(clip = "off", ylim = c(min(trace$dFF0, na.rm = TRUE) - y_range*0.05, 
+                                                   max(trace$dFF0, na.rm = TRUE) + y_range*0.2))
         }
       )
     })
@@ -554,11 +582,18 @@ mod_metrics_explained_server <- function(id, rv) {
     
     output$dl_plot <- downloadHandler(
       filename = function() {
-        sprintf("%s_%s.%s", input$metric_to_explain, selected_cell_data()$metric$Cell_Label, input$dl_format)
+        req(input$metric_to_explain, selected_cell_data())
+        cell_label <- gsub("[^A-Za-z0-9_-]", "_", selected_cell_data()$metric$Cell_Label)
+        sprintf("%s_%s.%s", input$metric_to_explain, cell_label, input$dl_format)
       },
       content = function(file) {
-        ggsave(file, plot = explanation_plot_obj(), device = input$dl_format, dpi = input$dl_dpi,
-               width = input$dl_width, height = input$dl_height)
+        req(explanation_plot_obj())
+        tryCatch({
+          ggsave(file, plot = explanation_plot_obj(), device = input$dl_format, dpi = input$dl_dpi,
+                 width = input$dl_width, height = input$dl_height, bg = "white")
+        }, error = function(e) {
+          showNotification(paste("Download failed:", e$message), type = "error", duration = 5)
+        })
       }
     )
     
