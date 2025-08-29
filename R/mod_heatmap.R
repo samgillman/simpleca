@@ -53,25 +53,7 @@ mod_heatmap_ui <- function(id) {
 mod_heatmap_server <- function(id, rv) {
     moduleServer(id, function(input, output, session) {
       
-      # Drop-in (number-free) helpers for data-driven scaling
-      smart_limits <- function(x, q_hi = 0.98, k_iqr = 1.5) {
-        x <- x[is.finite(x)]
-        if (!length(x)) return(c(0, 1))
-        x <- pmax(x, 0)
-
-        q_cap   <- as.numeric(stats::quantile(x, q_hi, na.rm = TRUE))      # ignore top 2%
-        q3      <- as.numeric(stats::quantile(x, 0.75, na.rm = TRUE))
-        iqr_val <- stats::IQR(x, na.rm = TRUE)
-        iqr_cap <- q3 + k_iqr * iqr_val                                    # Tukey fence
-
-        upper <- min(max(x, na.rm = TRUE), max(q_cap, iqr_cap))            # robust top
-        upper <- scales::nice_breaks()(c(0, upper)) |> max()               # snap to nice
-        c(0, upper)
-      }
-
-      smart_breaks <- function(lims, n = 3) {
-        scales::breaks_pretty(n = n)(lims)
-      }
+      # Simple 0.5 interval scale (reverted from complex data-driven approach)
     
     heatmap_plot_reactive <- reactive({
       req(rv$dts)
@@ -128,9 +110,9 @@ mod_heatmap_server <- function(id, rv) {
         rng_viz <- rng
       }
       
-      # Data-driven scaling with no hard-coded thresholds
-      lims  <- smart_limits(all_hm_viz$Value)
-      brks  <- smart_breaks(lims, n = 3)
+      # Simple 0.5 interval scale
+      upper <- ceiling(rng_viz[2] / 0.5) * 0.5
+      brks <- seq(0, upper, by = 0.5)
       
       ggplot(all_hm_viz, aes(Time, Cell, fill = Value)) +
         geom_tile() +
@@ -138,7 +120,7 @@ mod_heatmap_server <- function(id, rv) {
         scale_fill_viridis_c(
           name   = expression(Delta*"F/F"[0]),
           option = input$hm_palette,
-          limits = lims,                 # data-driven limits (0 to robust upper)
+          limits = c(0, upper),          # simple 0 to upper (0.5 intervals)
           breaks = brks, labels = brks,
           oob    = scales::squish,       # values above top just saturate
           na.value = "gray90"  # Light gray for missing values instead of transparent
