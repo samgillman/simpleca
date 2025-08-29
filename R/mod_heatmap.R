@@ -80,14 +80,65 @@ mod_heatmap_server <- function(id, rv) {
       all_hm <- purrr::imap(rv$dts, ~build_hm(.x, .y)) |> purrr::compact() |> dplyr::bind_rows()
       validate(need(nrow(all_hm) > 0, "No valid data for heatmap"))
       
+      # Dynamic legend breaks based on actual data range
       rng <- range(all_hm$Value, na.rm = TRUE)
-      brks <- seq(floor(rng[1]), ceiling(rng[2]), by = 0.5)
-      if (length(brks) < 2) brks <- unique(floor(pretty(rng, n = 5)))
+      
+      # Smart break calculation that adapts to data range
+      if (rng[2] <= 0.1) {
+        # Very small values: use 0.01 intervals
+        step <- 0.01
+        upper <- ceiling(rng[2] / step) * step
+        lower <- floor(rng[1] / step) * step
+        brks <- seq(lower, upper, by = step)
+      } else if (rng[2] <= 0.5) {
+        # Small values: use 0.1 intervals
+        step <- 0.1
+        upper <- ceiling(rng[2] / step) * step
+        lower <- 0
+        brks <- seq(lower, upper, by = step)
+      } else if (rng[2] <= 1.0) {
+        # Medium values: use 0.2 intervals
+        step <- 0.2
+        upper <- ceiling(rng[2] / step) * step
+        lower <- 0
+        brks <- seq(lower, upper, by = step)
+      } else if (rng[2] <= 2.0) {
+        # Larger values: use 0.5 intervals
+        step <- 0.5
+        upper <- ceiling(rng[2] / step) * step
+        lower <- 0
+        brks <- seq(lower, upper, by = step)
+      } else {
+        # Very large values: use 1.0 intervals
+        step <- 1.0
+        upper <- ceiling(rng[2] / step) * step
+        lower <- 0
+        brks <- seq(lower, upper, by = step)
+      }
+      
+      # Ensure we have reasonable number of breaks (not too many, not too few)
+      if (length(brks) > 8) {
+        # Too many breaks, use pretty() for automatic selection
+        brks <- pretty(rng, n = 6)
+        brks <- brks[brks >= 0]  # Keep only non-negative values
+      } else if (length(brks) < 3) {
+        # Too few breaks, add intermediate values
+        if (rng[2] > 0) {
+          mid <- rng[2] / 2
+          brks <- sort(c(0, mid, rng[2]))
+        }
+      }
       
       ggplot(all_hm, aes(Time, Cell, fill = Value)) +
         geom_tile() +
         facet_wrap(~ Group, ncol = 1, scales = "free_y") +
-        scale_fill_viridis_c(name = expression(Delta*"F/F"[0]), option = input$hm_palette, na.value = "transparent", breaks = brks, labels = brks) +
+        scale_fill_viridis_c(
+          name   = expression(Delta*"F/F"[0]),
+          option = input$hm_palette,
+          limits = c(lower, upper),      # ensures 1.5, 2.0, etc. when max > 1
+          breaks = brks, labels = brks,
+          na.value = "transparent"
+        )+
         guides(fill = guide_colorbar(frame.colour = "black", frame.linewidth = 0.3)) +
         labs(title = input$hm_title, x = input$hm_x_label, y = input$hm_y_label) +
         theme_classic(base_size = 14) +
@@ -117,7 +168,7 @@ mod_heatmap_server <- function(id, rv) {
           legend.title = element_text(
             size = max(6, input$hm_legend_text_size + 2),
             family = input$hm_font,
-            face = "bold" # Legend title is always bold
+            face = "bold" 
           ),
           strip.background = element_blank(),
           strip.text = element_blank()
