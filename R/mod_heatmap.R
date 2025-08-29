@@ -87,7 +87,7 @@ mod_heatmap_server <- function(id, rv) {
       all_hm <- purrr::imap(rv$dts, ~build_hm(.x, .y)) |> purrr::compact() |> dplyr::bind_rows()
       validate(need(nrow(all_hm) > 0, "No valid data for heatmap"))
       
-      # Dynamic legend breaks based on actual data range (including negative values)
+      # Dynamic legend breaks based on actual data range (exclude negative values)
       rng <- range(all_hm$Value, na.rm = TRUE)
       
       # Debug: check data range and NA values
@@ -95,69 +95,51 @@ mod_heatmap_server <- function(id, rv) {
       cat("Total NA values in heatmap:", sum(is.na(all_hm$Value)), "\n")
       cat("Data summary:", summary(all_hm$Value), "\n")
       
-      # Handle negative values properly - they should be visible, not treated as NA
-      has_negatives <- rng[1] < 0
+      # Filter out negative values and set lower limit to 0
+      if (rng[1] < 0) {
+        cat("Found negative values, filtering them out. Original range:", rng[1], "to", rng[2], "\n")
+        # Remove negative values from the data
+        all_hm <- all_hm[all_hm$Value >= 0, ]
+        rng <- range(all_hm$Value, na.rm = TRUE)
+        cat("After filtering, range is:", rng[1], "to", rng[2], "\n")
+      }
       
-      # Smart break calculation that adapts to data range
-      if (has_negatives) {
-        # If we have negative values, include them in the scale
-        if (rng[2] <= 0.5) {
-          step <- 0.1
-        } else if (rng[2] <= 1.0) {
-          step <- 0.2
-        } else if (rng[2] <= 2.0) {
-          step <- 0.5
-        } else {
-          step <- 1.0
-        }
-        
-        # Create breaks that include negative values
-        lower <- floor(rng[1] / step) * step
+      # Smart break calculation that starts from 0
+      if (rng[2] <= 0.1) {
+        step <- 0.01
         upper <- ceiling(rng[2] / step) * step
+        lower <- 0
         brks <- seq(lower, upper, by = step)
-        
-        # Ensure we don't have too many breaks
-        if (length(brks) > 10) {
-          brks <- pretty(rng, n = 8)
-        }
+      } else if (rng[2] <= 0.5) {
+        step <- 0.1
+        upper <- ceiling(rng[2] / step) * step
+        lower <- 0
+        brks <- seq(lower, upper, by = step)
+      } else if (rng[2] <= 1.0) {
+        step <- 0.2
+        upper <- ceiling(rng[2] / step) * step
+        lower <- 0
+        brks <- seq(lower, upper, by = step)
+      } else if (rng[2] <= 2.0) {
+        step <- 0.5
+        upper <- ceiling(rng[2] / step) * step
+        lower <- 0
+        brks <- seq(lower, upper, by = step)
       } else {
-        # No negative values - use original logic
-        if (rng[2] <= 0.1) {
-          step <- 0.01
-          upper <- ceiling(rng[2] / step) * step
-          lower <- 0
-          brks <- seq(lower, upper, by = step)
-        } else if (rng[2] <= 0.5) {
-          step <- 0.1
-          upper <- ceiling(rng[2] / step) * step
-          lower <- 0
-          brks <- seq(lower, upper, by = step)
-        } else if (rng[2] <= 1.0) {
-          step <- 0.2
-          upper <- ceiling(rng[2] / step) * step
-          lower <- 0
-          brks <- seq(lower, upper, by = step)
-        } else if (rng[2] <= 2.0) {
-          step <- 0.5
-          upper <- ceiling(rng[2] / step) * step
-          lower <- 0
-          brks <- seq(lower, upper, by = step)
-        } else {
-          step <- 1.0
-          upper <- ceiling(rng[2] / step) * step
-          lower <- 0
-          brks <- seq(lower, upper, by = step)
-        }
-        
-        # Ensure we have reasonable number of breaks
-        if (length(brks) > 8) {
-          brks <- pretty(rng, n = 6)
-          brks <- brks[brks >= 0]
-        } else if (length(brks) < 3) {
-          if (rng[2] > 0) {
-            mid <- rng[2] / 2
-            brks <- sort(c(0, mid, rng[2]))
-          }
+        step <- 1.0
+        upper <- ceiling(rng[2] / step) * step
+        lower <- 0
+        brks <- seq(lower, upper, by = step)
+      }
+      
+      # Ensure we have reasonable number of breaks
+      if (length(brks) > 8) {
+        brks <- pretty(rng, n = 6)
+        brks <- brks[brks >= 0]
+      } else if (length(brks) < 3) {
+        if (rng[2] > 0) {
+          mid <- rng[2] / 2
+          brks <- sort(c(0, mid, rng[2]))
         }
       }
       
@@ -167,7 +149,7 @@ mod_heatmap_server <- function(id, rv) {
         scale_fill_viridis_c(
           name   = expression(Delta*"F/F"[0]),
           option = input$hm_palette,
-          limits = c(lower, upper),      # now properly handles negative values
+          limits = c(0, upper),          # always start from 0, exclude negatives
           breaks = brks, labels = brks,
           na.value = "gray90"  # Light gray for missing values instead of transparent
         )+
