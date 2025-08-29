@@ -351,9 +351,7 @@ mod_metrics_explained_server <- function(id, rv) {
         div(style = "background-color: #d4edda; padding: 10px; border-radius: 5px; margin-top: 10px; border: 1px solid #c3e6cb;",
           h5("Result:", style = "margin: 0; color: #155724;"),
           p(sprintf("Signal-to-Noise Ratio = %.3f", data$metric$SNR), 
-            style = "margin: 5px 0 0 0; font-weight: bold; color: #155724;"),
-          p(if(data$metric$SNR >= 3) "Good signal quality" else if(data$metric$SNR >= 2) "Moderate signal quality" else "Low signal quality",
-            style = "margin: 5px 0 0 0; font-style: italic; color: #155724; font-size: 0.9em;")
+            style = "margin: 5px 0 0 0; font-weight: bold; color: #155724;")
         )
       ))
     })
