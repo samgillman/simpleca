@@ -81,7 +81,7 @@ mod_heatmap_server <- function(id, rv) {
       validate(need(nrow(all_hm) > 0, "No valid data for heatmap"))
       
       rng <- range(all_hm$Value, na.rm = TRUE)
-      brks <- seq(floor(rng[1]), ceiling(rng[2]), by = 1)
+      brks <- seq(floor(rng[1]), ceiling(rng[2]), by = 0.5)
       if (length(brks) < 2) brks <- unique(floor(pretty(rng, n = 5)))
       
       ggplot(all_hm, aes(Time, Cell, fill = Value)) +
