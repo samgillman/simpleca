@@ -59,6 +59,13 @@ mod_heatmap_server <- function(id, rv) {
         time_vec <- dt$Time
         dnum <- coerce_numeric_dt(dt)
         mat <- as.matrix(dnum[, -1])
+        
+        # Debug: check for NA values
+        na_count <- sum(is.na(mat))
+        if (na_count > 0) {
+          warning("Found ", na_count, " NA values in heatmap data for group: ", label)
+        }
+        
         valid <- apply(mat, 2, function(x) !all(is.na(x)))
         mat <- mat[, valid, drop=FALSE]
         if (ncol(mat) == 0) return(NULL)
@@ -82,6 +89,11 @@ mod_heatmap_server <- function(id, rv) {
       
       # Dynamic legend breaks based on actual data range
       rng <- range(all_hm$Value, na.rm = TRUE)
+      
+      # Debug: check data range and NA values
+      cat("Heatmap data range:", rng[1], "to", rng[2], "\n")
+      cat("Total NA values in heatmap:", sum(is.na(all_hm$Value)), "\n")
+      cat("Data summary:", summary(all_hm$Value), "\n")
       
       # Smart break calculation that adapts to data range
       if (rng[2] <= 0.1) {
