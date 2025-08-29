@@ -241,8 +241,12 @@ mod_time_course_server <- function(id, rv) {
         geom_ribbon(data=rv$summary,
                     aes(x=Time, ymin=mean_dFF0 - sem_dFF0, ymax=mean_dFF0 + sem_dFF0, fill=Group),
                     alpha=if (isTRUE(input$tc_show_ribbon)) 0.25 else 0, color=NA) +
-        # Color main mean line by group so line color control applies consistently
-        geom_line(data=rv$summary, aes(x=Time, y=mean_dFF0, color=Group), linewidth=input$tc_line_width %||% 1.6)
+        # Mean line: default black; if a custom color is chosen, map to Group so picker applies
+        if (!is.null(input$tc_line_color) && nzchar(input$tc_line_color)) {
+          geom_line(data=rv$summary, aes(x=Time, y=mean_dFF0, color=Group), linewidth=input$tc_line_width %||% 1.6)
+        } else {
+          geom_line(data=rv$summary, aes(x=Time, y=mean_dFF0), color="black", linewidth=input$tc_line_width %||% 1.6)
+        }
       
       # Apply colors
       groups <- unique(rv$summary$Group)
