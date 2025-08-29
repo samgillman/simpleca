@@ -53,31 +53,24 @@ mod_heatmap_ui <- function(id) {
 mod_heatmap_server <- function(id, rv) {
     moduleServer(id, function(input, output, session) {
       
-      # Helper function for robust upper limit calculation
-      smart_upper <- function(x,
-                             q_hi = 0.98,      # ignore top 2% outliers
-                             k_mad = 3.5,      # robust spread guardrail
-                             baseline = 1,     # where "strong" ΔF/F0 begins
-                             prop_thresh = 0.03, # need ≥3% of values above baseline to stretch a lot
-                             min_pad = 0.1) {  # at least 0.1 above baseline if any > baseline
+      # Drop-in (number-free) helpers for data-driven scaling
+      smart_limits <- function(x, q_hi = 0.98, k_iqr = 1.5) {
         x <- x[is.finite(x)]
-        if (!length(x)) return(1)
-
-        # visualize from 0 upward
+        if (!length(x)) return(c(0, 1))
         x <- pmax(x, 0)
 
-        qcap   <- as.numeric(stats::quantile(x, q_hi, na.rm = TRUE))
-        m      <- stats::median(x, na.rm = TRUE)
-        madcap <- m + k_mad * stats::mad(x, constant = 1, na.rm = TRUE)
+        q_cap   <- as.numeric(stats::quantile(x, q_hi, na.rm = TRUE))      # ignore top 2%
+        q3      <- as.numeric(stats::quantile(x, 0.75, na.rm = TRUE))
+        iqr_val <- stats::IQR(x, na.rm = TRUE)
+        iqr_cap <- q3 + k_iqr * iqr_val                                    # Tukey fence
 
-        upper_raw <- min(max(x, na.rm = TRUE), max(qcap, madcap))
+        upper <- min(max(x, na.rm = TRUE), max(q_cap, iqr_cap))            # robust top
+        upper <- scales::nice_breaks()(c(0, upper)) |> max()               # snap to nice
+        c(0, upper)
+      }
 
-        # If only a tiny fraction rises above baseline, don't let a few spikes blow up the scale
-        if (mean(x > baseline, na.rm = TRUE) < prop_thresh)
-          upper_raw <- max(baseline + min_pad, qcap)
-
-        # snap to a clean tick
-        ceiling(upper_raw * 10) / 10
+      smart_breaks <- function(lims, n = 3) {
+        scales::breaks_pretty(n = n)(lims)
       }
     
     heatmap_plot_reactive <- reactive({
@@ -135,11 +128,9 @@ mod_heatmap_server <- function(id, rv) {
         rng_viz <- rng
       }
       
-      # Robust upper limit calculation (replaces complex break logic)
-      upper <- smart_upper(all_hm_viz$Value)
-      
-      # Keep a short, clean legend
-      brks <- c(0, round(upper/2, 1), upper)
+      # Data-driven scaling with no hard-coded thresholds
+      lims  <- smart_limits(all_hm_viz$Value)
+      brks  <- smart_breaks(lims, n = 3)
       
       ggplot(all_hm_viz, aes(Time, Cell, fill = Value)) +
         geom_tile() +
@@ -147,9 +138,9 @@ mod_heatmap_server <- function(id, rv) {
         scale_fill_viridis_c(
           name   = expression(Delta*"F/F"[0]),
           option = input$hm_palette,
-          limits = c(0, upper),          # always start from 0, exclude negatives
+          limits = lims,                 # data-driven limits (0 to robust upper)
           breaks = brks, labels = brks,
-          oob    = scales::squish,       # keeps spikes but saturates them
+          oob    = scales::squish,       # values above top just saturate
           na.value = "gray90"  # Light gray for missing values instead of transparent
         )+
         guides(fill = guide_colorbar(frame.colour = "black", frame.linewidth = 0.3)) +
