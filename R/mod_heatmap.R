@@ -9,6 +9,12 @@ mod_heatmap_ui <- function(id) {
                 selectInput(ns("hm_palette"),"Color palette", choices = c("plasma","viridis","magma","inferno","cividis"), selected = "plasma"),
                 tags$hr(),
                 
+                # --- Scale Control ---
+                sliderInput(ns("hm_scale_step"), "Scale step size", 
+                           min = 0.1, max = 1.0, value = 0.5, step = 0.1,
+                           helpText("Controls legend interval spacing")),
+                tags$hr(),
+                
                 # --- Title and Labels ---
                 textInput(ns("hm_title"),"Plot title","Population Heatmap"),
                 checkboxInput(ns("hm_center_title"), "Center title", value = TRUE),
@@ -110,9 +116,10 @@ mod_heatmap_server <- function(id, rv) {
         rng_viz <- rng
       }
       
-      # Simple 0.5 interval scale
-      upper <- ceiling(rng_viz[2] / 0.5) * 0.5
-      brks <- seq(0, upper, by = 0.5)
+      # User-controlled scale step size
+      scale_step <- input$hm_scale_step
+      upper <- ceiling(rng_viz[2] / scale_step) * scale_step
+      brks <- seq(0, upper, by = scale_step)
       
       ggplot(all_hm_viz, aes(Time, Cell, fill = Value)) +
         geom_tile() +
@@ -120,7 +127,7 @@ mod_heatmap_server <- function(id, rv) {
         scale_fill_viridis_c(
           name   = expression(Delta*"F/F"[0]),
           option = input$hm_palette,
-          limits = c(0, upper),          # simple 0 to upper (0.5 intervals)
+          limits = c(0, upper),          # dynamic scale from 0 to upper (user-controlled step)
           breaks = brks, labels = brks,
           oob    = scales::squish,       # values above top just saturate
           na.value = "gray90"  # Light gray for missing values instead of transparent
