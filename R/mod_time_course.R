@@ -123,7 +123,6 @@ mod_time_course_server <- function(id, rv) {
                   column(width = 3,
                          h5("Labels", style = "font-weight: bold; color: #333;"),
                          textInput(ns("tc_title"),"Title",""),
-                         textInput(ns("tc_subtitle"), "Subtitle", "ΔF/F₀ over time"),
                          textInput(ns("tc_x"),"X axis label","Time (s)"),
                          textInput(ns("tc_y"), "Y axis label", "ΔF/F₀"),
                          checkboxInput(ns("tc_log_y"),"Log10 Y axis", FALSE)
@@ -278,14 +277,8 @@ mod_time_course_server <- function(id, rv) {
         }
       }
 
-      # Subtitle: clear if the box is empty
-      sub_lab <- {
-        has_sub <- !is.null(input$tc_subtitle) && nzchar(trimws(input$tc_subtitle))
-        if (has_sub) input$tc_subtitle else NULL
-      }
-
+      # No subtitle per user request
       p <- p + labs(title = title_lab,
-                    subtitle = sub_lab,
                     x = input$tc_x %||% "Time (s)", 
                     y = y_lab)
       
