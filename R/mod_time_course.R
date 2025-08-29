@@ -221,18 +221,18 @@ mod_time_course_server <- function(id, rv) {
       if (isTRUE(show_traces) && !is.null(rv$long) && nrow(rv$long) > 0) {
         # Calculate alpha with proper default when settings panel is hidden
         transparency_pct <- if (is.null(input$tc_trace_transparency)) 50 else as.numeric(input$tc_trace_transparency)
-        # Make transparency control feel stronger and allow very light traces
+        # Make traces slightly darker overall while keeping smooth control
         alpha_raw <- (100 - transparency_pct) / 100
-        alpha_traces <- max(0.02, min(1.0, alpha_raw^2))  # quadratic response for finer control
+        alpha_traces <- max(0.08, min(1.0, alpha_raw^1.5))
         
         # For single group, use gray for individual traces; otherwise use group colors
         groups <- unique(rv$long$Group)
         if (length(groups) == 1) {
           p <- p + geom_line(data=rv$long, aes(x=Time, y=dFF0, group=interaction(Group, Cell)),
-                             inherit.aes=FALSE, alpha=alpha_traces, linewidth=0.35, color="gray60")
+                             inherit.aes=FALSE, alpha=alpha_traces, linewidth=0.4, color="gray50")
         } else {
           p <- p + geom_line(data=rv$long, aes(x=Time, y=dFF0, group=interaction(Group, Cell), color=Group),
-                             inherit.aes=FALSE, alpha=alpha_traces, linewidth=0.35)
+                             inherit.aes=FALSE, alpha=alpha_traces, linewidth=0.4)
         }
       }
       
