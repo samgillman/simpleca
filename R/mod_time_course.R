@@ -257,22 +257,37 @@ mod_time_course_server <- function(id, rv) {
       }
       
       # Labels
+      # Preserve subscript formatting and allow bolding for the default y label via plotmath
       y_lab <- if (!is.null(input$tc_y) && nzchar(input$tc_y) && input$tc_y != "ΔF/F₀") {
+        # Custom text label provided by user
         input$tc_y
       } else {
-        expression(Delta*"F/F"[0])
+        # Default scientific label with optional bold styling that preserves subscripts
+        if (isTRUE(input$tc_bold_axis_title)) expression(bold(Delta*"F/F"[0])) else expression(Delta*"F/F"[0])
       }
-      
-      sub_lab <- if (!is.null(input$tc_subtitle) && nzchar(input$tc_subtitle) && input$tc_subtitle != "ΔF/F₀ over time") {
-        input$tc_subtitle
-      } else {
-        expression(Delta*"F/F"[0]*" over time")
+
+      # Title: if empty, derive from selected groups; else fallback to a sensible default
+      title_lab <- {
+        has_title <- !is.null(input$tc_title) && nzchar(trimws(input$tc_title))
+        if (has_title) {
+          input$tc_title
+        } else if (!is.null(rv$groups) && length(rv$groups) > 0) {
+          paste(rv$groups, collapse = ", ")
+        } else {
+          "Time Course"
+        }
       }
-      
-      p <- p + labs(title=input$tc_title %||% "", 
-                    subtitle=sub_lab,
-                    x=input$tc_x %||% "Time (s)", 
-                    y=y_lab)
+
+      # Subtitle: clear if the box is empty
+      sub_lab <- {
+        has_sub <- !is.null(input$tc_subtitle) && nzchar(trimws(input$tc_subtitle))
+        if (has_sub) input$tc_subtitle else NULL
+      }
+
+      p <- p + labs(title = title_lab,
+                    subtitle = sub_lab,
+                    x = input$tc_x %||% "Time (s)", 
+                    y = y_lab)
       
       # Apply theme
       base_theme <- switch(input$tc_theme %||% "classic", 
