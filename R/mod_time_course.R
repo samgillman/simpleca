@@ -221,8 +221,9 @@ mod_time_course_server <- function(id, rv) {
       if (isTRUE(show_traces) && !is.null(rv$long) && nrow(rv$long) > 0) {
         # Calculate alpha with proper default when settings panel is hidden
         transparency_pct <- if (is.null(input$tc_trace_transparency)) 50 else as.numeric(input$tc_trace_transparency)
-        alpha_traces <- 1 - (transparency_pct / 100)
-        alpha_traces <- max(0.1, min(1.0, alpha_traces))  # Ensure valid range
+        # Make transparency control feel stronger and allow very light traces
+        alpha_raw <- (100 - transparency_pct) / 100
+        alpha_traces <- max(0.02, min(1.0, alpha_raw^2))  # quadratic response for finer control
         
         # For single group, use gray for individual traces; otherwise use group colors
         groups <- unique(rv$long$Group)
@@ -240,7 +241,8 @@ mod_time_course_server <- function(id, rv) {
         geom_ribbon(data=rv$summary,
                     aes(x=Time, ymin=mean_dFF0 - sem_dFF0, ymax=mean_dFF0 + sem_dFF0, fill=Group),
                     alpha=if (isTRUE(input$tc_show_ribbon)) 0.25 else 0, color=NA) +
-        geom_line(data=rv$summary, aes(x=Time, y=mean_dFF0), color="black", linewidth=input$tc_line_width %||% 1.6)
+        # Color main mean line by group so line color control applies consistently
+        geom_line(data=rv$summary, aes(x=Time, y=mean_dFF0, color=Group), linewidth=input$tc_line_width %||% 1.6)
       
       # Apply colors
       groups <- unique(rv$summary$Group)
