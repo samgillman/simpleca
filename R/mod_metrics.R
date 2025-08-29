@@ -17,6 +17,9 @@ mod_metrics_ui <- function(id) {
                 selectInput(ns("metric_plot_style"), "Plot style",
                             choices = c("Box + swarm" = "boxswarm", "Bars" = "bars", "Violin" = "violin"),
                             selected = "bars"),
+                conditionalPanel(paste0("input['", ns("metric_plot_style"), "'] == 'bars'"),
+                  colourpicker::colourInput(ns("metric_bar_color"), "Bar color", value = "#B3B3B3", allowTransparent = FALSE)
+                ),
                 checkboxInput(ns("metric_sort_cells"),"Sort cell bars within group", TRUE),
                 textInput(ns("metric_title"),"Custom title (optional)",""),
                 checkboxInput(ns("metric_auto_y"),"Auto y-label (use metric units)", TRUE),
@@ -91,8 +94,9 @@ mod_metrics_server <- function(id, rv) {
         } else {
           df2 <- df2 |> dplyr::mutate(Cell_Idx = dplyr::row_number())
         }
+        bar_fill <- input$metric_bar_color %||% "#B3B3B3"
         p <- ggplot(df2, aes(x = Cell_Idx, y = .data[[metric]])) +
-          geom_col(width = 0.85, alpha = 0.9, color = "black", fill = "grey70", linewidth = 0.2)
+          geom_col(width = 0.85, alpha = 0.9, color = "black", fill = bar_fill, linewidth = 0.2)
         
         # Highlight extremes
         k <- as.integer(input$metric_highlight_k %||% 0)
