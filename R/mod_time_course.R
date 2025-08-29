@@ -117,7 +117,7 @@ mod_time_course_server <- function(id, rv) {
                          selectInput(ns("tc_theme"),"Theme", 
                                      choices=c("classic","minimal","light","dark"), 
                                      selected="classic"),
-                         checkboxInput(ns("tc_grid_major"),"Major gridlines", TRUE),
+                         checkboxInput(ns("tc_grid_major"),"Major gridlines", FALSE),
                          checkboxInput(ns("tc_grid_minor"),"Minor gridlines", FALSE)
                   ),
                   column(width = 3,
