@@ -237,9 +237,13 @@ mod_time_course_server <- function(id, rv) {
       }
       
       # Add ribbon and main line
+      # Choose a neutral ribbon fill by default; use custom line color if provided
+      ribbon_fill <- if (!is.null(input$tc_line_color) && nzchar(input$tc_line_color)) input$tc_line_color else "gray50"
+
       p <- p +
         geom_ribbon(data=rv$summary,
-                    aes(x=Time, ymin=mean_dFF0 - sem_dFF0, ymax=mean_dFF0 + sem_dFF0, fill=Group),
+                    aes(x=Time, ymin=mean_dFF0 - sem_dFF0, ymax=mean_dFF0 + sem_dFF0),
+                    fill=ribbon_fill,
                     alpha=if (is.null(input$tc_show_ribbon) || isTRUE(input$tc_show_ribbon)) 0.25 else 0, color=NA) +
         # Mean line: default black; if a custom color is chosen, map to Group so picker applies
         if (!is.null(input$tc_line_color) && nzchar(input$tc_line_color)) {
@@ -255,10 +259,10 @@ mod_time_course_server <- function(id, rv) {
         cols <- stats::setNames(rep(input$tc_line_color, length(groups)), groups)
       }
       if (!is.null(cols)) {
-        p <- p + scale_color_manual(values=cols) + scale_fill_manual(values=cols)
+        p <- p + scale_color_manual(values=cols)
       } else {
-        # Fallback: if no colors defined, use default ggplot colors
-        p <- p + scale_color_discrete() + scale_fill_discrete()
+        # Fallback: if no colors defined, use default ggplot colors for lines
+        p <- p + scale_color_discrete()
       }
       
       # Labels
