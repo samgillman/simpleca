@@ -137,7 +137,7 @@ mod_heatmap_server <- function(id, rv) {
           option = input$hm_palette,
           limits = c(lower, upper),      # ensures 1.5, 2.0, etc. when max > 1
           breaks = brks, labels = brks,
-          na.value = "transparent"
+          na.value = "gray90"  # Light gray for missing values instead of transparent
         )+
         guides(fill = guide_colorbar(frame.colour = "black", frame.linewidth = 0.3)) +
         labs(title = input$hm_title, x = input$hm_x_label, y = input$hm_y_label) +
