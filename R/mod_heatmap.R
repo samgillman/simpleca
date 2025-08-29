@@ -95,55 +95,59 @@ mod_heatmap_server <- function(id, rv) {
       cat("Total NA values in heatmap:", sum(is.na(all_hm$Value)), "\n")
       cat("Data summary:", summary(all_hm$Value), "\n")
       
-      # Filter out negative values and set lower limit to 0
+      # For visualization: treat negative values as 0 (darkest color) but keep data intact
       if (rng[1] < 0) {
-        cat("Found negative values, filtering them out. Original range:", rng[1], "to", rng[2], "\n")
-        # Remove negative values from the data
-        all_hm <- all_hm[all_hm$Value >= 0, ]
-        rng <- range(all_hm$Value, na.rm = TRUE)
-        cat("After filtering, range is:", rng[1], "to", rng[2], "\n")
+        cat("Found negative values, treating them as 0 for visualization. Original range:", rng[1], "to", rng[2], "\n")
+        # Create a copy for visualization where negatives become 0
+        all_hm_viz <- all_hm
+        all_hm_viz$Value[all_hm_viz$Value < 0] <- 0
+        rng_viz <- range(all_hm_viz$Value, na.rm = TRUE)
+        cat("Visualization range (negatives as 0):", rng_viz[1], "to", rng_viz[2], "\n")
+      } else {
+        all_hm_viz <- all_hm
+        rng_viz <- rng
       }
       
-      # Smart break calculation that starts from 0
-      if (rng[2] <= 0.1) {
+      # Smart break calculation that starts from 0 (using visualization range)
+      if (rng_viz[2] <= 0.1) {
         step <- 0.01
-        upper <- ceiling(rng[2] / step) * step
+        upper <- ceiling(rng_viz[2] / step) * step
         lower <- 0
         brks <- seq(lower, upper, by = step)
-      } else if (rng[2] <= 0.5) {
+      } else if (rng_viz[2] <= 0.5) {
         step <- 0.1
-        upper <- ceiling(rng[2] / step) * step
+        upper <- ceiling(rng_viz[2] / step) * step
         lower <- 0
         brks <- seq(lower, upper, by = step)
-      } else if (rng[2] <= 1.0) {
+      } else if (rng_viz[2] <= 1.0) {
         step <- 0.2
-        upper <- ceiling(rng[2] / step) * step
+        upper <- ceiling(rng_viz[2] / step) * step
         lower <- 0
         brks <- seq(lower, upper, by = step)
-      } else if (rng[2] <= 2.0) {
+      } else if (rng_viz[2] <= 2.0) {
         step <- 0.5
-        upper <- ceiling(rng[2] / step) * step
+        upper <- ceiling(rng_viz[2] / step) * step
         lower <- 0
         brks <- seq(lower, upper, by = step)
       } else {
         step <- 1.0
-        upper <- ceiling(rng[2] / step) * step
+        upper <- ceiling(rng_viz[2] / step) * step
         lower <- 0
         brks <- seq(lower, upper, by = step)
       }
       
       # Ensure we have reasonable number of breaks
       if (length(brks) > 8) {
-        brks <- pretty(rng, n = 6)
+        brks <- pretty(rng_viz, n = 6)
         brks <- brks[brks >= 0]
       } else if (length(brks) < 3) {
-        if (rng[2] > 0) {
-          mid <- rng[2] / 2
-          brks <- sort(c(0, mid, rng[2]))
+        if (rng_viz[2] > 0) {
+          mid <- rng_viz[2] / 2
+          brks <- sort(c(0, mid, rng_viz[2]))
         }
       }
       
-      ggplot(all_hm, aes(Time, Cell, fill = Value)) +
+      ggplot(all_hm_viz, aes(Time, Cell, fill = Value)) +
         geom_tile() +
         facet_wrap(~ Group, ncol = 1, scales = "free_y") +
         scale_fill_viridis_c(
