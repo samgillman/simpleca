@@ -60,7 +60,7 @@ utils::globalVariables(c(
 ui <- dashboardPage(
   skin = "blue",
   header = dashboardHeader(
-    title = HTML("SimpleCa<sup>2+</sup>")
+    title = "SimpleCa²⁺"
   ),
   sidebar = dashboardSidebar(
     width = 250,
