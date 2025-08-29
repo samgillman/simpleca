@@ -51,7 +51,34 @@ mod_heatmap_ui <- function(id) {
 }
 
 mod_heatmap_server <- function(id, rv) {
-  moduleServer(id, function(input, output, session) {
+    moduleServer(id, function(input, output, session) {
+      
+      # Helper function for robust upper limit calculation
+      smart_upper <- function(x,
+                             q_hi = 0.98,      # ignore top 2% outliers
+                             k_mad = 3.5,      # robust spread guardrail
+                             baseline = 1,     # where "strong" ΔF/F0 begins
+                             prop_thresh = 0.03, # need ≥3% of values above baseline to stretch a lot
+                             min_pad = 0.1) {  # at least 0.1 above baseline if any > baseline
+        x <- x[is.finite(x)]
+        if (!length(x)) return(1)
+
+        # visualize from 0 upward
+        x <- pmax(x, 0)
+
+        qcap   <- as.numeric(stats::quantile(x, q_hi, na.rm = TRUE))
+        m      <- stats::median(x, na.rm = TRUE)
+        madcap <- m + k_mad * stats::mad(x, constant = 1, na.rm = TRUE)
+
+        upper_raw <- min(max(x, na.rm = TRUE), max(qcap, madcap))
+
+        # If only a tiny fraction rises above baseline, don't let a few spikes blow up the scale
+        if (mean(x > baseline, na.rm = TRUE) < prop_thresh)
+          upper_raw <- max(baseline + min_pad, qcap)
+
+        # snap to a clean tick
+        ceiling(upper_raw * 10) / 10
+      }
     
     heatmap_plot_reactive <- reactive({
       req(rv$dts)
@@ -108,44 +135,11 @@ mod_heatmap_server <- function(id, rv) {
         rng_viz <- rng
       }
       
-      # Smart break calculation that starts from 0 (using visualization range)
-      if (rng_viz[2] <= 0.1) {
-        step <- 0.01
-        upper <- ceiling(rng_viz[2] / step) * step
-        lower <- 0
-        brks <- seq(lower, upper, by = step)
-      } else if (rng_viz[2] <= 0.5) {
-        step <- 0.1
-        upper <- ceiling(rng_viz[2] / step) * step
-        lower <- 0
-        brks <- seq(lower, upper, by = step)
-      } else if (rng_viz[2] <= 1.0) {
-        step <- 0.2
-        upper <- ceiling(rng_viz[2] / step) * step
-        lower <- 0
-        brks <- seq(lower, upper, by = step)
-      } else if (rng_viz[2] <= 2.0) {
-        step <- 0.5
-        upper <- ceiling(rng_viz[2] / step) * step
-        lower <- 0
-        brks <- seq(lower, upper, by = step)
-      } else {
-        step <- 1.0
-        upper <- ceiling(rng_viz[2] / step) * step
-        lower <- 0
-        brks <- seq(lower, upper, by = step)
-      }
+      # Robust upper limit calculation (replaces complex break logic)
+      upper <- smart_upper(all_hm_viz$Value)
       
-      # Ensure we have reasonable number of breaks
-      if (length(brks) > 8) {
-        brks <- pretty(rng_viz, n = 6)
-        brks <- brks[brks >= 0]
-      } else if (length(brks) < 3) {
-        if (rng_viz[2] > 0) {
-          mid <- rng_viz[2] / 2
-          brks <- sort(c(0, mid, rng_viz[2]))
-        }
-      }
+      # Keep a short, clean legend
+      brks <- c(0, round(upper/2, 1), upper)
       
       ggplot(all_hm_viz, aes(Time, Cell, fill = Value)) +
         geom_tile() +
@@ -155,6 +149,7 @@ mod_heatmap_server <- function(id, rv) {
           option = input$hm_palette,
           limits = c(0, upper),          # always start from 0, exclude negatives
           breaks = brks, labels = brks,
+          oob    = scales::squish,       # keeps spikes but saturates them
           na.value = "gray90"  # Light gray for missing values instead of transparent
         )+
         guides(fill = guide_colorbar(frame.colour = "black", frame.linewidth = 0.3)) +
