@@ -340,7 +340,7 @@ mod_time_course_server <- function(id, rv) {
         input$tc_y
       } else {
         # Default scientific label with optional bold styling that preserves subscripts
-        if (isTRUE(input$tc_bold_axis_title)) expression(bold(Delta*"F/F"[0])) else expression(Delta*"F/F"[0])
+        if (!is.null(input$tc_bold_axis_title) && isTRUE(input$tc_bold_axis_title)) expression(bold(Delta*"F/F"[0])) else expression(Delta*"F/F"[0])
       }
 
       # Title: if empty, derive from selected groups; else fallback to a sensible default
@@ -371,7 +371,7 @@ mod_time_course_server <- function(id, rv) {
         plot.title = element_text(
           hjust=0.5, 
           size=input$tc_title_size %||% 18, 
-          face=if(isTRUE(input$tc_bold_title)) "bold" else "plain", 
+          face=if(!is.null(input$tc_bold_title) && isTRUE(input$tc_bold_title)) "bold" else "plain", 
           family=input$tc_font %||% "Arial"
         ),
         plot.subtitle = element_text(
@@ -381,12 +381,12 @@ mod_time_course_server <- function(id, rv) {
         ),
         axis.title = element_text(
           size=input$tc_axis_title_size %||% 14, 
-          face=if(isTRUE(input$tc_bold_axis_title)) "bold" else "plain", 
+          face=if(!is.null(input$tc_bold_axis_title) && isTRUE(input$tc_bold_axis_title)) "bold" else "plain", 
           family=input$tc_font %||% "Arial"
         ),
         axis.text = element_text(
           size=input$tc_axis_size %||% 12, 
-          face=if(isTRUE(input$tc_bold_axis_text)) "bold" else "plain", 
+          face=if(!is.null(input$tc_bold_axis_text) && isTRUE(input$tc_bold_axis_text)) "bold" else "plain", 
           family=input$tc_font %||% "Arial"
         ),
         legend.position = input$tc_legend_pos %||% "none"
