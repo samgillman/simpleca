@@ -70,7 +70,6 @@ mod_time_course_server <- function(id, rv) {
     settings_visible <- reactiveVal(FALSE)
     typography_visible <- reactiveVal(FALSE)
     advanced_visible <- reactiveVal(FALSE)
-    user_customized_title <- reactiveVal(FALSE)  # Track if user has customized the title
     
     # Toggle settings visibility
     observeEvent(input$toggle_settings, {
@@ -86,27 +85,29 @@ mod_time_course_server <- function(id, rv) {
       advanced_visible(!advanced_visible())
     })
     
-    # Track when user manually changes the title
-    observeEvent(input$tc_title, {
-      req(input$tc_title)
-      # Check if this is a user customization (not the default auto-generated title)
-      default_title <- if (!is.null(rv$groups) && length(rv$groups) > 0) {
-        paste(rv$groups, collapse = ", ")
-      } else {
-        "Time Course"
-      }
-      
-      if (input$tc_title != default_title) {
-        user_customized_title(TRUE)
-      }
-    }, ignoreInit = TRUE)
+    # Store the last known groups to detect actual changes
+    last_groups <- reactiveVal(NULL)
     
-    # Auto-update title when groups change, but only if user hasn't customized it
+    # Only auto-update title when groups actually change (new data loaded)
     observe({
       req(rv$groups)
-      if (length(rv$groups) > 0 && !user_customized_title()) {
-        updateTextInput(session, "tc_title", value = paste(rv$groups, collapse = ", "))
+      current_groups <- paste(rv$groups, collapse = ", ")
+      
+      # Check if this is a real change in groups (new data loaded)
+      if (!is.null(last_groups()) && last_groups() != current_groups) {
+        # Groups actually changed - this means new data was loaded
+        # Only update title if it's currently empty or matches the old groups
+        current_title <- input$tc_title
+        if (is.null(current_title) || nchar(trimws(current_title)) == 0 || current_title == last_groups()) {
+          updateTextInput(session, "tc_title", value = current_groups)
+        }
+      } else if (is.null(last_groups())) {
+        # First time - set initial title
+        updateTextInput(session, "tc_title", value = current_groups)
       }
+      
+      # Update our stored groups
+      last_groups(current_groups)
     })
     
     # Handle title reset button
@@ -115,8 +116,14 @@ mod_time_course_server <- function(id, rv) {
       if (length(rv$groups) > 0) {
         default_title <- paste(rv$groups, collapse = ", ")
         updateTextInput(session, "tc_title", value = default_title)
-        user_customized_title(FALSE)  # Reset the customization flag
       }
+    })
+    
+    # Debug: Print when groups change to help troubleshoot
+    observe({
+      cat("DEBUG: Groups changed to:", paste(rv$groups, collapse = ", "), "\n")
+      cat("DEBUG: Last groups:", last_groups(), "\n")
+      cat("DEBUG: Current title:", input$tc_title, "\n")
     })
     
     # Render settings panel based on visibility state
