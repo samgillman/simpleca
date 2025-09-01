@@ -70,6 +70,7 @@ mod_time_course_server <- function(id, rv) {
     settings_visible <- reactiveVal(FALSE)
     typography_visible <- reactiveVal(FALSE)
     advanced_visible <- reactiveVal(FALSE)
+    user_customized_title <- reactiveVal(FALSE)  # Track if user has customized the title
     
     # Toggle settings visibility
     observeEvent(input$toggle_settings, {
@@ -85,11 +86,36 @@ mod_time_course_server <- function(id, rv) {
       advanced_visible(!advanced_visible())
     })
     
-    # Auto-update title when groups change
+    # Track when user manually changes the title
+    observeEvent(input$tc_title, {
+      req(input$tc_title)
+      # Check if this is a user customization (not the default auto-generated title)
+      default_title <- if (!is.null(rv$groups) && length(rv$groups) > 0) {
+        paste(rv$groups, collapse = ", ")
+      } else {
+        "Time Course"
+      }
+      
+      if (input$tc_title != default_title) {
+        user_customized_title(TRUE)
+      }
+    }, ignoreInit = TRUE)
+    
+    # Auto-update title when groups change, but only if user hasn't customized it
     observe({
       req(rv$groups)
-      if (length(rv$groups) > 0) {
+      if (length(rv$groups) > 0 && !user_customized_title()) {
         updateTextInput(session, "tc_title", value = paste(rv$groups, collapse = ", "))
+      }
+    })
+    
+    # Handle title reset button
+    observeEvent(input$reset_title, {
+      req(rv$groups)
+      if (length(rv$groups) > 0) {
+        default_title <- paste(rv$groups, collapse = ", ")
+        updateTextInput(session, "tc_title", value = default_title)
+        user_customized_title(FALSE)  # Reset the customization flag
       }
     })
     
@@ -122,7 +148,12 @@ mod_time_course_server <- function(id, rv) {
                   ),
                   column(width = 3,
                          h5("Labels", style = "font-weight: bold; color: #333;"),
-                         textInput(ns("tc_title"),"Title",""),
+                         div(style = "display: flex; align-items: center; gap: 8px;",
+                             textInput(ns("tc_title"),"Title","", width = "calc(100% - 80px)"),
+                             actionButton(ns("reset_title"), "Reset", 
+                                        style = "height: 38px; margin-top: 20px; padding: 6px 12px; font-size: 12px;",
+                                        title = "Reset title to default (group names)")
+                         ),
                          textInput(ns("tc_x"),"X axis label","Time (s)"),
                          textInput(ns("tc_y"), "Y axis label", "ΔF/F₀"),
                          checkboxInput(ns("tc_log_y"),"Log10 Y axis", FALSE)
