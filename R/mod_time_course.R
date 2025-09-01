@@ -221,7 +221,7 @@ mod_time_course_server <- function(id, rv) {
     
     # Render limits panel
     output$limits_panel <- renderUI({
-      if (!input$tc_limits) return(NULL)
+      if (is.null(input$tc_limits) || !isTRUE(input$tc_limits)) return(NULL)
       
       ns <- session$ns
       fluidRow(
@@ -302,10 +302,14 @@ mod_time_course_server <- function(id, rv) {
       needs_color_scale <- FALSE
       cols <- NULL
       
-      # If we have multiple groups, we need color mapping
-      if (length(groups) > 1) {
+      # Only apply color scales if:
+      # 1. We have multiple groups, OR
+      # 2. We're using a custom line color (which maps to Group)
+      if (length(groups) > 1 || (!is.null(input$tc_line_color) && nzchar(input$tc_line_color))) {
         needs_color_scale <- TRUE
         cols <- rv$colors
+        
+        # If using custom line color, apply it to all groups
         if (!is.null(input$tc_line_color) && nzchar(input$tc_line_color)) {
           cols <- stats::setNames(rep(input$tc_line_color, length(groups)), groups)
         }
