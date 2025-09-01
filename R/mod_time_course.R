@@ -400,15 +400,29 @@ mod_time_course_server <- function(id, rv) {
           y_range <- range(rv$summary$mean_dFF0, na.rm = TRUE)
           if (length(y_range) == 2 && is.finite(y_range[1]) && is.finite(y_range[2])) {
             scale_step <- input$tc_scale_step
-            # Create breaks from 0 or minimum to maximum, using the step size
+            
+            # Create more sensible breaks
             y_min <- min(0, y_range[1])  # Start from 0 or data minimum, whichever is lower
             y_max <- y_range[2]
-            y_breaks <- seq(y_min, y_max, by = scale_step)
-            # Remove any breaks that are beyond the data range
-            y_breaks <- y_breaks[y_breaks <= y_max]
+            
+            # Round the maximum up to a nice number based on the step size
+            y_max_rounded <- ceiling(y_max / scale_step) * scale_step
+            
+            # Create breaks from 0 to the rounded maximum
+            y_breaks <- seq(0, y_max_rounded, by = scale_step)
+            
+            # Remove any breaks that are way beyond the data range (keep some buffer)
+            y_breaks <- y_breaks[y_breaks <= (y_max + scale_step)]
             
             if (length(y_breaks) > 1) {
-              p <- p + scale_y_continuous(breaks = y_breaks)
+              # Format the breaks to show reasonable decimal places
+              # For step sizes >= 0.5, show 1 decimal place
+              # For step sizes < 0.5, show 2 decimal places
+              decimal_places <- if (scale_step >= 0.5) 1 else 2
+              p <- p + scale_y_continuous(
+                breaks = y_breaks,
+                labels = scales::label_number(accuracy = 10^(-decimal_places))
+              )
             }
           }
         }
