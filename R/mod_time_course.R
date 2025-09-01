@@ -295,17 +295,38 @@ mod_time_course_server <- function(id, rv) {
           geom_line(data=rv$summary, aes(x=Time, y=mean_dFF0), color="black", linewidth=input$tc_line_width %||% 1.6)
         }
       
-      # Apply colors
+      # Apply colors - only if we have multiple groups or are using custom colors
       groups <- unique(rv$summary$Group)
-      cols <- rv$colors
-      if (!is.null(input$tc_line_color) && nzchar(input$tc_line_color)) {
-        cols <- stats::setNames(rep(input$tc_line_color, length(groups)), groups)
+      
+      # Check if we need to apply color scales
+      needs_color_scale <- FALSE
+      cols <- NULL
+      
+      # If we have multiple groups, we need color mapping
+      if (length(groups) > 1) {
+        needs_color_scale <- TRUE
+        cols <- rv$colors
+        if (!is.null(input$tc_line_color) && nzchar(input$tc_line_color)) {
+          cols <- stats::setNames(rep(input$tc_line_color, length(groups)), groups)
+        }
       }
-      if (!is.null(cols)) {
-        p <- p + scale_color_manual(values=cols)
-      } else {
-        # Fallback: if no colors defined, use default ggplot colors for lines
-        p <- p + scale_color_discrete()
+      
+      # Apply color scale only if needed
+      if (needs_color_scale) {
+        if (!is.null(cols) && length(cols) > 0) {
+          # Ensure all groups have colors defined
+          missing_groups <- setdiff(groups, names(cols))
+          if (length(missing_groups) > 0) {
+            # Add default colors for missing groups
+            default_cols <- rainbow(length(missing_groups))
+            names(default_cols) <- missing_groups
+            cols <- c(cols, default_cols)
+          }
+          p <- p + scale_color_manual(values=cols)
+        } else {
+          # Fallback: use default ggplot colors
+          p <- p + scale_color_discrete()
+        }
       }
       
       # Labels
@@ -450,11 +471,14 @@ mod_time_course_server <- function(id, rv) {
       if (isTRUE(input$tc_limits)) {
         xlims <- ylims <- NULL
         
-        if (!is.na(input$tc_xmin) && !is.na(input$tc_xmax)) {
+        # Check if inputs exist and are not NA
+        if (!is.null(input$tc_xmin) && !is.null(input$tc_xmax) && 
+            !is.na(input$tc_xmin) && !is.na(input$tc_xmax)) {
           xlims <- c(input$tc_xmin, input$tc_xmax)
         }
         
-        if (!is.na(input$tc_ymin) && !is.na(input$tc_ymax)) {
+        if (!is.null(input$tc_ymin) && !is.null(input$tc_ymax) && 
+            !is.na(input$tc_ymin) && !is.na(input$tc_ymax)) {
           ylims <- c(input$tc_ymin, input$tc_ymax)
         }
         
