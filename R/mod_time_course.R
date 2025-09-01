@@ -393,7 +393,7 @@ mod_time_course_server <- function(id, rv) {
       )
       
       # Apply log scale if requested
-      if (isTRUE(input$tc_log_y)) {
+      if (!is.null(input$tc_log_y) && isTRUE(input$tc_log_y)) {
         p <- p + scale_y_log10()
       }
       
@@ -420,7 +420,7 @@ mod_time_course_server <- function(id, rv) {
         }
       } else {
         # Use scale step slider to generate Y-axis breaks
-        if (!is.null(input$tc_scale_step) && !isTRUE(input$tc_log_y)) {
+        if (!is.null(input$tc_scale_step) && !(!is.null(input$tc_log_y) && isTRUE(input$tc_log_y))) {
           # Get data range for Y-axis
           y_range <- range(rv$summary$mean_dFF0, na.rm = TRUE)
           if (length(y_range) == 2 && is.finite(y_range[1]) && is.finite(y_range[2])) {
@@ -454,14 +454,15 @@ mod_time_course_server <- function(id, rv) {
       }
       
       # Grid lines
-      if (isTRUE(input$tc_grid_major) || isTRUE(input$tc_grid_minor)) {
+      if ((!is.null(input$tc_grid_major) && isTRUE(input$tc_grid_major)) || 
+          (!is.null(input$tc_grid_minor) && isTRUE(input$tc_grid_minor))) {
         p <- p + theme(
-          panel.grid.major = if (isTRUE(input$tc_grid_major)) {
+          panel.grid.major = if (!is.null(input$tc_grid_major) && isTRUE(input$tc_grid_major)) {
             element_line(color="grey90", linewidth=0.3)
           } else {
             element_blank()
           },
-          panel.grid.minor = if (isTRUE(input$tc_grid_minor)) {
+          panel.grid.minor = if (!is.null(input$tc_grid_minor) && isTRUE(input$tc_grid_minor)) {
             element_line(color="grey95", linewidth=0.2)
           } else {
             element_blank()
@@ -472,7 +473,7 @@ mod_time_course_server <- function(id, rv) {
       }
       
       # Custom axis limits
-      if (isTRUE(input$tc_limits)) {
+      if (!is.null(input$tc_limits) && isTRUE(input$tc_limits)) {
         xlims <- ylims <- NULL
         
         # Check if inputs exist and are not NA
