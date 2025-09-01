@@ -139,7 +139,12 @@ mod_time_course_server <- function(id, rv) {
                          switchInput(ns("tc_show_traces"),"Show individual traces", value = TRUE, size = "mini"),
                          sliderInput(ns("tc_trace_transparency"),"Trace transparency (%)", 0, 100, 50, 1, width = "100%"),
                          switchInput(ns("tc_show_ribbon"),"Show SEM ribbon", value = TRUE, size = "mini"),
-                         sliderInput(ns("tc_line_width"),"Line width", 0.5, 4, 1.6, 0.1, width = "100%")
+                         sliderInput(ns("tc_line_width"),"Line width", 0.5, 4, 1.6, 0.1, width = "100%"),
+                         tags$hr(),
+                         h6("Y-Axis Scale", style = "font-weight: bold; margin-top: 10px;"),
+                         sliderInput(ns("tc_scale_step"), "Y-axis step size", 
+                                    min = 0.1, max = 1.0, value = 0.5, step = 0.1,
+                                    helpText("Controls Y-axis tick spacing"))
                   ),
                   column(width = 3,
                          h5("Colors & Style", style = "font-weight: bold; color: #333;"),
@@ -376,7 +381,9 @@ mod_time_course_server <- function(id, rv) {
         }
       }
       
+      # Y-axis breaks: use scale step slider if no custom breaks specified
       if (!is.null(input$tc_y_breaks) && nzchar(input$tc_y_breaks)) {
+        # Custom Y-axis breaks specified
         yb <- suppressWarnings(as.numeric(strsplit(input$tc_y_breaks, ",")[[1]]))
         yb <- yb[is.finite(yb)]
         if (length(yb) > 0) {
@@ -385,6 +392,25 @@ mod_time_course_server <- function(id, rv) {
                             percent = scales::label_percent(accuracy=0.01), 
                             scales::label_number(accuracy=0.01))
           p <- p + scale_y_continuous(breaks=yb, labels=lab_fun)
+        }
+      } else {
+        # Use scale step slider to generate Y-axis breaks
+        if (!is.null(input$tc_scale_step) && !isTRUE(input$tc_log_y)) {
+          # Get data range for Y-axis
+          y_range <- range(rv$summary$mean_dFF0, na.rm = TRUE)
+          if (length(y_range) == 2 && is.finite(y_range[1]) && is.finite(y_range[2])) {
+            scale_step <- input$tc_scale_step
+            # Create breaks from 0 or minimum to maximum, using the step size
+            y_min <- min(0, y_range[1])  # Start from 0 or data minimum, whichever is lower
+            y_max <- y_range[2]
+            y_breaks <- seq(y_min, y_max, by = scale_step)
+            # Remove any breaks that are beyond the data range
+            y_breaks <- y_breaks[y_breaks <= y_max]
+            
+            if (length(y_breaks) > 1) {
+              p <- p + scale_y_continuous(breaks = y_breaks)
+            }
+          }
         }
       }
       
