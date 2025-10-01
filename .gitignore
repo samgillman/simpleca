@@ -1,0 +1,19 @@
+# R project files
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# renv files (keep renv.lock for deployment)
+renv/
+
+# Shiny settings
+.shiny_app/
+
+# Data files - DO NOT COMMIT DATA
+*.csv
+*.xlsx
+*.xls
+
+# macOS files
+.DS_Store
