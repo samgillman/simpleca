@@ -4,8 +4,10 @@
 .RData
 .Ruserdata
 
-# renv files (keep renv.lock for deployment)
-renv/
+# renv files (keep renv.lock, activate.R, settings.json for reproducibility)
+renv/library/
+renv/staging/
+renv/local/
 
 # Shiny settings
 .shiny_app/
@@ -17,3 +19,7 @@ renv/
 
 # macOS files
 .DS_Store
+
+# Posit Connect / shinyapps.io deployment configs
+.posit/
+rsconnect/

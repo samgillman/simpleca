@@ -53,7 +53,7 @@ This tab allows you to view summary metrics and download the processed data.
 This tab is for visualizing the average calcium signal for each experimental group over time.
 
 1.  **View the Plot:** The main plot shows the average signal (solid line) and the standard error of the mean (shaded ribbon) for each group.
-2.  **Customize the Plot:** Click the "⚙️ Graph Settings" button to open a panel with extensive customization options. You can:
+2.  **Customize the Plot:** Click the "Graph Settings" button to open a panel with extensive customization options. You can:
     *   Show or hide individual cell traces.
     *   Change line colors, transparency, and width.
     *   Modify titles, axis labels, and fonts.
