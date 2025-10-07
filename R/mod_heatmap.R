@@ -103,12 +103,12 @@ mod_heatmap_server <- function(id, rv) {
       cat("Total NA values in heatmap:", sum(is.na(all_hm$Value)), "\n")
       cat("Data summary:", summary(all_hm$Value), "\n")
       
-      # For visualization: treat negative values as 0 (darkest color) but keep data intact
+      # For visualization: treat negative values as the minimum scale value (darkest color)
       if (rng[1] < 0) {
-        cat("Found negative values, treating them as 0 for visualization. Original range:", rng[1], "to", rng[2], "\n")
-        # Create a copy for visualization where negatives become 0
+        cat("Found negative values, treating them as minimum scale value for visualization. Original range:", rng[1], "to", rng[2], "\n")
+        # Create a copy for visualization where negatives become the minimum scale value
         all_hm_viz <- all_hm
-        all_hm_viz$Value[all_hm_viz$Value < 0] <- 0
+        all_hm_viz$Value[all_hm_viz$Value < 0] <- 0  # Set negatives to 0 (darkest color)
         rng_viz <- range(all_hm_viz$Value, na.rm = TRUE)
         cat("Visualization range (negatives as 0):", rng_viz[1], "to", rng_viz[2], "\n")
       } else {
@@ -116,7 +116,7 @@ mod_heatmap_server <- function(id, rv) {
         rng_viz <- rng
       }
       
-      # User-controlled scale step size
+      # User-controlled scale step size - always start from 0 for consistent coloring
       scale_step <- input$hm_scale_step
       upper <- ceiling(rng_viz[2] / scale_step) * scale_step
       brks <- seq(0, upper, by = scale_step)
