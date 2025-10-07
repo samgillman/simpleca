@@ -108,7 +108,7 @@ mod_heatmap_server <- function(id, rv) {
         cat("Found negative values, treating them as minimum scale value for visualization. Original range:", rng[1], "to", rng[2], "\n")
         # Create a copy for visualization where negatives become the minimum scale value
         all_hm_viz <- all_hm
-        all_hm_viz$Value[all_hm_viz$Value < 0] <- 0  # Set negatives to 0 (darkest color)
+        all_hm_viz$Value <- pmax(all_hm_viz$Value, 0)
         rng_viz <- range(all_hm_viz$Value, na.rm = TRUE)
         cat("Visualization range (negatives as 0):", rng_viz[1], "to", rng_viz[2], "\n")
       } else {
@@ -116,13 +116,15 @@ mod_heatmap_server <- function(id, rv) {
         rng_viz <- rng
       }
       
+      all_hm_viz <- dplyr::arrange(all_hm_viz, Group, Time, Cell)  # Avoid raster seams on some devices
+      
       # User-controlled scale step size - always start from 0 for consistent coloring
       scale_step <- input$hm_scale_step
       upper <- ceiling(rng_viz[2] / scale_step) * scale_step
       brks <- seq(0, upper, by = scale_step)
       
       ggplot(all_hm_viz, aes(Time, Cell, fill = Value)) +
-        geom_tile() +
+        geom_raster() +
         facet_wrap(~ Group, ncol = 1, scales = "free_y") +
         scale_fill_viridis_c(
           name   = expression(Delta*"F/F"[0]),
@@ -133,6 +135,8 @@ mod_heatmap_server <- function(id, rv) {
           na.value = "gray90"  # Light gray for missing values instead of transparent
         )+
         guides(fill = guide_colorbar(frame.colour = "black", frame.linewidth = 0.3)) +
+        scale_x_continuous(expand = c(0, 0)) +
+        scale_y_continuous(expand = c(0, 0)) +
         labs(title = input$hm_title, x = input$hm_x_label, y = input$hm_y_label) +
         theme_classic(base_size = 14) +
         theme(
