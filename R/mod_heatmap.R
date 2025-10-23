@@ -196,5 +196,8 @@ mod_heatmap_server <- function(id, rv) {
       }
     )
     
+    list(
+      plot = heatmap_plot_reactive
+    )
   })
 }
