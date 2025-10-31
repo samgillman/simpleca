@@ -135,8 +135,8 @@ mod_heatmap_server <- function(id, rv) {
           na.value = "gray90"  # Light gray for missing values instead of transparent
         )+
         guides(fill = guide_colorbar(frame.colour = "black", frame.linewidth = 0.3)) +
-        scale_x_continuous(expand = c(0, 0)) +
-        scale_y_continuous(expand = c(0, 0)) +
+        scale_x_continuous(expand = c(0.02, 0)) +  # Add small gap between plot and x-axis
+        scale_y_continuous(expand = c(0.02, 0)) +  # Add small gap between plot and y-axis
         labs(title = input$hm_title, x = input$hm_x_label, y = input$hm_y_label) +
         theme_classic(base_size = 14) +
         theme(
