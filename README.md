@@ -91,8 +91,9 @@ SimpleCa²⁺ requires data in **wide format** (CSV or Excel):
 3. **Time Course** → Visualize average traces with customizable styling
 4. **Heatmap** → View cell-by-cell activity patterns
 5. **Metrics** → Quantify and compare specific signal properties
-6. **Tables** → Explore detailed numerical results
-7. **Export** → Download all figures and data
+6. **Metric Explanations** → Learn how each metric is calculated with visual examples
+7. **Tables** → Explore detailed numerical results
+8. **Export** → Download all figures and data
 
 For detailed instructions, see [PROTOCOL.md](PROTOCOL.md) or use the built-in Help tab.
 
