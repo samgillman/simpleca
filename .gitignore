@@ -4,9 +4,6 @@ node_modules/
 # Portable R (downloaded at setup time — too large for git)
 r-portable/
 
-# Shiny app copy (copied from source at build time)
-shiny/
-
 # Build output
 dist/
 out/
@@ -15,6 +12,7 @@ out/
 
 # OS files
 .DS_Store
+._*
 Thumbs.db
 
 # Electron
