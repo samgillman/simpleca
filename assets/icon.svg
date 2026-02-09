@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4fc3f7"/>
+      <stop offset="100%" style="stop-color:#1565c0"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:rgba(255,255,255,0.3)"/>
+      <stop offset="100%" style="stop-color:rgba(255,255,255,0)"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="512" cy="512" r="480" fill="url(#bg)"/>
+
+  <!-- Subtle shine overlay -->
+  <ellipse cx="512" cy="380" rx="340" ry="240" fill="url(#shine)" opacity="0.4"/>
+
+  <!-- "Ca" text -->
+  <text x="420" y="580" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif"
+        font-size="320" font-weight="700" fill="white" text-anchor="middle">Ca</text>
+
+  <!-- "2+" superscript -->
+  <text x="640" y="420" font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif"
+        font-size="160" font-weight="700" fill="white" text-anchor="start">2+</text>
+
+  <!-- Subtle wave line at bottom representing a calcium trace -->
+  <path d="M 180 680 Q 280 640, 360 680 T 520 680 T 600 640 T 700 680 T 844 680"
+        stroke="rgba(255,255,255,0.4)" stroke-width="8" fill="none" stroke-linecap="round"/>
+</svg>

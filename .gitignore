@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Portable R (downloaded at setup time — too large for git)
+r-portable/
+
+# Shiny app copy (copied from source at build time)
+shiny/
+
+# Build output
+dist/
+out/
+.tmp-builder/
+.tmp-dmg/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Electron
+*.log
+
+# IDE
+.vscode/
+.idea/

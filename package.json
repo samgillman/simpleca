@@ -1,0 +1,101 @@
+{
+  "name": "simpleca",
+  "productName": "SimpleCa²⁺",
+  "version": "1.1.0",
+  "description": "A modern desktop app for calcium imaging data analysis",
+  "main": "main.js",
+  "author": "SimpleCa Team",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "setup": "bash scripts/setup-r-mac.sh",
+    "preflight:release": "bash scripts/preflight-release.sh",
+    "icons": "bash scripts/generate-icons.sh",
+    "pack": "npm run preflight:release && npm run icons && electron-builder --dir",
+    "dist": "npm run preflight:release && npm run icons && mkdir -p .tmp-builder && ln -sfn \"$PWD/.tmp-builder\" /tmp/simpleca-builder-tmp && TMPDIR=\"/tmp/simpleca-builder-tmp/\" electron-builder",
+    "dist-mac": "npm run preflight:release && npm run icons && mkdir -p .tmp-builder && ln -sfn \"$PWD/.tmp-builder\" /tmp/simpleca-builder-tmp && TMPDIR=\"/tmp/simpleca-builder-tmp/\" electron-builder --mac --arm64",
+    "dist-win": "npm run preflight:release && npm run icons && electron-builder --win",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "get-port": "^5.1.1"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.simpleca.app",
+    "productName": "SimpleCa²⁺",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "loading.html",
+      "config/**",
+      "assets/**"
+    ],
+    "extraResources": [
+      {
+        "from": "shiny",
+        "to": "shiny",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "r-portable",
+        "to": "r-portable",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.education",
+      "icon": "assets/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon.ico"
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
+  }
+}
