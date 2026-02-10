@@ -1,10 +1,18 @@
-# Dependencies
-node_modules/
+# R
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
 
-# Portable R (downloaded at setup time — too large for git)
+# renv (optional)
+renv/library/
+renv/staging/
+renv/python/
+.Renviron
+
+# Local build artifacts / large folders (not part of the Shiny app)
 r-portable/
-
-# Build output
+node_modules/
 dist/
 out/
 .tmp-builder/
@@ -15,7 +23,7 @@ out/
 ._*
 Thumbs.db
 
-# Electron
+# Logs
 *.log
 
 # IDE

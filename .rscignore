@@ -1,0 +1,18 @@
+# Prevent rsconnect from bundling large local build artifacts and runtimes.
+# (rsconnect does not honor .gitignore for deployment bundles.)
+r-portable/
+node_modules/
+dist/
+out/
+.tmp-builder/
+.tmp-dmg/
+
+# Electron-only files (leftovers if present locally)
+main.js
+preload.js
+loading.html
+package.json
+package-lock.json
+assets/
+scripts/
+testmain.js
